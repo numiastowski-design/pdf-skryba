@@ -1,0 +1,26 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "removeComments": true,
+    "outDir": "dist/types",
+    "rootDir": ".",
+    "paths": {
+      "doc-ir/*": ["./packages/doc-ir/src/*"],
+      "doc-gate/*": ["./packages/doc-gate/src/*"],
+      "doc-read/*": ["./packages/doc-read/src/*"]
+    }
+  },
+  "include": [
+    "./packages/doc-read/src/lib/pdf.ts",
+    "./packages/doc-read/src/lib/pdf-light.ts"
+  ],
+  "exclude": [
+    "./src/**/*.test.ts",
+    "./src/**/*.test.support.ts",
+    "./packages/*/src/**/*.test.ts",
+    "./packages/*/src/**/*.test.support.ts"
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "skryba",
+  "version": "0.6.0",
+  "description": "Reads a PDF into a structured representation, and checks that no word was lost on the way.",
+  "keywords": [
+    "pdf",
+    "text-extraction",
+    "document-parser",
+    "tagged-pdf",
+    "structure",
+    "word-conservation"
+  ],
+  "license": "AGPL-3.0-or-later",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/numiastowski-design/skryba.git"
+  },
+  "homepage": "https://miksumia.com",
+  "bugs": {
+    "email": "contact@miksumia.com"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/types/packages/doc-read/src/lib/pdf.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./light": {
+      "types": "./dist/types/packages/doc-read/src/lib/pdf-light.d.ts",
+      "import": "./dist/light.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "THIRD-PARTY.md"
+  ],
+  "dependencies": {
+    "@cantoo/pdf-lib": "^2.11.1"
+  }
+}

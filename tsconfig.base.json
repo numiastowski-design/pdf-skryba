@@ -1,0 +1,32 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    // Type-checking only: a bare `tsc -p .` once wrote 750 .js files next to the sources (06/10/2026), and
+    // resolution picks .js before .ts, so tests ran against stale code. Builds go through esbuild and Vite.
+    "noEmit": true,
+    // Both consumers of this config bundle: esbuild builds the functions
+    // (`tools/build-functions.ts`, since 05/10/2026; Forge's webpack before), Vitest
+    // has its own pipeline. `bundler` resolution matches that reality and lets
+    // imports stay extensionless — NodeNext would demand a `.js` suffix that
+    // Forge's webpack failed to resolve.
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022", "ES2024.String"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    // The vendored JPEG decoder is plain JavaScript (CommonJS), listed in include so that forge lint can parse it.
+    // checkJs stays off: third-party code is kept as published.
+    "allowJs": true,
+    "types": ["node"]
+  },
+  // `dist-ui/build/*.js` is listed on purpose: without it `forge lint` stops every deploy with « ESLint was configured to
+  // run on … however that TSConfig does not include this file » (measured 10/11/2026). Why the CLI lints that file is
+  // inferred, not read in the CLI: our own eslint ignores it. `checkJs` stays off, so the bundle is parsed, never checked.
+  // `packages/*/src` is listed so that the packages' tests, which nothing imports, stay type-checked.
+  "include": ["src/**/*.ts", "google-app/src/**/*.ts", "features/**/*.ts", "tools/**/*.ts", "packages/*/src/**/*.ts", "src/extractor/codecs/vendor/**/*.cjs", "dist-ui/build/*.js"]
+}
