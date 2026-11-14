@@ -108,6 +108,6 @@ reader exists: the extraction path, not the model, decides what a language model
 
 AGPL-3.0-or-later: run a modified version as a network service and its source must be available to its
 users. This repository is that source — a snapshot of the packages the npm bundle is built from, taken
-from the development monorepo at version 0.6.0 (13 November 2026). The entry points are
+from the development monorepo at version 0.6.1 (14 November 2026). The entry points are
 `packages/doc-read/src/lib/pdf.ts` and `packages/doc-read/src/lib/pdf-light.ts`; the npm package ships
 the bundle built from them. Questions: <contact@miksumia.com>.

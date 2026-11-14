@@ -1,6 +1,6 @@
 {
   "name": "skryba",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Reads a PDF into a structured representation, and checks that no word was lost on the way.",
   "keywords": [
     "pdf",
