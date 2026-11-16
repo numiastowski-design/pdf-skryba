@@ -1,5 +1,5 @@
 /** The colour a run INHERITS when its `a:rPr` writes none, for the slide
- *  drawing only (Mikolaj, 25/09/2026, decision 12 bis — MIKSUDOC « Spécification fonctionnelle » §9.3.3): the first
+ *  drawing only (25/09/2026, decision 12 bis — MIKSUDOC « Spécification fonctionnelle » §9.3.3): the first
  *  step of the chain below that writes a fill decides. An exact colour
  *  (`pptx-reader/color.ts`) is taken; any other fill written (a modifier, a
  *  gradient, `a:noFill`…) stops the chain on "unknown", never read past.
@@ -31,7 +31,7 @@
  *  (`placeholderStyles`) by `pptx-reader/text-size.ts`; `writtenTextColor`
  *  by `pptx-reader/text.ts`. */
 
-import { child, children, tagOf, type XNode } from "../ooxml/xml";
+import { findChild, findChildren, qualifiedNameOf, type XNode } from "../ooxml/xml";
 import { type ColorContext, elements, exactColorOf, type Hex, solidFillColor, writtenFillOf } from "./color";
 import { placeholderOf, type PptxPlaceholder } from "./placeholder";
 
@@ -53,16 +53,16 @@ type Step = Hex | "unknown" | undefined;
 export const writtenTextColor = (props: XNode | undefined, context: ColorContext | undefined): Step => {
   const fill = writtenFillOf(props);
   if (fill === undefined) return undefined;
-  return (tagOf(fill) === "a:solidFill" ? solidFillColor(fill, context) : undefined) ?? "unknown";
+  return (qualifiedNameOf(fill) === "a:solidFill" ? solidFillColor(fill, context) : undefined) ?? "unknown";
 };
 
 /** The colour a list style (`a:lstStyle`, `p:bodyStyle`…) writes at `level`. */
 const levelColor = (listStyle: XNode | undefined, level: number, context: ColorContext | undefined): Step =>
-  writtenTextColor(child(child(listStyle ?? {}, `a:lvl${level + 1}pPr`) ?? {}, "a:defRPr"), context);
+  writtenTextColor(findChild(findChild(listStyle ?? {}, `a:lvl${level + 1}pPr`) ?? {}, "a:defRPr"), context);
 
 /** The colour `p:style/a:fontRef` writes: its one colour element, when it has one. */
 const fontRefColor = (element: XNode, context: ColorContext | undefined): Step => {
-  const fontRef = child(child(element, "p:style") ?? {}, "a:fontRef");
+  const fontRef = findChild(findChild(element, "p:style") ?? {}, "a:fontRef");
   const colors = elements(fontRef ?? {});
   if (colors.length === 0) return undefined;
   return (colors.length === 1 ? exactColorOf(colors[0]!, context) : undefined) ?? "unknown";
@@ -72,7 +72,7 @@ type Placeholder = PptxPlaceholder;
 
 /** The text shapes of a layout or master that are placeholders. */
 const placeholdersOf = (part: XNode | undefined): { sp: XNode; ph: Placeholder }[] =>
-  children(child(child(part ?? {}, "p:cSld") ?? {}, "p:spTree") ?? {}, "p:sp").flatMap((sp) => {
+  findChildren(findChild(findChild(part ?? {}, "p:cSld") ?? {}, "p:spTree") ?? {}, "p:sp").flatMap((sp) => {
     const ph = placeholderOf(sp);
     return ph === undefined ? [] : [{ sp, ph }];
   });
@@ -90,7 +90,7 @@ const txStyleOf = (type: string | undefined): string => {
   return kind === "title" ? "p:titleStyle" : kind === "body" ? "p:bodyStyle" : "p:otherStyle";
 };
 
-const lstStyleOf = (sp: XNode | undefined): XNode | undefined => child(child(sp ?? {}, "p:txBody") ?? {}, "a:lstStyle");
+const lstStyleOf = (sp: XNode | undefined): XNode | undefined => findChild(findChild(sp ?? {}, "p:txBody") ?? {}, "a:lstStyle");
 
 /** The list styles a placeholder inherits, nearest first (the chain's step
  *  2, above). Shared with the inherited SIZE (`pptx-reader/text-size.ts`). */
@@ -102,8 +102,8 @@ export const placeholderStyles = (ph: Placeholder, sources: TextStyleSources): (
     layoutPhs.find((p) => (p.ph.type ?? "obj") === type);
   const kind = onLayout?.ph.type ?? ph.type;
   const onMaster = placeholdersOf(sources.master).find((p) => masterType(p.ph.type) === masterType(kind));
-  const txStyles = child(sources.master ?? {}, "p:txStyles");
-  return [lstStyleOf(onLayout?.sp), lstStyleOf(onMaster?.sp), child(txStyles ?? {}, txStyleOf(kind))];
+  const txStyles = findChild(sources.master ?? {}, "p:txStyles");
+  return [lstStyleOf(onLayout?.sp), lstStyleOf(onMaster?.sp), findChild(txStyles ?? {}, txStyleOf(kind))];
 };
 
 /** For one text shape (`p:sp` and its `p:txBody`): the colour a run writing
@@ -114,7 +114,7 @@ export const inheritedTextColor = (
   sources: TextStyleSources,
   context: ColorContext | undefined,
 ): ((level: number) => Hex | undefined) => {
-  const own = child(body, "a:lstStyle");
+  const own = findChild(body, "a:lstStyle");
   const ph = placeholderOf(element);
   const inherited = ph === undefined ? undefined : placeholderStyles(ph, sources);
   const byLevel = new Map<number, Hex | undefined>();

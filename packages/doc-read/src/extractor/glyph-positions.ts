@@ -6,7 +6,7 @@
  *  (`layout/cell-text.ts`), which reads glyphs and never any other text, sees
  *  the same letters as the rest of the pipeline.
  *  Decides: that a glyph whose text is a CONTROL character is not published at
- *  all (`isInventedControl`, Mikolaj 31/10/2026: "we abstain" — a font naming a
+ *  all (`isInventedControl`, 31/10/2026: "we abstain" — a font naming a
  *  glyph `g03` used to publish U+0003); and that reading the glyphs
  *  (`readGlyphs`) is SEPARATE from leaving the hidden ones out and merging
  *  overpaint (`filteredGlyphs`), `buildGlyphFragments` being the two in a row:
@@ -211,9 +211,9 @@ export interface GlyphFragment {
    * Set ONLY by `readGlyphs` (never by a plain `buildGlyphFragments(ops)`): why a viewer does not show this glyph —
    * `"mode"` for text rendering mode 3 (neither fill nor stroke; ISO 32000-1 §9.3.6, Table 106), `"layer"` for
    * optional content whose group is OFF (§8.11), `"paint"` for a glyph filled WHITE on the bare page — the typesetter's
-   * marks of the Federal Register `sd-4133285` (« VerDate Sep<11>2014 … », drawn after `1 g`, Mikolaj 05/11/2026). A
+   * marks of the Federal Register `sd-4133285` (« VerDate Sep<11>2014 … », drawn after `1 g`, 05/11/2026). A
    * white glyph over a non-white box painted before it on the page is shown. Written limit: only white is the page's
-   * colour here; a text painted in the colour of a coloured box is not caught. "Rien d'invisible" (Mikolaj, 09/10/2026).
+   * colour here; a text painted in the colour of a coloured box is not caught. "Rien d'invisible" (09/10/2026).
    */
   hidden?: "mode" | "layer" | "paint" | "size" | "clip";
   /** Set ONLY by `readGlyphs`, on a glyph in a `NOT_PAINTED_MODES` mode that is NOT hidden (mode 7): published, but
@@ -379,7 +379,7 @@ export const NOT_PAINTED_MODES: ReadonlySet<number> = new Set([3, 7]);
 const CLIP_ONLY_MODE = 7;
 
 /** The modes whose text is HIDDEN by the rule "Rien d'invisible" (what is dropped): only 3. Mode 7 is published
- *  (Mikolaj, 09/10/2026: a gradient title exported from PowerPoint is visible through its clip). Bias, chosen: an
+ *  (09/10/2026: a gradient title exported from PowerPoint is visible through its clip). Bias, chosen: an
  *  unpainted stencil is published. */
 export const INVISIBLE_TEXT_MODES: ReadonlySet<number> = new Set([3]);
 
@@ -802,7 +802,7 @@ function isSymbolFontOfWalk(walk: GlyphWalk, fontName: string): boolean {
 /** The glyph's Unicode text, its private-use points translated when the font is Symbol. */
 const glyphUnicode = (unicode: string | undefined, inSymbolFont: boolean): string => (inSymbolFont ? symbolFontText(unicode ?? "") : (unicode ?? ""));
 
-/** 🔴 WE ABSTAIN RATHER THAN PUBLISH WHAT pdf.js INVENTED (Mikolaj, 31/10/2026: "we abstain").
+/** 🔴 WE ABSTAIN RATHER THAN PUBLISH WHAT pdf.js INVENTED (31/10/2026: "we abstain").
  *  When nothing says what a code paints — a glyph named `g03`, a CID without `/ToUnicode` — pdf.js returned the CODE
  *  as if it were a character: U+0003 for `g03`. Measured by the POC (`tools/poc/which-names.ts` (deleted, see git history)): 27 glyphs
  *  of `13-Police-Sans-CMap` and `49-GrandSoissons-RPQS` thus become CONTROL characters, which nothing

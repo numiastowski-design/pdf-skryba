@@ -13,7 +13,7 @@
  *  SCOPE: this reading's WORD-BAG side covers TEXT cells only (`t="s"`
  *  shared string, `inlineStr`, `str`, `e` error text) — booleans stay
  *  excluded, never a token source. Numbers and dates are NOT compared as
- *  text (§1, DECIDED, Mikolaj 29/09/2026): our own formatter
+ *  text (§1, DECIDED, 29/09/2026): our own formatter
  *  (`extractor/xlsx-number-format.ts`) writes their displayed text, and a
  *  reader independent of that formatting would either reimplement it
  *  (duplicating the exact rounding/date-mask rules it exists to own — the
@@ -76,16 +76,17 @@
  *  enough to publish in full here while the real extractor withholds it
  *  (a false "missing" on every one of its string cells). `cellIsFilled`
  *  below answers that WITHOUT formatting a single number: presence of a
- *  `<v>`/`<is>` child is enough. The one accepted gap (documented, not
- *  fixed here, on EITHER side of this reading): a hide-in-place format
- *  (`;;;`-shaped) on a TEXT cell is the one `no-word-lost.test.ts` already
- *  wrote down; the matching case on a NUMBER cell would need the SAME
- *  value-dependent section choice `xlsx-number-format.ts#selectSection`
- *  owns (positive/negative/zero pick different sections) to know which
- *  section applies — reproducing that selection independently would risk
- *  the exact divergence this file exists to avoid, so a hide-in-place
- *  NUMBER cell may surface here as a false "missing" until a real fixture
- *  forces the question (none of the 17 do, `no-word-lost.test.ts`).
+ *  `<v>`/`<is>` child is enough. A cell its format hides is then left out
+ *  by this reading's own shallow rule (`hiddenByFormat`, `codeHides`: an
+ *  empty section for the value's kind, in a code of 2 to 4 sections).
+ *  The accepted gap, where the page hides a cell and this reading still
+ *  expects it (a false "missing", or a structure "gap"): a code with a
+ *  bracket CONDITION (`[=0]"";0`, never evaluated here: this reading
+ *  abstains), a section that prints only blanks (`" "`), a one-section
+ *  code, and a section holding nothing but a colour (`[Red]`, see the
+ *  bracket strip in `codeHides`). Closing it would take the value-dependent
+ *  section choice `xlsx-number-format.ts#selectSection` owns, the exact
+ *  divergence this file exists to avoid.
  *
  *  NOT here: reading the workbook into this shape a second time for
  *  Google Sheets, which never has a .xlsx zip to open
@@ -105,6 +106,7 @@
 
 import { NO_CAP, type ReaderLimits } from "doc-ir/lib/reader-limits";
 import { addChartTable, emptyUnitStructure, excludedUnitsOf, guardedSourceAsync, unitOf, type ConservationNumericCell, type ConservationSourceReadFailure, type ConservationUnit, type DeclaredFormatConservationSource, type UnitStructure } from "./conservation-source";
+import { EXCEL_MAX_ROWS, keptCellsResolver, MAX_COLUMN, type SheetCellsResolver } from "./source-chart-reference";
 import { absorbedCells, chartShapesOf, createChartCache, declaredHeaderRowsOf, sheetStructure, type ChartCache, type HeaderDeclaration } from "./source-structure-sheet";
 import { coveredByMerges, type MergeRange } from "./source-reading-table";
 import { resolveTarget } from "../extractor/ooxml/package";
@@ -128,12 +130,6 @@ const richTextOf = (n: N): string => {
   }
   return unescapeXstring(out);
 };
-
-/** Excel's grid holds 16,384 columns (A..XFD) — Microsoft's « Excel
- *  specifications and limits ». A `col@max` past it names no column that
- *  exists, so a hidden span is clamped to it instead of being expanded to
- *  whatever a file declares (`max="2000000000"` is a valid xsd:unsignedInt). */
-const MAX_COLUMN = 16_384;
 
 /** The A1 letters of a 1-based column number. */
 const colLetters = (n: number): string => {
@@ -172,7 +168,7 @@ const cellIsFilled = (cell: N, shared: readonly string[]): boolean => {
     return v !== undefined && textOf(v).length > 0;
   }
   // Number or boolean (t absent or "n", or "b"): our formatter always writes
-  // SOMETHING for a present value (`extractor/xlsx.ts#cellText`) bar the one
+  // SOMETHING for a present value (`extractor/xlsx.ts#writeCellText`) bar the one
   // documented gap (a hide-in-place format) — presence of a NON-EMPTY `<v>`
   // is enough. EMPTY, not absent (`<v></v>`), is openpyxl's own shape for a
   // FORMULA with no cached value (`extractor/xlsx.ts#formulaRefsWithoutValue`'s
@@ -276,11 +272,21 @@ const formatCodeOf = (cell: N, styles: XlsxStyles): string | undefined =>
  *  (ECMA-376 Part 1 §18.8.31 numFmt; Microsoft « Number format codes »): a
  *  code has up to 4 sections, positive;negative;zero;text, and an EMPTY
  *  section hides that kind of value. The code is split on `;` outside quotes
- *  and after a backslash; a section is empty once its `[...]` brackets
- *  (colour, locale) are removed. Nothing is formatted: only « hidden or not ».
+ *  and after a backslash; a section is empty when nothing but blanks is left
+ *  once the strip in `codeHides` has run. That strip, `/[[^]]*]/g`, matches
+ *  ONE `[` or `^` followed by one or more `]`: on `[^]` it removes `^]` and
+ *  leaves `[`; on `[Red]` it removes nothing. So a section holding only a
+ *  bracketed tag is not read as empty: under `0;[Red]` a negative value is
+ *  hidden by the page and still expected here, a false gap (the visible
+ *  bias, this file's header). It is left as it is: removing every bracket
+ *  would read a section that is only `[$€-2]` or `[h]` as empty although it
+ *  displays something, and for a TEXT cell the page's rule is the literal
+ *  fourth section being exactly "" (`xlsx-number-format.ts#isHiddenTextFormatCode`).
+ *  Nothing is formatted: only « hidden or not ».
  *  Two sections: zero uses the first; one section, or none: never hidden.
  *  A bracket CONDITION (`[>100]`) changes which section applies, and this
- *  rule does not evaluate it: it abstains (never hidden), the visible bias. */
+ *  rule does not evaluate it: it abstains (never hidden), the visible bias.
+ *  A colour or locale bracket is no condition: the code is still decided. */
 const sectionsOf = (code: string): string[] => {
   const out: string[] = [];
   let cur = "";
@@ -304,7 +310,9 @@ const sectionsOf = (code: string): string[] => {
   return out;
 };
 
-const CONDITION = /[s*[<>=]/;
+// A bracket that opens on a comparison (`[>100]`, `[ <=0]`). A colour (`[Red]`) or a locale tag is no condition: a code that carries one is
+// still decided (the earlier character class `[s*[<>=]` abstained on any `[`, `s` or `*`, so `[Blue]0;[Red]-0;;@` hid nothing here).
+const CONDITION = /\[\s*[<>=]/;
 
 /** Whether `code` shows nothing for a value of this kind. */
 const codeHides = (code: string | undefined, kind: "positive" | "negative" | "zero" | "text"): boolean => {
@@ -475,25 +483,27 @@ interface KeptCells {
   numericCandidates: { ref: string; rowNum: number; colNum: number; cause: "number" | "date" }[];
   /** Source rows the author hid (even an empty one): a frozen header abstains when one lies after the last kept row. */
   hiddenRows: Set<number>;
-  /** Every kept cell, with whether it would publish text beyond blanks. */
-  keptCells: { rowNum: number; colNum: number; shows: boolean }[];
+  /** Every kept cell, with whether it would publish text beyond blanks, what it shows (the raw text for a number) and whether it holds a number
+   *  (what a chart read from the sheet needs, `source-chart-reference.ts`). */
+  keptCells: { rowNum: number; colNum: number; shows: boolean; text: string; numeric: boolean }[];
 }
 
 /** The line a visible cell keeps: a filled cell in a hidden row OR column keeps NEITHER line (the caller never gets here for it).
  *  Also what it would show, for the columns the renderer drops. */
-const keepLine = (kept: KeptCells, cell: N, rowNum: number, colNum: number, shared: readonly string[]): void => {
+const keepLine = (kept: KeptCells, cell: N, at: { rowNum: number; colNum: number }, shared: readonly string[], numeric: boolean): void => {
+  const { rowNum, colNum } = at;
   if (!Number.isFinite(rowNum)) return;
   kept.keptRows.add(rowNum);
   kept.keptCols.add(colNum);
   const shown = cellText(cell, shared);
-  kept.keptCells.push({ rowNum, colNum, shows: shown === undefined || shown.trim().length > 0 });
+  kept.keptCells.push({ rowNum, colNum, shows: shown === undefined || shown.trim().length > 0, text: shown ?? textOf(first(cell, "v") ?? {}), numeric });
 };
 
 /** The text and the numeric source cell a visible cell may bring, expected only once the merges are resolved. */
-const collectCandidates = (kept: KeptCells, cell: N, rowNum: number, colNum: number, parts: Pick<WorkbookParts, "shared" | "styles">): void => {
+const collectCandidates = (kept: KeptCells, cell: N, at: { rowNum: number; colNum: number }, parts: Pick<WorkbookParts, "shared">, cause: "number" | "date" | undefined): void => {
+  const { rowNum, colNum } = at;
   const text = cellText(cell, parts.shared);
   if (text !== undefined && text.length > 0) kept.candidateTexts.push({ text, rowNum, colNum });
-  const cause = numericCellCause(cell, parts.styles);
   if (cause !== undefined && Number.isFinite(rowNum)) kept.numericCandidates.push({ ref: `${colLetters(colNum)}${rowNum}`, rowNum, colNum, cause });
 };
 
@@ -514,8 +524,9 @@ const readRowCells = (kept: KeptCells, row: N, rowNum: number, hiddenCols: Reado
     // row is not "kept" just because a hidden column happens to fill
     // it, and vice versa. Never a token either: hidden, never published.
     if (rowHidden || hiddenCols.has(colNum)) continue;
-    keepLine(kept, cell, rowNum, colNum, parts.shared);
-    collectCandidates(kept, cell, rowNum, colNum, parts);
+    const cause = numericCellCause(cell, parts.styles);
+    keepLine(kept, cell, { rowNum, colNum }, parts.shared, cause !== undefined);
+    collectCandidates(kept, cell, { rowNum, colNum }, parts, cause);
   }
 };
 
@@ -572,7 +583,7 @@ const placeCells = (name: string, kept: KeptCells, mergeRanges: readonly MergeRa
   // than one kept line publishes ONE cell, at that first cell; the others
   // are covered (their values are never published).
   const anchorOfCovered = coveredByMerges(mergeRanges, keptRows, keptCols);
-  // Rule of Mikolaj, 09/10/2026: nothing invisible in the source is published NOR expected by the control
+  // Rule of 09/10/2026: nothing invisible in the source is published NOR expected by the control
   // reading. A text left in a cell a merge covers is never shown by Excel and never published, so only the
   // anchor's own text and the texts of uncovered cells are expected. (A covered NUMBER cell is a different
   // check: its position is still verified below, through the merge's first cell.)
@@ -580,7 +591,7 @@ const placeCells = (name: string, kept: KeptCells, mergeRanges: readonly MergeRa
     .filter((t) => !Number.isFinite(t.rowNum) || !anchorOfCovered.has(`${t.rowNum},${t.colNum}`))
     .map((t) => t.text);
   // The renderer drops every column in which no UNCOVERED cell shows text
-  // (Mikolaj, 08/10/2026), so the page's column index is the rank among
+  // (08/10/2026), so the page's column index is the rank among
   // the columns that keep one.
   // ONE filter for the shown cells: `shownCols` and `pageTexts` below must agree cell for cell (revue 27/10/2026, tour 6).
   const shownCells = keptCells.filter((k) => k.shows && !anchorOfCovered.has(`${k.rowNum},${k.colNum}`));
@@ -596,7 +607,7 @@ const placeCells = (name: string, kept: KeptCells, mergeRanges: readonly MergeRa
     return [{ ref: sheetCellRef(name, c.ref), row, col: colIndex.get(at.colNum) ?? colIndex.size, cause: c.cause }];
   });
   const coveredInShown = [...anchorOfCovered.keys()].filter((key) => shownCols.has(Number(key.split(",")[1]))).length;
-  // The page rule of 27/10/2026 (Mikolaj, FAQ_M365_Migration_CNE.xlsx): a row whose only text is in its first cell publishes as ONE cell. Mirrored here
+  // The page rule of 27/10/2026 (FAQ_M365_Migration_CNE.xlsx): a row whose only text is in its first cell publishes as ONE cell. Mirrored here
   // on its own so the control keeps its two readings (the first integration shipped without this mirror and 9 real workbooks reported false gaps,
   // found by review the same evening). `keptCells` holds only what is visible and filled: a format-hidden cell and a valueless formula are already
   // out, so they count as empty, as the page treats them. The declared header rows come from parts only the structure reads (`readHeaderDeclaration`),
@@ -613,7 +624,7 @@ const placeCells = (name: string, kept: KeptCells, mergeRanges: readonly MergeRa
 };
 
 /** The reading of one worksheet part. */
-const readWorksheet = (name: string, ws: N, parts: WorkbookParts, limits: ReaderLimits | undefined): { reading: XlsxSheetReading; structureWith?: (declared: HeaderDeclaration) => UnitStructure } => {
+const readWorksheet = (name: string, ws: N, parts: WorkbookParts, limits: ReaderLimits | undefined): { reading: XlsxSheetReading; structureWith?: (declared: HeaderDeclaration) => UnitStructure; chartCells?: SheetCellsResolver } => {
   const kept = readKeptCells(ws, readHiddenCols(ws), parts);
   const mergeRanges = readMergeRanges(ws);
   const withheld = kept.keptRows.size > (limits?.sheetRows ?? NO_CAP) || kept.keptCols.size > (limits?.sheetCols ?? NO_CAP);
@@ -622,11 +633,8 @@ const readWorksheet = (name: string, ws: N, parts: WorkbookParts, limits: Reader
   const { texts, numericCells, structureWith } = placeCells(name, kept, mergeRanges);
   // The structure starts EMPTY: `finishStructure` always rebuilds it with the header declaration (computing it here too
   // was pure double work on every kept cell, revue 27/10/2026), and an unreadable declaration must abstain, not keep a draft.
-  return { reading: { name, text: texts.join(" "), numericCells, hidden: false, overCap: false, withheld, structure: emptyUnitStructure() }, structureWith };
+  return { reading: { name, text: texts.join(" "), numericCells, hidden: false, overCap: false, withheld, structure: emptyUnitStructure() }, structureWith, chartCells: keptCellsResolver(name, kept.keptCells) };
 };
-
-/** The last row Excel can hold (ECMA-376 Part 1 §18.3.1.66: 1,048,576). A split or a table reaching past it declares nothing. */
-const EXCEL_MAX_ROWS = 1_048_576;
 
 /** What a worksheet DECLARES as header, in 1-based source rows, written on its own from the spec (ISO/IEC 29500-1 §18.5.1.2 `table@ref` and
  *  `table@headerRowCount`, absent = 1, 0 = none; §18.3.1.66 `pane@ySplit` with `state="frozen"`, the rows of the top pane, which starts at
@@ -635,7 +643,7 @@ const EXCEL_MAX_ROWS = 1_048_576;
  *  (1e3, 2.0, 0x2 or a leading space declare nothing); the count of a table is clamped to its ref and a ref past the last row is ignored.
  *  ASYMMETRY, written rather than silently fixed (revue 27/10/2026, tour 8): `headerRowCount` is read with `Number()`, so « 2.0 » or « 2 »
  *  with spaces DO declare, where the same spellings of `ySplit` declare nothing. Both readings share the leniency (the page's
- *  `extractor/xlsx-parts.ts#declaredHeaderRows` parses it the same way), so they cannot disagree; tightening it would change what the
+ *  `extractor/xlsx-parts.ts#readDeclaredHeaderRows` parses it the same way), so they cannot disagree; tightening it would change what the
  *  PAGE marks as header on files no Excel writes, which is not a change to slip into this lot. */
 /** The header spans the Excel TABLE parts of a sheet declare, through its own relationships: `headerRowCount` rows from the top
  *  of each `ref`, clamped to its height; a ref past Excel's last row declares nothing (ECMA-376 Part 1 §18.5.1.2). */
@@ -703,13 +711,14 @@ const finishStructure = async (xmlOf: XmlOf, sheetPart: string, ws: N, reading: 
 };
 
 /** The charts of a sheet that has a tab (a chartsheet's too, which has no grid) are tables the page adds to it. */
-const addChartTables = async (xmlOf: XmlOf, target: string | undefined, worksheet: N | undefined, reading: XlsxSheetReading, cache: ChartCache): Promise<void> => {
+const addChartTables = async (xmlOf: XmlOf, target: string | undefined, worksheet: N | undefined, sheetRead: { reading: XlsxSheetReading; chartCells?: SheetCellsResolver }, cache: ChartCache): Promise<void> => {
+  const { reading, chartCells } = sheetRead;
   if (target === undefined || reading.withheld) return;
   // The chartsheet part, the drawing, the relationships and the chart parts: nothing here served the words before the structure control, so a part
   // refused (damaged, too many frames, over a ceiling) makes only the STRUCTURE of the document abstain; the words are still read and checked.
   const read = await structureOnly(async () => {
     const sheet = worksheet ?? (await xmlOf(target));
-    return sheet === undefined ? [] : chartShapesOf(xmlOf, target, sheet, cache);
+    return sheet === undefined ? [] : chartShapesOf(xmlOf, target, sheet, cache, chartCells);
   });
   if ("unreadable" in read) reading.structureUnreadable = true;
   else for (const shape of read.value) addChartTable(reading.structure, shape);
@@ -762,11 +771,11 @@ export const readXlsxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
     }
     const ws = slot.ws;
     visibleSoFar++;
-    const read = ws ? readWorksheet(name, ws, parts, limits) : { reading: emptySheet(name) };
+    const read: ReturnType<typeof readWorksheet> = ws ? readWorksheet(name, ws, parts, limits) : { reading: emptySheet(name) };
     const reading = read.reading;
     drawn.push(async () => {
       if (ws !== undefined && target !== undefined && read.structureWith !== undefined) await finishStructure(xmlOf, target, ws, reading, read.structureWith);
-      await addChartTables(xmlOf, target, ws, reading, charts);
+      await addChartTables(xmlOf, target, ws, read, charts);
     });
     sheets.push(reading);
   }
@@ -781,7 +790,7 @@ export const readXlsxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
  * hidden facts become `excludedUnits` directly, never a literal text the
  * page repeats that would need budgeting back in. A read that cannot be
  * trusted becomes a named failure instead of throwing through to the
- * caller: never a reason not to publish (Mikolaj, 21/09/2026).
+ * caller: never a reason not to publish (21/09/2026).
  */
 export async function readXlsxConservationSource(
   bytes: Uint8Array,
@@ -815,7 +824,7 @@ export async function readXlsxConservationSourceUnder(
 }
 
 // ---------------------------------------------------------------------------
-// Numbers and dates: DECIDED and IMPLEMENTED above (§1, Mikolaj 29/09/2026) —
+// Numbers and dates: DECIDED and IMPLEMENTED above (§1, 29/09/2026) —
 // this section used to carry a proposal to import
 // `extractor/xlsx-number-format.ts#formatNumberCell` into this reading and
 // call it a second time on the raw values, so a shared bug in the formatter

@@ -1,5 +1,5 @@
 /**
- * THE DOOR OF THE PUBLISHED DECLARED-FORMATS PACKAGE (`docs-scribe`), and nothing else (Mikolaj, 09/11/2026).
+ * THE DOOR OF THE PUBLISHED DECLARED-FORMATS PACKAGE (`docs-scribe`), and nothing else (09/11/2026).
  *
  * WHAT IT READS, AND WHY IT IS NOT THE PDF'S. Word, PowerPoint, Excel and the Google exports DECLARE their structure:
  * a heading says it is a heading, a table says it is a table. A PDF declares none of it and infers everything from

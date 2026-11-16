@@ -1,4 +1,4 @@
-/** A table without its empty columns and its empty header row (Mikolaj, 08/10/2026): none is published, in any format, as the
+/** A table without its empty columns and its empty header row (08/10/2026): none is published, in any format, as the
  *  PDF reader already does. A column is EMPTY when no cell ANCHORED in it (the column a merged cell starts in) holds text beyond
  *  blanks, an image, an anchor or any other published block. A merged cell loses one span per removed column it covers; an empty
  *  one covering only removed columns goes. The relative widths of a removed column go with it. An all-empty header row is left

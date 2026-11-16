@@ -4,7 +4,7 @@
  *  its vertical centre (the mean of `y + height / 2` over its glyphs), its marked-content identifier (`<page>_mc<n>`, the
  *  form the structure tree names its contents with), its artifact flag, and its rotation (a matrix that is not upright).
  *  🔴 The same geometry as the runs: the control compares the LETTERS and their ORDER of two groupings, not two
- *  geometries (Mikolaj, 1/11/2026: the second reading has its own geometry, and this is ours).
+ *  geometries (1/11/2026: the second reading has its own geometry, and this is ours).
  *  NOT here: the note marks (`pdf-source.ts`, from the structure tree), the choice of which page is read this way.
  *  Called by: `extractor/pdf-source.ts`, `pdf-reference-ours.test.ts`. */
 

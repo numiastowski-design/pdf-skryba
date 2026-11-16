@@ -264,16 +264,16 @@ const chunksBreakDeclaredOrder = (chunks: readonly (readonly number[])[]): boole
  *  column, then the next below. Tried and dropped on 04/11/2026: a page of columns rendered by `ac:layout` (Confluence degrades
  *  an `ac:layout` inside a tab to `legacy-content`, `docs/PLATFORM-STATUS.md` §85) and a whole-page grid (« on vire l'essai
  *  table »). The product publishes a band of columns as a table of one row (option C).
- *  `items` and `item-cells` (10/11/2026, tried on Mikolaj's word, « essaye 1, 2 et 3 sur 3 pages différentes ») publish
+ *  `items` and `item-cells` (10/11/2026, tried on the word, « essaye 1, 2 et 3 sur 3 pages différentes ») publish
  *  columns of NUMBERED ITEMS as one table row per rank of item (`itemRows`); any other band keeps the one-row table. */
 export type BandLayout = "rows" | "flow" | "items" | "item-cells";
 
-/** 🔴 WHAT THE PRODUCT MAKES OF A BAND OF N >= 2 COLUMNS — `item-cells` since 11/11/2026 (Mikolaj, « oui » to the
+/** 🔴 WHAT THE PRODUCT MAKES OF A BAND OF N >= 2 COLUMNS — `item-cells` since 11/11/2026 (« oui » to the
  *  four-column catalogue page 115408897): columns of NUMBERED ITEMS become one table row per rank of item, number and
  *  text in their own cells; EVERY OTHER band stays one table of one row x N cells, the `rows` rendering (option C,
  *  decided 06/11/2026), which is what the Alouette bulletin (FIDREVIEW 114425870, its golden) publishes.
  *  How option C was lost once, written so nobody falls into it again: on 10/11 I removed it, wrongly believing it caused
- *  the regression Mikolaj saw, and put it back the same evening. I had taken as reference a published page of unknown
+ *  the regression the maintainer saw, and put it back the same evening. I had taken as reference a published page of unknown
  *  provenance; the recap mail of 06/11 11:22 is what dated the product's rendering. RECAP MAILS DATE WHAT THE PRODUCT
  *  RENDERED; a published page does not. `flow` (prose in reading order) stays reachable by `extractPdf`'s `bands`. */
 export const DEFAULT_BAND_LAYOUT: BandLayout = "item-cells";
@@ -311,7 +311,7 @@ const centresOf = (cuts: readonly number[], left: number, right: number): number
 };
 
 /**
- * THE FIGURE UNDER THE TABLE OF ITS OWN ZONE (Mikolaj, 06/11/2026, on the published page: « on avait dit EN DESSOUS du
+ * THE FIGURE UNDER THE TABLE OF ITS OWN ZONE (06/11/2026, on the published page: « on avait dit EN DESSOUS du
  * tableau, pas au-dessus »). The photo of the APF article (Alouette bulletin p3, fixture 58 p1) covers two of the four
  * columns right under the article's title and by-line. The 05/11 rule (« la figure sort SOUS le bloc de colonnes ») put it
  * at the BOTTOM of the page, after every column block of the chunk, where it lost its article. A first reading of his
@@ -375,7 +375,7 @@ const runBlocks = (run: BandRun<PdfTextRun>, toBlocks: (segment: PdfTextRun[][])
 
 /**
  * A BAND OF N >= 2 COLUMNS IS ONE TABLE OF ONE ROW x N CELLS, one column per cell, blocks in the order the bands are read
- * (Mikolaj, 06/11/2026, option C of the columns arbitration: layouts cannot live in tabs, so the columns go in a table).
+ * (06/11/2026, option C of the columns arbitration: layouts cannot live in tabs, so the columns go in a table).
  * A change of RENDERING only: the bands, their cuts and their order come from `pdf-bands.ts` untouched. What crosses the cut
  * is not a column run and stays outside; a run of ONE band stays flat prose (the 26/10 rule).
  *
@@ -420,7 +420,7 @@ const framedCell = (band: PdfTextRun[][], toBlocks: (segment: PdfTextRun[][]) =>
 const ITEM_MARKER = /^(?:\(?\d{1,4}[.)]?|[•·▪◦‣–-])$/u;
 
 /** The marker that opens an item on this line: its first inked fragment is a marker, and the next inked fragment stands
- *  at least one em (the marker's font size) to its right — a blank, not a space (Mikolaj: « un ou plusieurs espaces,
+ *  at least one em (the marker's font size) to its right — a blank, not a space (« un ou plusieurs espaces,
  *  selon ce que dit le pdf »). Starting value to calibrate: the catalogue's lot numbers stand 29 pt from their text at
  *  10 pt; a word space is a quarter to a third of an em. */
 const itemMarkerOf = (line: readonly PdfTextRun[]): PdfTextRun | undefined => {
@@ -470,7 +470,7 @@ const itemRows = (bands: readonly PdfTextRun[][][], toBlocks: (segment: PdfTextR
   return ownCell ? { kind: "table", rows, columnWidths: columns.flatMap(itemColumnWidths) } : { kind: "table", rows };
 };
 
-/** The widths the PDF gives a column of items, number then text (Mikolaj: « on peut réduire largeur des cols de numéros ? »):
+/** The widths the PDF gives a column of items, number then text (« on peut réduire largeur des cols de numéros ? »):
  *  from the leftmost marker to the leftmost text, then from there to the rightmost ink. Proportions only: Confluence
  *  shares the table's width by them (`renderer/storage.ts#columnGroup`). Measured on the catalogue, page 1: 35 pt then
  *  about 215 pt. */
@@ -517,7 +517,7 @@ const rowBlocks = (
     if (items !== undefined) return [items, ...extras.figuresUnder(bands)];
     const read = bands.map((band) => framedCell(band, toBlocks, extras));
     const cells = read.map(({ blocks }) => ({ blocks }));
-    // THE TITLE THAT OPENS THE FIRST COLUMN STANDS ABOVE THE TABLE WHEN IT CAPS THE WHOLE ZONE (Mikolaj, 06/11/2026, finding 9
+    // THE TITLE THAT OPENS THE FIRST COLUMN STANDS ABOVE THE TABLE WHEN IT CAPS THE WHOLE ZONE (06/11/2026, finding 9
     // of the review). « Programme » of the Alouette bulletin sits on the first baseline of the right column, so the band
     // reading takes it for column 1's first line; taken out in front of its table, the reading order is the same word for
     // word. But a rule for EVERY document would lift « Introduction » above a page whose columns each open with their own
@@ -537,15 +537,15 @@ const rowBlocks = (
 };
 
 /**
- * WHERE AN IMAGE STANDS AGAINST THE COLUMNS (Mikolaj, 05/11/2026, front page of the newspaper `sd-2479793`). Until then
+ * WHERE AN IMAGE STANDS AGAINST THE COLUMNS (05/11/2026, front page of the newspaper `sd-2479793`). Until then
  * every image cut the page at its height before the columns were read, and the front page's sidebar — one column
  * running from top to bottom — came out in four slices around a logo and a photo. Three cases, by what the image
  * covers:
  *   within ONE column (crosses no cut)        → in the flow of its column, at its height (`interleaveImages` on the band);
  *   OVERFLOWING its column (crosses a cut,
- *     but not every column)                   → image and caption in a one-cell table as wide as the image (Mikolaj,
+ *     but not every column)                   → image and caption in a one-cell table as wide as the image (
  *                                               05/11/2026, forme A), placed in `rows` right UNDER the column table of the
- *                                               zone it belongs to (`figuresUnder`, Mikolaj, 06/11/2026), otherwise below
+ *                                               zone it belongs to (`figuresUnder`, 06/11/2026), otherwise below
  *                                               the column block of its chunk (`liftedIn`);
  *   SPANNING every column (covers the centre
  *     of each band)                           → cuts the page at its height, as before (the median rule of 16/09).
@@ -569,7 +569,7 @@ const placementOf = (a: ImageAnchor, cuts: readonly number[], left: number, righ
 
 const inkOf = (lines: readonly (readonly PdfTextRun[])[]): PdfTextRun[] => lines.flat().filter((it) => it.text.trim() !== "");
 
-/** HOW FAR A CAPTION MAY STEP OUT OF ITS IMAGE'S WIDTH, on either side, as a share of that width (Mikolaj, 05/11/2026 :
+/** HOW FAR A CAPTION MAY STEP OUT OF ITS IMAGE'S WIDTH, on either side, as a share of that width (05/11/2026 :
  *  « mets genre 2 % de tolérance »). The caption of the newspaper's photo spans 317..550 under a photo 317..551 (0 and
  *  0.4 %) ; the column beside it starts 4 pt past the photo's right edge (1.7 %) but runs to 660 (47 %), and the
  *  column before it starts 110 pt before the left edge. */
@@ -619,7 +619,7 @@ interface ColumnReading {
   figures: readonly PageRegion[];
 }
 
-/** THE CAPTION IS ONE PARAGRAPH (Mikolaj, 05/11/2026 : « la largeur décide »). Its lines were kept because they fit the
+/** THE CAPTION IS ONE PARAGRAPH (05/11/2026 : « la largeur décide »). Its lines were kept because they fit the
  *  image's width, like the caption of the newspaper's photo (x 317..550 under a photo 317..551) ; a size change inside
  *  them — a book title in italics at 8.15 pt in a caption set in 8 pt — splits nothing. Paragraphs only : a caption the
  *  builder read otherwise (a heading, a list) is left as it came. */
@@ -670,7 +670,7 @@ function readColumnsWithImages(items: readonly PdfTextRun[], anchors: readonly I
     return [...a.blocks, ...(caption.length > 0 ? oneCaption(toBlocks(caption)) : [])];
   };
   // THE FIGURE, OUT OF ITS COLUMNS: image and caption in a one-cell table that takes the image's width at publication
-  // (`lib/ir.ts` `width: "image"`), so the caption wraps exactly under the photo (Mikolaj, 05/11/2026).
+  // (`lib/ir.ts` `width: "image"`), so the caption wraps exactly under the photo (05/11/2026).
   const figure = (a: ImageAnchor): IRBlock[] => {
     const blocks = figureBlocks(a);
     return blocks.some((b) => b.kind === "image") ? [{ kind: "table", width: "image", rows: [{ cells: [{ blocks }] }] }] : blocks;
@@ -688,7 +688,7 @@ function readColumnsWithImages(items: readonly PdfTextRun[], anchors: readonly I
     const bottom = minOf(bandInk, (it) => it.y);
     return a.top >= bottom && a.bottom <= top;
   };
-  // A lifted image goes BELOW the column block of the chunk its height falls in, highest first (Mikolaj, 05/11/2026 :
+  // A lifted image goes BELOW the column block of the chunk its height falls in, highest first (05/11/2026 :
   // « la photo et sa légende, par défaut, en dessous du tableau dont elles sont extraites »).
   const liftedIn = (chunk: readonly PdfTextRun[]): IRBlock[] =>
     overflowing
@@ -730,7 +730,7 @@ export function readPageWithImages(
    *  them, and the reading is then purely geometric. */
   declaredRank?: (item: PdfTextRun) => number | undefined,
 ): IRBlock[] {
-  // 🔴 UNE IMAGE AVEC DU TEXTE À CÔTÉ EST UNE CELLULE, PAS UN POINT D'INSERTION (Mikolaj, 13/11/2026). Tant
+  // 🔴 UNE IMAGE AVEC DU TEXTE À CÔTÉ EST UNE CELLULE, PAS UN POINT D'INSERTION (13/11/2026). Tant
   // qu'elle s'insère ENTRE deux lignes, une phrase qui court sur toute sa hauteur est coupée, et aucune valeur de
   // frontière n'y change rien — mesuré sur la page 5 du livret 26. Elle devient donc une rangée de deux cellules
   // avec le texte qu'elle longe. Les deux chemins passent ici, donc une page balisée est traitée comme une autre.

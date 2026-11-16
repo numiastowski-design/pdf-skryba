@@ -10,7 +10,7 @@ import type { IRBlock } from "doc-ir/lib/ir";
 
 type Table = Extract<IRBlock, { kind: "table" }>;
 
-/** A ROW WHOSE ONLY TEXT IS IN ITS FIRST CELL SPANS THE TABLE (Mikolaj, 27/10/2026, on the published page of FAQ_M365_Migration_CNE.xlsx).
+/** A ROW WHOSE ONLY TEXT IS IN ITS FIRST CELL SPANS THE TABLE (27/10/2026, on the published page of FAQ_M365_Migration_CNE.xlsx).
  *  Excel lets a text overflow visually from its cell WITHOUT a merge, onto the empty neighbours, the same everywhere (a title, a
  *  subtitle, a note, an inner section label). Published as ordinary cells they choke the first column and wrap the sentence word by
  *  word. Every row whose only non-empty cell is the first one publishes as ONE cell with a colspan over every published column: the
@@ -23,7 +23,7 @@ type Table = Extract<IRBlock, { kind: "table" }>;
  *  WRITTEN BIAS (fixture 12, 27/10/2026): Excel does not overflow text over a FORMULA cell even when it carries no cached value;
  *  this rule treats such a cell as empty and spans over it (the cell was publishing empty anyway, and the formula-cells-empty
  *  notice still counts it).
- *  Genesis: first designed as lifting these rows out as paragraphs, then as border rows only; simplified twice by Mikolaj on 27/10
+ *  Genesis: first designed as lifting these rows out as paragraphs, then as border rows only; simplified twice by on 27/10
  *  (« on ne trahit rien »). TRIED AND SET ASIDE: lifting out as paragraphs moved rows and forced three control re-readings
  *  (position, structure, abstentions); the colspan keeps every invariant. */
 export const spanSingleFirstRows = (table: Table): Table => {

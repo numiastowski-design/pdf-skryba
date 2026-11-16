@@ -118,7 +118,7 @@ export const MAX_CONTENT_OPERANDS = 64;
 export const MAX_CONTENT_NODES = 2_000_000;
 
 /** Operators one content stream may hold.
- *  🔴 ARBITRARY THRESHOLD, settled by Mikolaj on 31/10/2026: a "clear refusal" rather than a memory risk. It
+ *  🔴 ARBITRARY THRESHOLD, settled by on 31/10/2026: a "clear refusal" rather than a memory risk. It
  *  was three million, which allowed ~340 MB of retained heap (see `MAX_CONTENT_NODES`). One million is
  *  one hundred and forty-five times the densest page we have measured (6 907 operators, 03/10/2026), so no
  *  known real document is refused by this decrease; the accepted price is that a page carrying more than one

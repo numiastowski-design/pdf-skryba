@@ -75,7 +75,7 @@ export function renderPageTables(
 ): IRBlock[] | undefined {
   
   // AN IMAGE WHOSE CENTRE IS INSIDE A GRID'S BOX, ON BOTH AXES, goes into that
-  // grid's cell if the grid renders (Mikolaj, 21/09/2026, O1 and O4). An image
+  // grid's cell if the grid renders (21/09/2026, O1 and O4). An image
   // beside a table — in its height, not its width — stays in the page flow: on
   // fixture 24 page 3, once glyph widths exist, a small grid (x 242.7-353.4)
   // would otherwise swallow the two QR code pictures beside it. The
@@ -155,7 +155,7 @@ export function renderPageTables(
     //
     // Le texte reste PUBLIÉ et à sa place : seule sa promotion en titre est
     // refusée.
-    // DEPUIS LE 05/11/2026 LA TAILLE DÉCIDE AUSSI DANS UN BLOC CÔTE À CÔTE (Mikolaj : « quitte à inventer des
+    // DEPUIS LE 05/11/2026 LA TAILLE DÉCIDE AUSSI DANS UN BLOC CÔTE À CÔTE (« quitte à inventer des
     // titres ») : l'exclusion du cartouche (14/09) partait du principe inverse. « FACTURE » en 20 pt redevient un titre.
     const side = [asBlocks(split.left), asBlocks(split.right)].filter((cell) => cell.length > 0);
     return [
@@ -176,7 +176,7 @@ export function renderPageTables(
         // UN TABLEAU SE RANGE SUR SON VRAI BORD GAUCHE (23/09/2026). Il portait
         // `-∞`, ce qui le faisait passer AVANT tout ce qui partage sa bande —
         // en contradiction avec « les éléments côte à côte se lisent de gauche à
-        // droite » (Mikolaj, 16/09), écrit dans `pdf-region-order.ts`. Le cas
+        // droite » (16/09), écrit dans `pdf-region-order.ts`. Le cas
         // mesuré : fixture 24 page 3, le cadre « Android / iPhone » (x 242,7)
         // sortait avant le code QR de GAUCHE (x 95,4), alors qu'il est entre les
         // deux. C'est la règle existante appliquée, pas une règle neuve.
@@ -201,7 +201,7 @@ export function renderPageTables(
         // dans le cadre (Android à 7,2 pt du bord gauche, iPhone à 9,0 du bord
         // droit). Deux lectures qui concordent, donc la règle est défendable.
         //
-        // Elle n'est pas écrite pour autant, sur décision de Mikolaj (« on peut
+        // Elle n'est pas écrite pour autant, sur décision (« on peut
         // laisser comme ça si la règle est trop fragile ») : elle demanderait de
         // FUSIONNER une grille 1×1 et deux régions d'image en un tableau de deux
         // cases — une transformation de structure neuve, calibrée sur UN cas

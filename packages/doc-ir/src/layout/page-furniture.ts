@@ -21,7 +21,7 @@ import { SAME_LINE_PT } from "doc-ir/layout/tolerances";
 /**
  * `layout/page-furniture` — les en-têtes et pieds de page, reconnus par répétition.
  *
- * **LA DÉFINITION, POSÉE PAR MIKOLAJ LE 10/09/2026** : *un élément qui se répète
+ * **LA DÉFINITION, POSÉE LE 10/09/2026** : *un élément qui se répète
  * strictement à l'identique sur plusieurs pages — contenu, taille et position,
  * numéros de page neutralisés — est un en-tête ou un pied de page.*
  *
@@ -101,7 +101,7 @@ import { SAME_LINE_PT } from "doc-ir/layout/tolerances";
  *
  * ---
  *
- * **CODÉE, MESURÉE, ABANDONNÉE PAR MIKOLAJ : LA CONJONCTION
+ * **CODÉE, MESURÉE, ABANDONNÉE : LA CONJONCTION
  * « GÉOMÉTRIE + `/Artifact` » SUR LE TEXTE (23/09/2026).**
  *
  * **La variante « au BAS de page seulement » a été proposée et refusée le même
@@ -109,7 +109,7 @@ import { SAME_LINE_PT } from "doc-ir/layout/tolerances";
  * l'en-tête de lettre EUROCONTROL est à y=804→739 et le bloc de tête du livret
  * Canva aussi, sur des pages de 841,6. Mais la liste des États membres, elle, est
  * en BAS (y=98,4→51,2, les 12 derniers pour cent), et elle serait toujours
- * retirée. **Question posée à Mikolaj — « une liste d'États membres imprimée en
+ * retirée. **Question posée au mainteneur — « une liste d'États membres imprimée en
  * bas d'un papier à lettres, pied de page ou contenu ? » — réponse : « c'est pas
  * un pied de page ».** La conjonction est donc abandonnée sur toute la hauteur.
  *
@@ -782,7 +782,7 @@ export function detectPageFurniture(
  * autre position. Relâcher la position pour les attraper supprimerait le TITRE
  * du document sur la page 1 — mesuré, c'est le même texte.
  *
- * **La règle, posée par Mikolaj** : *un texte déjà vu plus haut dans le
+ * **La règle, posée** : *un texte déjà vu plus haut dans le
  * document, réapparaissant en tête d'une page suivante, est une reprise.* On
  * garde la première occurrence, on jette les suivantes.
  *

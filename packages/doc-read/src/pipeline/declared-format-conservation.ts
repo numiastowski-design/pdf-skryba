@@ -31,7 +31,7 @@ import { wordsOf } from "../lib/words";
  *  test (FR « anticonstitutionnellement », 25 characters; EN
  *  « pneumonoultramicroscopicsilicovolcanoconiosis », 45) stay whole with
  *  margin for joined tokens (« c'est-à-dire », an e-mail, a reference);
- *  only blobs and long URLs are cut (Mikolaj, 29/09/2026). */
+ *  only blobs and long URLs are cut (29/09/2026). */
 export const MISSING_WORD_SHOWN_MAX_CHARS = 64;
 
 /** The published page's own words, tokenised by the SAME rule as the source side (`lib/words.ts#wordsOf`).
@@ -111,7 +111,7 @@ const spend = (bag: Map<string, number>, word: string): boolean => {
 
 /** The cause of a source word the page lacks, or `undefined` when the word is EXCUSED. Only a plain « text » word is relabelled: first
  *  `smartart-not-drawn` (a SmartArt word its picture does not show, or every word of a SmartArt with no drawing), then excused when the
- *  diagram text holds it (a diagram is published as a drawing only, Mikolaj 22/10/2026: its drawn words are not lost). One occurrence per
+ *  diagram text holds it (a diagram is published as a drawing only, 22/10/2026: its drawn words are not lost). One occurrence per
  *  occurrence of that word in each list. */
 const causeOf = (token: { text: string; cause?: MissingWordCause }, undrawn: Map<string, number>, drawn: Map<string, number>): MissingWordCause | undefined => {
   const cause = token.cause ?? "text";
@@ -138,7 +138,7 @@ const missingTokens = (
 ): MissingToken[] => {
   const budget = multiset(published);
   for (const [word, n] of multiset(deliberateRemovals.flatMap(wordsOf))) budget.set(word, (budget.get(word) ?? 0) + n);
-  // A diagram is published as a drawing only (Mikolaj 22/10/2026, a product decision): a source word that lives in its text, which the page
+  // A diagram is published as a drawing only (22/10/2026, a product decision): a source word that lives in its text, which the page
   // does not carry, is not lost. Only a plain « text » word is excused, one occurrence per occurrence of that word in the diagram text.
   const drawn = multiset(diagramWords);
   // A SmartArt word its picture does not show (or every word of a SmartArt with no drawing) is nowhere on the page: its own cause, taken
@@ -149,7 +149,7 @@ const missingTokens = (
     if (source.excludedUnits.has(i)) return;
     for (const token of unit.tokens) {
       if (spend(budget, token.text)) continue;
-      // THE PAGE SPLIT IT, IT DID NOT LOSE IT — AND A HUMAN IS ASKED (Mikolaj, 29/10/2026). The source can hold one word
+      // THE PAGE SPLIT IT, IT DID NOT LOSE IT — AND A HUMAN IS ASKED (29/10/2026). The source can hold one word
       // where the page holds its pieces side by side: a document that puts a heading and the next paragraph in ONE `w:p`
       // with nothing between the two runs reads « competitionthere », and we publish « …Competition » then « There are
       // no… ». Not a letter is missing, so calling it a LOSS lies to the owner of the page and lowers its fidelity for
@@ -223,7 +223,7 @@ export function missingWordGroups(
  *  does not read the page twice. */
 export function conservationFromMissingWordGroups(groups: readonly MissingWordCauseGroup[]): DocumentConservation {
   // `split-by-page` is NOT a loss and never enters the count the owner reads; it stays in `causeCounts`, where it asks for
-  // the human look it deserves (Mikolaj, 29/10/2026: « le compteur peut nous demander une vérif humaine si nécessaire »).
+  // the human look it deserves (29/10/2026: « le compteur peut nous demander une vérif humaine si nécessaire »).
   const missing = groups.reduce((n, g) => n + (g.cause === "split-by-page" ? 0 : g.words.length), 0);
   const causeCounts = groups.map((g) => ({ cause: g.cause, count: g.words.length }));
   return {

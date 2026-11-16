@@ -20,7 +20,7 @@ import { SAME_LINE_PT } from "./tolerances";
  * **Un item est une ligne RETIRÉE par rapport au corps. Une liste est une suite
  * d'au moins deux items, dont la MOITIÉ au moins porte un marqueur lisible.**
  *
- * Les deux conditions viennent de Mikolaj (16/09/2026) et chacune a été mesurée
+ * Les deux conditions viennent du mainteneur (16/09/2026) et chacune a été mesurée
  * avant d'être écrite (`tools/list-map.ts`, `docs/ETUDE-BIBLIOTHEQUES-PDF.md` [purged 27/09/2026, git history]
  * leçon 19) :
  *
@@ -54,7 +54,7 @@ import { SAME_LINE_PT } from "./tolerances";
  * refuse partout ailleurs.
  * ─────────────────────────────────────────────────────────────────────────
  *
- * 🔴 **BULLETS: A LIST ONLY IN THE SIMPLE CASE (Mikolaj, 14/10/2026).**
+ * 🔴 **BULLETS: A LIST ONLY IN THE SIMPLE CASE (14/10/2026).**
  *
  * History. On 23/09/2026 no bulleted list was published at all: a run of bullets
  * or dashes stayed paragraphs, **the marker kept in the text** (nothing removed,
@@ -88,7 +88,7 @@ const BULLET_CHARS = "•▪◦‣·●⁃";
  *  `layout/list.markers.test.ts` — one line per example, one column per rule, so a drift shows as a cell. */
 export const BULLET = new RegExp(`^\\s*[${BULLET_CHARS}]\\s*`, "u");
 /**
- * THE BLANK AFTER THE DASH IS REQUIRED, AND THAT IS A DECISION (Mikolaj,
+ * THE BLANK AFTER THE DASH IS REQUIRED, AND THAT IS A DECISION (
  * 22/09/2026). Word 2007 glues its dash to its word — « -Ensures Safety of the
  * patient » — so fixture 28 page 2 publishes 7 items as 7 paragraphs.
  *
@@ -120,7 +120,7 @@ const INDENT_QUANTUM_PT = 3;
 const MIN_ITEMS = 2;
 
 /*
- * WRITTEN LIMIT, NOT A DEFECT TO FIX (Mikolaj, 22/09/2026). The Jev re-read
+ * WRITTEN LIMIT, NOT A DEFECT TO FIX (22/09/2026). The Jev re-read
  * (`docs/ESSAI-JEV-ETIQUETAGE.md` [purged 27/09/2026, git history], French and English documents) found 35
  * items published as plain paragraphs, in 8 documents, in three shapes: marked
  * items that are NOT indented (20), several items fused into one block (8), and
@@ -132,7 +132,7 @@ const MIN_ITEMS = 2;
  * only if a real document loses something because of a missed list.
  *
  * THREE MORE FAMILIES OF BULLET, MEASURED ON 22/09/2026 AND LEFT ALONE
- * (Mikolaj, same day: « les puces, pas de prise de tête » — the text already
+ * (same day: « les puces, pas de prise de tête » — the text already
  * comes out line by line in all three, so the drawn bullet is a comfort, and a
  * marker we do not read is a marker we cannot remove by mistake). The glued
  * dash is a fourth, written at `DASH` above.
@@ -182,7 +182,7 @@ export const quantiseIndent = (x: number): number => Math.round(x / INDENT_QUANT
 
 /**
  * `letter` is a letter or a Roman numeral: « a. », « iv) ». It counts as a
- * marker for the list rule, but it never leaves the text (Mikolaj, 22/09/2026).
+ * marker for the list rule, but it never leaves the text (22/09/2026).
  * The IR list has no marker type, so the only ordered rendering is `<ol>`
  * counting 1, 2, 3: stripping « a. » replaced every letter with a number, and
  * the letters were lost — 16 on safedocs 0000609 p7. A run of letters is
@@ -305,7 +305,7 @@ export function listRuns(candidates: readonly ListCandidate[]): ListRun[] {
 }
 
 /**
- * THE SIMPLE BULLETED RUN (Mikolaj, 14/10/2026). A run of consecutive paragraph
+ * THE SIMPLE BULLETED RUN (14/10/2026). A run of consecutive paragraph
  * blocks is a bulleted list when ALL of these hold:
  *   - at least `MIN_ITEMS` items, each opening on a real bullet character
  *     (• ▪ ◦ ‣ ●) that is a run of its own: not a dash, not a symbol-font letter
@@ -485,7 +485,7 @@ export function itemTextLeft(readings: { afterMarker?: number | undefined; secon
 export type OrderedPiece = { kind: "paragraph"; index: number } | { kind: "list"; first: number; items: number[][] };
 
 /**
- * AN ORDERED RUN PUBLISHES THE DOCUMENT'S OWN NUMBERS (Mikolaj, 22/09/2026).
+ * AN ORDERED RUN PUBLISHES THE DOCUMENT'S OWN NUMBERS (22/09/2026).
  *
  * `<ol>` counts its `<li>`, so an unnumbered block let in as an item shifts every
  * number after it: safedocs 0000713 p8 published « 1. » to « 5. » as 3 to 7. The

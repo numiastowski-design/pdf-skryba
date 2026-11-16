@@ -72,7 +72,7 @@ export interface BandedSplit<T> {
  * it. The run returned is the one with the most straddling lines (text on both sides of a cut) — on a tie the
  * highest, because a document reads top to bottom and a tie-break must be deterministic.
  *
- * A RUN KEEPS THE LINES THAT SIT IN ONE BAND ONLY (05/11/2026, Mikolaj on the published Federal Register
+ * A RUN KEEPS THE LINES THAT SIT IN ONE BAND ONLY (05/11/2026 on the published Federal Register
  * `sd-4133285` p1: « such registration or institute, je ne sais pas d'où il sort »). That line opens column 2 one
  * point above the first row that columns 1 and 3 also fill — they start lower, after the rule between two notices.
  * The zone used to begin at the highest STRADDLING line, so a line alone in its column at the zone's edge went
@@ -303,7 +303,7 @@ export const bandedSplit = <T extends PositionedItem>(
   // A FRAGMENT CROSSES THE EDGE, not the line's extent (10/11/2026, auction catalogue `sd-1026348`). A lot opens with its
   // number BEFORE the column's text edge, a blank between them (« 6 » at 314, its title at 349): measured on the line's
   // extent, the line crossed the edge and its title was published under the columns. A number that ends before the edge
-  // is part of its line (Mikolaj: « il faut juste un espace après les numéros de paragraphe »); the centred notice above
+  // is part of its line (« il faut juste un espace après les numéros de paragraphe »); the centred notice above
   // is ONE fragment across the edge, and still leaves. Blank fragments (the gap filler) never decide.
   const crossesEdge = (group: readonly T[], edge: number | undefined): boolean =>
     edge !== undefined && real(group).some((it) => it.x < edge - SAME_LINE_PT && it.x + it.width > edge + SAME_LINE_PT);
@@ -355,7 +355,7 @@ export const bandedSplit = <T extends PositionedItem>(
  * (l'invariant du 16/09/2026) sans exiger que chacune morde sur chaque page.
  */
 /**
- * 🔴 LA PAGE COUPÉE EN N BANDES D'UN SEUL COUP (04/11/2026, Mikolaj : « en fait pourquoi tu parles de rowspan
+ * 🔴 LA PAGE COUPÉE EN N BANDES D'UN SEUL COUP (04/11/2026: « en fait pourquoi tu parles de rowspan
  * alors que le pdf a 3 cols très nettes…... »).
  *
  * IL AVAIT RAISON, ET L'ESCALIER ÉTAIT DE MOI. Couper en deux puis RECOUPER la moitié droite donne deux zones
@@ -495,7 +495,7 @@ const readBands = <T extends PositionedItem>(
   // Une bande déjà séparée se relit sur les coupes RESTANTES, jamais sur celle qui vient de la produire.
   const deeper = (band: T[][]): ReadSegment<T>[] =>
     rest.length === 0 || band.length === 0 ? [{ lines: band, column: true }] : readBands(band.flat(), rest, { ...options, inBand: true });
-  // 🔴 CE QUI EST AU-DESSUS D'UNE SOUS-COUPE N'EST UNE COLONNE DE PERSONNE (04/11/2026, vu par Mikolaj sur la page
+  // 🔴 CE QUI EST AU-DESSUS D'UNE SOUS-COUPE N'EST UNE COLONNE DE PERSONNE (04/11/2026, vu sur la page
   // publiée, corrigé deux fois).
   //
   // The columns of a page do not all start at the same height: on `sd-4133285` p1, column 1 opens on its title

@@ -1,6 +1,6 @@
 /** What OUR PDF reader lends the byte gate that stands in front of `pdf-lib` (`doc-gate/extractor/pdf-objstm-guard.ts`).
  *  Decides: nothing. It carries the reader's two ceilings, its decryption and its refusal across the package boundary, so that the
- *  gate can scan bytes without knowing what a PDF is (12/11/2026, Mikolaj: « il reste a decouper ir et lib d'entrée hostile »).
+ *  gate can scan bytes without knowing what a PDF is (12/11/2026: « il reste a decouper ir et lib d'entrée hostile »).
  *  NOT here: the byte scan itself (the gate), what an object stream contains (`pdf-objects/`), the slicing (`pdf-scanned.ts`).
  *  Called by: `extractor/pdf-scanned.ts`, and the two test files of the gate. */
 

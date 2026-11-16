@@ -27,7 +27,7 @@ import { type DiagramConnector, type DiagramElement, OOXML_DIAGRAM_TOLERANCES, o
 import type { Box } from "doc-ir/layout/slide-elements";
 import { onOff, type Styles } from "./styles";
 import { intAttr } from "../../lib/ooxml-num";
-import { attr, child, children, kids, tagOf, textOf, valOf, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, childNodesOf, qualifiedNameOf, textContentOf, valOfChild, type XNode } from "../ooxml/xml";
 import { spanSingleFirstRows } from "../span-single-first";
 
 /** One complex field being read: its instruction text (w:instrText) until
@@ -81,7 +81,7 @@ const withHref = (pieces: readonly Piece[], href: string | undefined): Piece[] =
 /** The TOC field (its instruction's first word is TOC): the document's table
  *  of contents, published as ONE `toc` block like the w:sdt that usually
  *  wraps it; its cached entries and page numbers are not read (checkpoint A,
- *  Mikolaj 24/09/2026). */
+ *  24/09/2026). */
 const isTocField = (instructions: string): boolean => /^\s*TOC\b/i.test(instructions);
 
 /** Word's « cold » fields never have a result by nature: Microsoft, WdFieldKind.wdFieldKindCold, « a field that doesn't have a
@@ -96,11 +96,11 @@ const COLD_FIELD = /^\s*(?:XE|TC|TA|PRIVATE)(?![A-Za-z0-9])/i;
  *  (one, inside the instructions of an enclosing field), or undefined. */
 const trackField = (fields: OpenField[], node: XNode, onEmptyField?: () => void): "toc-block" | "toc-hidden" | undefined => {
   const top = fields[fields.length - 1];
-  if (tagOf(node) === "w:instrText") {
-    if (top?.state === "instructions") top.instructions += textOf(node);
+  if (qualifiedNameOf(node) === "w:instrText") {
+    if (top?.state === "instructions") top.instructions += textContentOf(node);
     return undefined;
   }
-  const type = attr(node, "w:fldCharType");
+  const type = attributeOf(node, "w:fldCharType");
   if (type === "begin") fields.push({ state: "instructions", instructions: "" });
   else if (type === "separate" && top?.state === "instructions") {
     // A TOC's cached result is skipped up to its end; the block stands
@@ -145,10 +145,10 @@ export interface ReadContext {
   /** How many of a drawing's declared shapes are not in its picture, called
    *  once per drawing that draws one (D2) — accumulated by
    *  `docx-reader/index.ts#readDocx` into `DocxReadResult#drawingShapesNotDrawn`,
-   *  DATA for the dashboard, never text on the page (Mikolaj, 29/09/2026). */
+   *  DATA for the dashboard, never text on the page (29/09/2026). */
   readonly reportShapesNotDrawn: (count: number) => void;
   /** Called once per drawing kept out because it is hidden (`wp:docPr hidden`), whatever it holds: counted, never its content
-   *  (`hidden-dropped` notice, Mikolaj 08/10/2026). */
+   *  (`hidden-dropped` notice, 08/10/2026). */
   readonly reportHiddenShape: () => void;
   /** The drawings met, and the last paragraph read before each: what Google's
    *  own image of a drawing is matched by (D2 voie A, `docx-reader/google-drawings.ts`). */
@@ -192,7 +192,7 @@ export interface ReadContext {
 
 /**
  * Bookmarks (w:bookmarkStart) that some internal link (w:hyperlink w:anchor)
- * targets become Confluence anchors (checkpoint A, Mikolaj 24/09/2026); the
+ * targets become Confluence anchors (checkpoint A, 24/09/2026); the
  * others (_GoBack, the _Toc of an unread table of contents…) are not written.
  * A bookmark waits in `pending` until the next text block is made, and lands
  * at its start: a bookmark inside a paragraph goes to that paragraph, one
@@ -212,15 +212,15 @@ export const freshFields = (ctx: ReadContext): ReadContext => ({ ...ctx, fields:
 
 /** sdt: a content control's content (sdtContent); its properties
  *  (sdtPr) say what the control is, never what the page shows. */
-const sdtContent = (sdt: XNode): XNode | undefined => child(sdt, "w:sdtContent");
+const sdtContent = (sdt: XNode): XNode | undefined => findChild(sdt, "w:sdtContent");
 
 /** docPartGallery "Table of Contents" inside sdtPr/docPartObj: the
  *  control IS the document's table of contents. */
 const isTableOfContents = (sdt: XNode): boolean => {
-  const sdtPr = child(sdt, "w:sdtPr");
-  const docPartObj = sdtPr ? child(sdtPr, "w:docPartObj") : undefined;
-  const gallery = docPartObj ? child(docPartObj, "w:docPartGallery") : undefined;
-  return gallery !== undefined && attr(gallery, "w:val") === "Table of Contents";
+  const sdtPr = findChild(sdt, "w:sdtPr");
+  const docPartObj = sdtPr ? findChild(sdtPr, "w:docPartObj") : undefined;
+  const gallery = docPartObj ? findChild(docPartObj, "w:docPartGallery") : undefined;
+  return gallery !== undefined && attributeOf(gallery, "w:val") === "Table of Contents";
 };
 
 /** Whether a TOC field (complex, its instruction possibly split over
@@ -229,10 +229,10 @@ const containsTocField = (node: XNode): boolean => {
   const fields: OpenField[] = [];
   let found = false;
   const walk = (n: XNode): void => {
-    for (const c of kids(n)) {
+    for (const c of childNodesOf(n)) {
       if (found) return;
-      const tag = tagOf(c);
-      if (tag === "w:fldSimple" && isTocField(attr(c, "w:instr") ?? "")) found = true;
+      const tag = qualifiedNameOf(c);
+      if (tag === "w:fldSimple" && isTocField(attributeOf(c, "w:instr") ?? "")) found = true;
       else if (tag === "w:fldChar" || tag === "w:instrText") found = trackField(fields, c) !== undefined;
       else walk(c);
     }
@@ -355,7 +355,7 @@ const drawingPieces = (drawing: XNode, ctx: ReadContext): Piece[] => {
 
 /** The content of one run (`w:r`). */
 const runPieces = (run: XNode, ctx: ReadContext, scope: InlineScope): Piece[] => {
-  const rPr = child(run, "w:rPr");
+  const rPr = findChild(run, "w:rPr");
   const marks = ctx.styles.marks(scope.paragraphStyle, rPr);
   // Colour and highlight travel with the run since 10/11/2026 (`styles.ts#colours`): only what the FILE states.
   const colours = ctx.styles.colours(scope.paragraphStyle, rPr);
@@ -363,14 +363,14 @@ const runPieces = (run: XNode, ctx: ReadContext, scope: InlineScope): Piece[] =>
     kind: "inline",
     inline: { text, ...(marks.length > 0 ? { marks: [...marks] } : {}), ...colours },
   });
-  // Hidden text (w:vanish, G3, Mikolaj 24/09/2026) is not published: nothing
+  // Hidden text (w:vanish, G3, 24/09/2026) is not published: nothing
   // of the run is read but its field characters, which keep the open fields
   // in step (a table of contents block they give is kept).
   if (ctx.styles.hidden(scope.paragraphStyle, rPr)) {
-    const fieldOnly = kids(run).filter((c) => tagOf(c) === "w:fldChar" || tagOf(c) === "w:instrText");
+    const fieldOnly = childNodesOf(run).filter((c) => qualifiedNameOf(c) === "w:fldChar" || qualifiedNameOf(c) === "w:instrText");
     return runContent(fieldOnly, { ...ctx, reportEmptyField: undefined }, withMarks, scope).filter((p) => p.kind === "block");
   }
-  return runContent(kids(run), ctx, withMarks, scope);
+  return runContent(childNodesOf(run), ctx, withMarks, scope);
 };
 
 /** Inside a field's instructions nothing is displayed: only its result is
@@ -400,7 +400,7 @@ const runContent = (
 ): Piece[] => {
   const out: Piece[] = [];
   for (const c of nodes) {
-    const tag = tagOf(c);
+    const tag = qualifiedNameOf(c);
     if (tag === "w:fldChar" || tag === "w:instrText") {
       if (trackField(ctx.fields, c, ctx.reportEmptyField) === "toc-block") out.push(TOC_BLOCK);
       continue;
@@ -410,12 +410,12 @@ const runContent = (
     switch (tag) {
       // The call of a note: its number in reading order, in superscript,
       // without a link (decided); the note itself is published at the end.
-      // A6 of docs/CONCEPTION-CARTE-ET-REMARQUES.md (Mikolaj, 29/09/2026):
+      // A6 of docs/CONCEPTION-CARTE-ET-REMARQUES.md (29/09/2026):
       // KEPT, with its brackets — through `noteCallLabel` like every other
       // page-label emitter, not written inline here any more.
       case "w:footnoteReference":
       case "w:endnoteReference": {
-        const id = attr(c, "w:id");
+        const id = attributeOf(c, "w:id");
         const part: NotePart = tag === "w:footnoteReference" ? "footnotes" : "endnotes";
         if (id !== undefined) out.push({ kind: "inline", inline: { text: ctx.labels.noteCallLabel(ctx.noteCall(part, id)), marks: ["sup"] } });
         break;
@@ -431,15 +431,15 @@ const runContent = (
       // known to keep a native `<ruby><rt>` (docs/PLATFORM-STATUS.md §43's
       // catalogue does not test it): the parenthesised form is searchable and
       // carries no platform risk, chosen over the unverified native element
-      // (Mikolaj, « on fix », 29/09/2026; fixture
+      // (« on fix », 29/09/2026; fixture
       // `fixtures/docx/09-FABRIQUE-Ruby-Mot-Perdu.docx`). Both rt and
       // rubyBase share rubyBase's run-content group (a sequence of runs, like
       // a paragraph's), so `paragraphContent` reads each the same way it
       // reads a hyperlink's or an sdt's content.
       case "w:ruby": {
-        const rubyBase = child(c, "w:rubyBase");
+        const rubyBase = findChild(c, "w:rubyBase");
         if (rubyBase) out.push(...paragraphContent(rubyBase, ctx, scope));
-        const rt = child(c, "w:rt");
+        const rt = findChild(c, "w:rt");
         const guide = rt ? paragraphContent(rt, ctx, scope) : [];
         if (guide.some((p) => p.kind === "inline" && p.inline.text.trim().length > 0)) {
           out.push(withMarks(" ("), ...guide, withMarks(")"));
@@ -456,24 +456,24 @@ const runContent = (
         break;
       }
       case "mc:AlternateContent":
-        out.push(...chooseAlternate(c, ctx.isPixelImage, (branch) => runContent(kids(branch), ctx, withMarks, scope)));
+        out.push(...chooseAlternate(c, ctx.isPixelImage, (branch) => runContent(childNodesOf(branch), ctx, withMarks, scope)));
         break;
       case "w:t": {
-        const text = textOf(c);
+        const text = textContentOf(c);
         if (text.length > 0) out.push(withMarks(text));
         break;
       }
       // w:sym: a character given by its code (w:char, hexadecimal) in a
       // named font. In the Symbol font the private-use point becomes the
-      // character it draws (lib/symbol-font.ts, Mikolaj 26/10/2026); in any
+      // character it draws (lib/symbol-font.ts, 26/10/2026); in any
       // other font the declared code point is published as is — for
       // Wingdings it is a private-use point that Confluence does not draw;
       // that is visible, never silent.
       case "w:sym": {
-        const code = Number.parseInt(attr(c, "w:char") ?? "", 16);
+        const code = Number.parseInt(attributeOf(c, "w:char") ?? "", 16);
         if (Number.isFinite(code) && code > 0 && code <= 0x10ffff && (code < 0xd800 || code > 0xdfff)) {
           const point = String.fromCodePoint(code);
-          out.push(withMarks(isSymbolFont(attr(c, "w:font")) ? symbolFontText(point) : point));
+          out.push(withMarks(isSymbolFont(attributeOf(c, "w:font")) ? symbolFontText(point) : point));
         }
         break;
       }
@@ -491,7 +491,7 @@ const runContent = (
       // column breaks are layout, ignored (decided — the file's order is the
       // reading order). w:cr is the same line break as textWrapping.
       case "w:br": {
-        const type = attr(c, "w:type");
+        const type = attributeOf(c, "w:type");
         if (type === undefined || type === "textWrapping") out.push(withMarks("\n"));
         break;
       }
@@ -508,13 +508,13 @@ const runContent = (
 
 /** The content of a paragraph or of a run container inside it. */
 const paragraphContent = (container: XNode, ctx: ReadContext, scope: InlineScope): Piece[] => {
-  const siblings = kids(container);
+  const siblings = childNodesOf(container);
   return siblings.flatMap((c, index): Piece[] => {
-    const tag = tagOf(c);
+    const tag = qualifiedNameOf(c);
     if (tag === "w:r") return runPieces(c, ctx, scope);
     if (tag === "w:hyperlink") return hyperlinkPieces(c, ctx, scope);
     if (tag === "w:bookmarkStart") {
-      const name = attr(c, "w:name");
+      const name = attributeOf(c, "w:name");
       return name !== undefined && ctx.anchors.targeted.has(name) ? [{ kind: "bookmark", name }] : [];
     }
     // An equation is a sibling of the runs, where it stands in the sentence. Its line in the ONE table of what we knowingly
@@ -527,7 +527,7 @@ const paragraphContent = (container: XNode, ctx: ReadContext, scope: InlineScope
       // neighbour, and the behaviour there is the one of before.
       const sideText = (at: number): string => {
         const sibling = siblings[at];
-        return sibling === undefined ? "" : kids(sibling).map(textOf).join("");
+        return sibling === undefined ? "" : childNodesOf(sibling).map(textContentOf).join("");
       };
       const before = sideText(index - 1);
       const after = sideText(index + 1);
@@ -546,10 +546,10 @@ const paragraphContent = (container: XNode, ctx: ReadContext, scope: InlineScope
     // fldSimple: its content IS the field's displayed result — except for a
     // table of contents, which is the toc block and nothing of its result.
     if (tag === "w:fldSimple") {
-      if (isTocField(attr(c, "w:instr") ?? "")) return inInstructions(ctx) ? [] : [TOC_BLOCK];
+      if (isTocField(attributeOf(c, "w:instr") ?? "")) return inInstructions(ctx) ? [] : [TOC_BLOCK];
       const result = paragraphContent(c, ctx, scope);
-      if (result.length === 0 && !inInstructions(ctx) && !COLD_FIELD.test(attr(c, "w:instr") ?? "")) ctx.reportEmptyField?.();
-      return withHref(result, fieldLinkTarget(attr(c, "w:instr") ?? ""));
+      if (result.length === 0 && !inInstructions(ctx) && !COLD_FIELD.test(attributeOf(c, "w:instr") ?? "")) ctx.reportEmptyField?.();
+      return withHref(result, fieldLinkTarget(attributeOf(c, "w:instr") ?? ""));
     }
     if (tag !== undefined && TRANSPARENT_INLINE.has(tag)) return paragraphContent(c, ctx, scope);
     return [];
@@ -563,7 +563,7 @@ const paragraphContent = (container: XNode, ctx: ReadContext, scope: InlineScope
  *  `history` and `tgtFrame` describe the link's behaviour, not its target. */
 const hyperlinkPieces = (link: XNode, ctx: ReadContext, scope: InlineScope): Piece[] => {
   const inner = paragraphContent(link, ctx, scope);
-  const id = attr(link, "r:id");
+  const id = attributeOf(link, "r:id");
   const rel = id === undefined ? undefined : ctx.rels.get(id);
   // w:anchor alone: a bookmark of this document → a link to its anchor
   // (`#name`), kept only if that anchor gets written (dropDeadAnchorLinks).
@@ -572,7 +572,7 @@ const hyperlinkPieces = (link: XNode, ctx: ReadContext, scope: InlineScope): Pie
   // hostile target now dies at the door instead of falling back to the
   // bookmark (edge change, chosen). Only OUR internal forms are refused
   // here: that is provenance, which the door cannot know.
-  const bookmark = attr(link, "w:anchor");
+  const bookmark = attributeOf(link, "w:anchor");
   const external = externalLinkTarget(rel);
   const href = external ?? (bookmark !== undefined && ctx.anchors.targeted.has(bookmark) ? `#${bookmark}` : undefined);
   if (href === undefined) return inner;
@@ -722,11 +722,11 @@ const numberingOf = (
   paragraphStyle: string | undefined,
   ctx: ReadContext,
 ): { numId: string; ilvl: number } | undefined => {
-  const direct = pPr ? child(pPr, "w:numPr") : undefined;
+  const direct = pPr ? findChild(pPr, "w:numPr") : undefined;
   const fromStyle = ctx.styles.paragraphProperty(paragraphStyle, "w:numPr");
-  const numId = valOf(direct, "w:numId") ?? valOf(fromStyle, "w:numId");
+  const numId = valOfChild(direct, "w:numId") ?? valOfChild(fromStyle, "w:numId");
   if (numId === undefined || numId === "0") return undefined;
-  const ilvl = Number.parseInt(valOf(direct, "w:ilvl") ?? valOf(fromStyle, "w:ilvl") ?? "0", 10);
+  const ilvl = Number.parseInt(valOfChild(direct, "w:ilvl") ?? valOfChild(fromStyle, "w:ilvl") ?? "0", 10);
   // ECMA-376 has nine levels, 0..8: a larger declared level is read as the
   // deepest one, never used as an index (review of 27/09/2026 night, finding 4).
   return { numId, ilvl: Number.isFinite(ilvl) && ilvl >= 0 ? Math.min(ilvl, MAX_ILVL) : 0 };
@@ -734,7 +734,7 @@ const numberingOf = (
 
 /**
  * w:jc, on the paragraph or else from its style chain: the alignment the page
- * keeps (checkpoint A, Mikolaj 24/09/2026). right and end → right, center →
+ * keeps (checkpoint A, 24/09/2026). right and end → right, center →
  * center; left, start, both, distribute and the rest → nothing (left is the
  * page's default; justify is not kept by Confluence, PLATFORM-STATUS §43).
  * `end` is read as right: a right-to-left paragraph (w:bidi) would flip it,
@@ -742,15 +742,15 @@ const numberingOf = (
  */
 const alignmentOf = (pPr: XNode | undefined, paragraphStyle: string | undefined, ctx: ReadContext): BlockAlign | undefined => {
   const fromStyle = ctx.styles.paragraphProperty(paragraphStyle, "w:jc");
-  const jc = valOf(pPr, "w:jc") ?? (fromStyle ? attr(fromStyle, "w:val") : undefined);
+  const jc = valOfChild(pPr, "w:jc") ?? (fromStyle ? attributeOf(fromStyle, "w:val") : undefined);
   if (jc === "right" || jc === "end") return "right";
   if (jc === "center") return "center";
   return undefined;
 };
 
 const paragraphUnit = (p: XNode, ctx: ReadContext): Unit => {
-  const pPr = child(p, "w:pPr");
-  const paragraphStyle = valOf(pPr, "w:pStyle");
+  const pPr = findChild(p, "w:pPr");
+  const paragraphStyle = valOfChild(pPr, "w:pStyle");
   // The anchors waiting before this paragraph are this paragraph's — taken
   // now, before a text box read inside it could make a block of its own.
   const anchors = ctx.anchors.pending.splice(0);
@@ -758,7 +758,7 @@ const paragraphUnit = (p: XNode, ctx: ReadContext): Unit => {
   // A paragraph whose mark is hidden and that shows nothing does not exist on
   // the page: no block, and its numbering does not advance (Word shows no
   // number for it either). Its anchors wait for the next block.
-  const markHidden = ctx.styles.hidden(paragraphStyle, pPr ? child(pPr, "w:rPr") : undefined);
+  const markHidden = ctx.styles.hidden(paragraphStyle, pPr ? findChild(pPr, "w:rPr") : undefined);
   const showsSomething = pieces.some(
     (piece) => piece.kind === "block" || (piece.kind === "after" && piece.blocks.length > 0) || (piece.kind === "inline" && piece.inline.text.trim().length > 0),
   );
@@ -849,15 +849,15 @@ type TableCell = Extract<IRBlock, { kind: "table" }>["rows"][number]["cells"][nu
 
 /** Row- and cell-level containers that only group rows or cells. */
 const wrapped = (wrapper: XNode, of: (node: XNode) => XNode[]): XNode[] => {
-  if (tagOf(wrapper) === "w:customXml") return of(wrapper);
-  const content = tagOf(wrapper) === "w:sdt" ? sdtContent(wrapper) : undefined;
+  if (qualifiedNameOf(wrapper) === "w:customXml") return of(wrapper);
+  const content = qualifiedNameOf(wrapper) === "w:sdt" ? sdtContent(wrapper) : undefined;
   return content ? of(content) : [];
 };
-const rowsOf = (tbl: XNode): XNode[] => kids(tbl).flatMap((c) => (tagOf(c) === "w:tr" ? [c] : wrapped(c, rowsOf)));
-const cellsOf = (tr: XNode): XNode[] => kids(tr).flatMap((c) => (tagOf(c) === "w:tc" ? [c] : wrapped(c, cellsOf)));
+const rowsOf = (tbl: XNode): XNode[] => childNodesOf(tbl).flatMap((c) => (qualifiedNameOf(c) === "w:tr" ? [c] : wrapped(c, rowsOf)));
+const cellsOf = (tr: XNode): XNode[] => childNodesOf(tr).flatMap((c) => (qualifiedNameOf(c) === "w:tc" ? [c] : wrapped(c, cellsOf)));
 
 const intVal = (parent: XNode | undefined, tag: string): number | undefined => {
-  return intAttr(valOf(parent, tag));
+  return intAttr(valOfChild(parent, tag));
 };
 
 /**
@@ -893,26 +893,26 @@ const tableBlock = (tbl: XNode, outer: ReadContext): IRBlock[] => {
   const rows: { cells: TableCell[] }[] = [];
   const merging = new Map<number, TableCell>();
   // The declared grid (§17.4.49 w:tblGrid/w:gridCol) bounds a cell's span, as a:gridSpan is bounded; no grid: only Word's ceiling.
-  const gridColumns = children(child(tbl, "w:tblGrid") ?? {}, "w:gridCol").length;
+  const gridColumns = findChildren(findChild(tbl, "w:tblGrid") ?? {}, "w:gridCol").length;
   for (const tr of rowsOf(tbl)) {
-    const trPr = child(tr, "w:trPr");
-    const headerEl = trPr ? child(trPr, "w:tblHeader") : undefined;
+    const trPr = findChild(tr, "w:trPr");
+    const headerEl = trPr ? findChild(trPr, "w:tblHeader") : undefined;
     const header = headerEl !== undefined && onOff(headerEl);
     const cells: TableCell[] = [];
     const seen = new Set<number>();
     let column = intVal(trPr, "w:gridBefore") ?? 0;
     for (const tc of cellsOf(tr)) {
-      const tcPr = child(tc, "w:tcPr");
+      const tcPr = findChild(tc, "w:tcPr");
       const room = gridColumns === 0 ? MAX_GRID_COLUMNS : Math.max(1, gridColumns - column);
       const span = Math.min(MAX_GRID_COLUMNS, room, Math.max(1, intVal(tcPr, "w:gridSpan") ?? 1));
-      const vMergeEl = tcPr ? child(tcPr, "w:vMerge") : undefined;
-      const vMerge = vMergeEl ? (attr(vMergeEl, "w:val") ?? "continue") : undefined;
+      const vMergeEl = tcPr ? findChild(tcPr, "w:vMerge") : undefined;
+      const vMerge = vMergeEl ? (attributeOf(vMergeEl, "w:val") ?? "continue") : undefined;
       const above = merging.get(column);
       seen.add(column);
       if (vMerge === "continue" && above && (above.colspan ?? 1) === span) {
         above.rowspan = (above.rowspan ?? 1) + 1;
         // The continuation's content is dropped: Word does not show it (rule « Rien d'invisible »,
-        // docs/PLATFORM-STATUS.md §67, observed by Mikolaj 09/10/2026), so it is not published either. It is not even read:
+        // docs/PLATFORM-STATUS.md §67, observed by 09/10/2026), so it is not published either. It is not even read:
         // a note call or a bookmark in it must leave no footnote and no link target behind (nor advance list numbering).
       } else {
         const cell: TableCell = {
@@ -935,7 +935,7 @@ const tableBlock = (tbl: XNode, outer: ReadContext): IRBlock[] => {
   const withheld = useful !== null && tableExceedsCaps(tableGridWidth(useful), useful.rows.length, outer.limits);
   if (!withheld) for (let i = 0; i < held; i++) outer.reportEmptyField?.();
   // WRITTEN BIAS: unlike Excel, Word does NOT visually overflow a row whose only text is in its first cell; the full-width cell is a chosen
-  // embellishment, not a fidelity (Mikolaj, 27/10/2026: « idem pour tableau ds word, ds google doc et ds ppt »). Header cells are marked above.
+  // embellishment, not a fidelity (27/10/2026: « idem pour tableau ds word, ds google doc et ds ppt »). Header cells are marked above.
   return [spanSingleFirstRows(table)];
 };
 
@@ -943,14 +943,14 @@ const tableBlock = (tbl: XNode, outer: ReadContext): IRBlock[] => {
 const TRANSPARENT_BLOCK = new Set(["w:customXml"]);
 
 const storyUnits = (story: XNode, ctx: ReadContext): Unit[] =>
-  kids(story).flatMap((c): Unit[] => {
-    const tag = tagOf(c);
+  childNodesOf(story).flatMap((c): Unit[] => {
+    const tag = qualifiedNameOf(c);
     if (tag === "w:p") return [paragraphUnit(c, ctx)];
     if (tag === "w:tbl") return [{ blocks: tableBlock(c, ctx) }];
     // A bookmark between blocks (Google's habit): its anchor waits for the
     // next text block.
     if (tag === "w:bookmarkStart") {
-      const name = attr(c, "w:name");
+      const name = attributeOf(c, "w:name");
       if (name !== undefined && ctx.anchors.targeted.has(name)) ctx.anchors.pending.push(name);
       return [];
     }
@@ -961,7 +961,7 @@ const storyUnits = (story: XNode, ctx: ReadContext): Unit[] =>
       const content = sdtContent(c);
       // A table of contents control is an editing convenience; the table of
       // contents is the TOC FIELD inside it, which gives the toc block, so a
-      // title typed in the control is read like any other text (Mikolaj,
+      // title typed in the control is read like any other text (
       // 24/09/2026). A control with no TOC field at all (some producers)
       // stays ONE toc block, its content unread, as before.
       if (isTableOfContents(c) && !(content && containsTocField(content))) return [{ blocks: [{ kind: "toc" }] }];
@@ -986,8 +986,8 @@ export const targetedBookmarks = (story: XNode, rels: ReadonlyMap<string, Relati
   const found = new Set<string>();
   const fields: OpenField[] = [];
   const walk = (node: XNode): void => {
-    for (const c of kids(node)) {
-      const tag = tagOf(c);
+    for (const c of childNodesOf(node)) {
+      const tag = qualifiedNameOf(c);
       if (tag === "w:del" || tag === "w:moveFrom") continue;
       // Only the content the walk reads: the chosen Choice, or the Fallback.
       if (tag === "mc:AlternateContent") {
@@ -1001,16 +1001,16 @@ export const targetedBookmarks = (story: XNode, rels: ReadonlyMap<string, Relati
         const content = sdtContent(c);
         if (!(content && containsTocField(content))) continue;
       }
-      if (tag === "w:fldSimple" && isTocField(attr(c, "w:instr") ?? "")) continue;
+      if (tag === "w:fldSimple" && isTocField(attributeOf(c, "w:instr") ?? "")) continue;
       if (tag === "w:fldChar" || tag === "w:instrText") {
         trackField(fields, c);
         continue;
       }
       if (tag === "w:hyperlink" && !hidden(fields)) {
-        const id = attr(c, "r:id");
+        const id = attributeOf(c, "r:id");
         // "External" is judged as the real walk judges it (`hyperlinkPieces`).
         const external = externalLinkTarget(id === undefined ? undefined : rels.get(id)) !== undefined;
-        const name = attr(c, "w:anchor");
+        const name = attributeOf(c, "w:anchor");
         if (!external && name !== undefined) found.add(name);
       }
       walk(c);

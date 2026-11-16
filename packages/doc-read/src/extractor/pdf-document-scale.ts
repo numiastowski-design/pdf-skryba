@@ -29,14 +29,14 @@ export interface DocumentScale {
    * L'HABILLAGE N'EST PUBLIÉ NULLE PART, ET C'EST UNE DÉCISION QUI A ÉTÉ PRISE
    * DEUX FOIS.
    *
-   * Le 21/09/2026, Mikolaj demande de le republier UNE fois en bas de la page
+   * Le 21/09/2026 demande de le republier UNE fois en bas de la page
    * Confluence, sur une mesure : sur les 39 PDF français et anglais, 1 103
    * lettres d'habillage DISTINCT sont retirées, et **627 d'entre elles, 20
    * lignes, 13 documents, ne se lisaient nulle part ailleurs** — « Printed on
    * May 13, 2020 », « Mount Sinai Health System Confidential », « © Index
    * Education 2024 », « Document interne ». Livré le 22/09 (lot « 37 »).
    *
-   * Le 23/09/2026, Mikolaj retire la republication : « on vire le footer partout
+   * Le 23/09/2026 retire la republication : « on vire le footer partout
    * sans exception, sur tout PDF ». Né du communiqué 27, où « -30- » et le pied
    * revenaient en fin de page et n'y servaient rien. Ces 627 lettres ne sont donc
    * plus publiées ; elles étaient alors DÉCLARÉES au contrôle du texte (déclaration retirée le 19/10/2026, plus rien n'est retiré). C'est
@@ -78,7 +78,7 @@ export interface DocumentScale {
  * DEUX RÉPONSES SUR LA MÊME MESURE (04/11/2026) : la coupe DOMINANTE, pour les décisions qui ne connaissent que deux
  * bandes, et TOUTES les coupes, croissantes, pour la lecture en bandes — une page à quatre colonnes en porte trois.
  */
-/** 🔴 QUEL SIGNAL DIT « COLONNES » (04/11/2026, essai A/B/C demandé par Mikolaj).
+/** 🔴 QUEL SIGNAL DIT « COLONNES » (04/11/2026, essai A/B/C demandé).
  *  `gutter` est le produit d'aujourd'hui : le blanc que personne ne traverse, donc aveugle dès qu'un bout
  *  d'habillage le referme. `width` et `chars` lisent au contraire les bords gauches RÉPÉTÉS des blocs
  *  (`layout/column-grid.ts`), et se prouvent par des largeurs égales ou des caractères en nombre voisin.
@@ -105,13 +105,13 @@ const documentGutters = (items: readonly (readonly PdfTextRun[])[], furniture: R
 };
 
 /**
- * LES STYLES D'UNE PAGE SE DÉCIDENT PAR PAGE (Mikolaj, 05/11/2026 : « moins risqué par page »), sur la seule chose que le
+ * LES STYLES D'UNE PAGE SE DÉCIDENT PAR PAGE (05/11/2026 : « moins risqué par page »), sur la seule chose que le
  * PDF dit explicitement — la taille de chaque fragment — SANS défaire la hiérarchie du document. Le corps de la page est
  * la taille qui porte le plus de lettres ; il n'y est jamais un titre, ni ce qui en est à moins de
  * `DEFAULT_HEADING_SIZE_RATIO`. En dessous du corps d'au moins ce rapport : du petit texte (« Small text », §92).
  *
  * UN TITRE DE LA PAGE est une taille au-dessus du corps de la page (`DEFAULT_HEADING_SIZE_RATIO`), que le document la
- * classe ou non (Mikolaj, 05/11/2026 : le seuil « 2 fois le corps » du matin est retiré le jour même) — « Alouette » (168 pt),
+ * classe ou non (05/11/2026 : le seuil « 2 fois le corps » du matin est retiré le jour même) — « Alouette » (168 pt),
  * « La langue française en fête » (54), vus une fois, que l'échelle du document laissait en paragraphes. Les titres de
  * la page se rangent par taille, une classe du document tenant un seul rang, deux tailles seules à moins du rapport
  * l'une de l'autre aussi. LE NIVEAU est le rang, mais jamais au-dessus du niveau que le document donne : une page qui

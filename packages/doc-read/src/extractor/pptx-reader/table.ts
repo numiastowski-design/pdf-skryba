@@ -10,7 +10,7 @@
  *  Called by: `pptx-reader/shapes.ts`. */
 
 import type { Relationship } from "../ooxml/package";
-import { attr, child, children, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, type XNode } from "../ooxml/xml";
 import { isTrue, type PptxParagraph, readParagraph } from "./text";
 
 interface PptxTableCell {
@@ -43,23 +43,23 @@ const spanOf = (value: string | undefined, room: number): number | undefined => 
 };
 
 export const readTable = (tbl: XNode, rels: ReadonlyMap<string, Relationship>, slideNumber?: number): PptxTable => {
-  const columnWidths = children(child(tbl, "a:tblGrid") ?? {}, "a:gridCol").map((col) => {
-    const w = Number.parseInt(attr(col, "w") ?? "", 10);
+  const columnWidths = findChildren(findChild(tbl, "a:tblGrid") ?? {}, "a:gridCol").map((col) => {
+    const w = Number.parseInt(attributeOf(col, "w") ?? "", 10);
     return Number.isInteger(w) && w > 0 ? w : 0;
   });
-  const headerRow = isTrue(attr(child(tbl, "a:tblPr") ?? {}, "firstRow"));
-  const trs = children(tbl, "a:tr");
+  const headerRow = isTrue(attributeOf(findChild(tbl, "a:tblPr") ?? {}, "firstRow"));
+  const trs = findChildren(tbl, "a:tr");
   const rows = trs.map((tr, rowIndex) => ({
     // Each `a:tc` is one grid column (an absorbed one included), so a cell's
     // grid position is its rank among ALL the row's `a:tc`: gridSpan is
     // clamped to the declared columns right of it, rowSpan to the rows below.
-    cells: children(tr, "a:tc").flatMap((tc, tcIndex): PptxTableCell[] => {
-      if (isTrue(attr(tc, "hMerge")) || isTrue(attr(tc, "vMerge"))) return [];
-      const colspan = spanOf(attr(tc, "gridSpan"), columnWidths.length - tcIndex);
-      const rowspan = spanOf(attr(tc, "rowSpan"), trs.length - rowIndex);
+    cells: findChildren(tr, "a:tc").flatMap((tc, tcIndex): PptxTableCell[] => {
+      if (isTrue(attributeOf(tc, "hMerge")) || isTrue(attributeOf(tc, "vMerge"))) return [];
+      const colspan = spanOf(attributeOf(tc, "gridSpan"), columnWidths.length - tcIndex);
+      const rowspan = spanOf(attributeOf(tc, "rowSpan"), trs.length - rowIndex);
       return [
         {
-          paragraphs: children(child(tc, "a:txBody") ?? {}, "a:p").map((p) => readParagraph(p, rels, slideNumber === undefined ? {} : { slideNumber })),
+          paragraphs: findChildren(findChild(tc, "a:txBody") ?? {}, "a:p").map((p) => readParagraph(p, rels, slideNumber === undefined ? {} : { slideNumber })),
           ...(colspan === undefined ? {} : { colspan }),
           ...(rowspan === undefined ? {} : { rowspan }),
           ...(headerRow && rowIndex === 0 ? { header: true as const } : {}),

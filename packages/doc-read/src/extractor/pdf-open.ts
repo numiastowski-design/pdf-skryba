@@ -37,7 +37,7 @@ export const openPdfSource = async (
     // already-named operations — three pdf.js entries for one.
     //
     // `wantOps` names the operators of the pages WITH text, and — since 07/10/2026 — of a page without text when
-    // another page has some: that page is no scan, its pictures are published (Mikolaj, 05/10/2026; `pdf-scanned.ts`).
+    // another page has some: that page is no scan, its pictures are published (05/10/2026; `pdf-scanned.ts`).
     // A scan (no page with text) still pays for no operator at all. Known cost, accepted: when the AI is on, the
     // pictures of such a page are read, then dropped with the page the AI's text replaces; and a scan carrying an OCR
     // layer on one page and no text on the others pays the same for nothing, as does a PDF whose pages hold only control
@@ -72,7 +72,7 @@ export const openPdfSource = async (
     // a cap refusal included: it became indistinguishable from a broken extraction and, worse, RETRIABLE although it is final. The
     // defect stayed invisible while nothing named came up from here; it showed at the first case and would have trapped the next one.
     if (error instanceof ReaderError) throw error;
-    // 🔴 A PASSWORD-PROTECTED DOCUMENT IS REFUSED, AND NAMED (17/09/2026, Mikolaj's decision: "reject it outright"). pdf.js threw a
+    // 🔴 A PASSWORD-PROTECTED DOCUMENT IS REFUSED, AND NAMED (17/09/2026, decision: "reject it outright"). pdf.js threw a
     // `PasswordException`: a CLASS name, composed by the dependency but bounded by construction, so readable to CLASSIFY. That is all
     // we took from it; its message did not cross. Our reader now refuses with the reason `encrypted` (`pdf-source.ts#openOrRefuse`);
     // the class-name test below stays for a failure that carries it.
@@ -101,7 +101,7 @@ export const openPdfSource = async (
  *  counted by `readPdfSource`. A page whose glyphs could not be rebuilt (`buildGlyphFragments` refuses LOUDLY an operator it
  *  does not cover rather than guess) reads as `[]` here and keeps its reason in `PdfSourcePage.glyphsUnavailable`.
  *
- *  BIAS, chosen and written (Mikolaj, 06/10/2026, survey of disguised failures, point 3): such a page has no table recognised
+ *  BIAS, chosen and written (06/10/2026, survey of disguised failures, point 3): such a page has no table recognised
  *  and is published as flat text. No word is lost, only the grid; the page never fails the document. The reason is never
  *  logged nor shown (error messages are composed by us; the upstream text is read to classify, then dropped). The guard is the
  *  corpus oracle (`pdf-source.oracle.test.ts`), which reads `glyphsUnavailable`. Measured 06/10/2026 over the 79 PDFs of
@@ -115,7 +115,7 @@ export const glyphReader =
 
 // The same pass finds the tables AND the pages carrying an invisible OCR layer, which make the PDF a scan (05/10/2026). Until
 // then a crash here fell back to « no signal » (flat text, never fatal); it now refuses the document: « nothing found » would
-// read an OCR-layer scan as digital and publish the layer (review of cfe20d24, Mikolaj 05/10/2026). Measured the same day: the
+// read an OCR-layer scan as digital and publish the layer (review of cfe20d24, 05/10/2026). Measured the same day: the
 // pass crashed on 0 of the 114 corpus PDFs it opens. The crash's own text is dropped (CLAUDE.md, error messages).
 export const readPageSignals = async (bytes: Uint8Array, source: PdfSource, cost: ExtractionCost): Promise<PdfPageSignals> => {
   try {

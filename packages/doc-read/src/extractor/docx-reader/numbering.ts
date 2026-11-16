@@ -7,7 +7,7 @@
 
 import { intAttr as intValue } from "../../lib/ooxml-num";
 import { isOnOff } from "../../lib/ooxml-bool";
-import { attr, child, children, valOf, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, valOfChild, type XNode } from "../ooxml/xml";
 
 interface LevelDef {
   start: number;
@@ -37,7 +37,7 @@ export interface Numbering {
   next(numId: string, ilvl: number): NumberedItem | undefined;
 }
 
-const intAttr = (el: XNode | undefined, name: string): number | undefined => (el ? intValue(attr(el, name)) : undefined);
+const intAttr = (el: XNode | undefined, name: string): number | undefined => (el ? intValue(attributeOf(el, name)) : undefined);
 
 /** The highest value Word's automatic list numbering reaches or can be set
  *  to: 32767 (Microsoft Q&A « Automatic Numbering … will not go past 32767 »,
@@ -60,15 +60,15 @@ const clampedStart = (n: number | undefined): number | undefined =>
 const levelIndex = (n: number | undefined): number | undefined => (n !== undefined && n >= 0 && n <= MAX_ILVL ? n : undefined);
 
 const readLevel = (lvl: XNode): LevelDef => {
-  const isLglEl = child(lvl, "w:isLgl");
+  const isLglEl = findChild(lvl, "w:isLgl");
   return {
     // w:start: when omitted the starting value is ZERO, not one.
-    start: clampedStart(intAttr(child(lvl, "w:start"), "w:val")) ?? 0,
-    numFmt: valOf(lvl, "w:numFmt") ?? "decimal",
-    lvlText: valOf(lvl, "w:lvlText"),
-    restart: intAttr(child(lvl, "w:lvlRestart"), "w:val"),
-    isLgl: isLglEl !== undefined && isOnOff(attr(isLglEl, "w:val"), true),
-    suff: valOf(lvl, "w:suff") ?? "tab",
+    start: clampedStart(intAttr(findChild(lvl, "w:start"), "w:val")) ?? 0,
+    numFmt: valOfChild(lvl, "w:numFmt") ?? "decimal",
+    lvlText: valOfChild(lvl, "w:lvlText"),
+    restart: intAttr(findChild(lvl, "w:lvlRestart"), "w:val"),
+    isLgl: isLglEl !== undefined && isOnOff(attributeOf(isLglEl, "w:val"), true),
+    suff: valOfChild(lvl, "w:suff") ?? "tab",
   };
 };
 
@@ -126,21 +126,21 @@ export type NumberingStyleLookup = (styleId: string) => string | undefined;
 
 export const readNumbering = (root: XNode | undefined, numIdOfStyle: NumberingStyleLookup = () => undefined): Numbering => {
   const abstracts = new Map<string, { levels: Map<number, LevelDef>; numStyleLink: string | undefined }>();
-  for (const a of root ? children(root, "w:abstractNum") : []) {
-    const id = attr(a, "w:abstractNumId");
+  for (const a of root ? findChildren(root, "w:abstractNum") : []) {
+    const id = attributeOf(a, "w:abstractNumId");
     if (id === undefined) continue;
     const levels = new Map<number, LevelDef>();
-    for (const lvl of children(a, "w:lvl")) {
+    for (const lvl of findChildren(a, "w:lvl")) {
       // A level outside 0..8 is not one ECMA-376 defines: not read.
       const ilvl = levelIndex(intAttr(lvl, "w:ilvl"));
       if (ilvl !== undefined) levels.set(ilvl, readLevel(lvl));
     }
-    abstracts.set(id, { levels, numStyleLink: valOf(a, "w:numStyleLink") });
+    abstracts.set(id, { levels, numStyleLink: valOfChild(a, "w:numStyleLink") });
   }
   const abstractOfNum = new Map<string, string>();
-  for (const n of root ? children(root, "w:num") : []) {
-    const numId = attr(n, "w:numId");
-    const abstractId = valOf(n, "w:abstractNumId");
+  for (const n of root ? findChildren(root, "w:num") : []) {
+    const numId = attributeOf(n, "w:numId");
+    const abstractId = valOfChild(n, "w:abstractNumId");
     if (numId !== undefined && abstractId !== undefined) abstractOfNum.set(numId, abstractId);
   }
 
@@ -162,17 +162,17 @@ export const readNumbering = (root: XNode | undefined, numIdOfStyle: NumberingSt
   // override a level (lvlOverride): a whole new w:lvl, or only its
   // start value (startOverride).
   const instances = new Map<string, Map<number, LevelDef>>();
-  for (const n of root ? children(root, "w:num") : []) {
-    const numId = attr(n, "w:numId");
-    const abstractId = valOf(n, "w:abstractNumId");
+  for (const n of root ? findChildren(root, "w:num") : []) {
+    const numId = attributeOf(n, "w:numId");
+    const abstractId = valOfChild(n, "w:abstractNumId");
     if (numId === undefined || abstractId === undefined) continue;
     const levels = new Map(levelsOf(abstractId));
-    for (const o of children(n, "w:lvlOverride")) {
+    for (const o of findChildren(n, "w:lvlOverride")) {
       const ilvl = levelIndex(intAttr(o, "w:ilvl"));
       if (ilvl === undefined) continue;
-      const replaced = child(o, "w:lvl");
+      const replaced = findChild(o, "w:lvl");
       const base = replaced ? readLevel(replaced) : levels.get(ilvl);
-      const startOverride = clampedStart(intAttr(child(o, "w:startOverride"), "w:val"));
+      const startOverride = clampedStart(intAttr(findChild(o, "w:startOverride"), "w:val"));
       if (base) levels.set(ilvl, startOverride !== undefined ? { ...base, start: startOverride } : base);
     }
     instances.set(numId, levels);

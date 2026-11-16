@@ -1,7 +1,7 @@
 /** What a private-use point written in the Symbol font draws: Word stores θ as U+F071, − as U+F02D, • as U+F0B7, and
  *  Confluence draws nothing for such a point and search cannot find it. Here the point becomes the character it draws,
  *  by the official table (ISO 32000-1 Annex D.5 « Symbol Set and Encoding », glyph names to Unicode by the Adobe Glyph
- *  List), and ONLY when the font is Symbol (Mikolaj, 26/10/2026). The table was generated once from pdfjs-dist
+ *  List), and ONLY when the font is Symbol (26/10/2026). The table was generated once from pdfjs-dist
  *  (`SymbolSetEncoding` × `getGlyphsUnicode()`), now removed from the product; the table is ours and stays.
  *  Written biases: Delta, Omega and mu are the GREEK letters (U+0394, U+03A9, U+03BC), not the maths signs the Adobe
  *  list gives (U+2206, U+2126, U+00B5), because that is what a maths document is searched for. The 29 codes whose

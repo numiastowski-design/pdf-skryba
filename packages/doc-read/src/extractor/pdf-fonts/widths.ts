@@ -191,7 +191,7 @@ export function fontWidths(reader: FontReader, font: PdfDict, budget?: TableBudg
     // l'appelant le lit `?? 0` et empile toutes les lettres au même point. §9.7.4.3 donne 1 000 quand le fichier ne
     // dit rien du tout, et c'est le biais choisi — laid et visible (seconde revue du 03/11/2026).
     if (descendant === undefined) return () => DEFAULT_CID_WIDTH;
-    // 🔴 `/W` IS UNUSABLE WITHOUT THE CID, BUT `/DW` IS USABLE (03/11/2026, found by Mikolaj's screenshot of
+    // 🔴 `/W` IS UNUSABLE WITHOUT THE CID, BUT `/DW` IS USABLE (03/11/2026, found by a screenshot of
     // `corpus-safedocs/0000316.pdf`). §9.7.4.3 makes `/DW` the default advance of EVERY CID the font does not list:
     // it is the font's OWN declaration, never another glyph's advance, so the reason for the abstention above does
     // not reach it. Returning `undefined` for the whole font made the caller place every letter at the SAME point
@@ -200,7 +200,7 @@ export function fontWidths(reader: FontReader, font: PdfDict, budget?: TableBudg
     // Evenly spaced letters are ugly where the real advances vary; stacked letters are WRONG, and the bias of this
     // project is chosen: ugly and visible rather than wrong and invisible.
     if (!identity) {
-      // 🔴 LE CID D'UNE CMap PRÉDÉFINIE, QUAND NOUS TENONS SA TABLE (Mikolaj, 03/11/2026 : « go ! »). Adobe-CNS1 est
+      // 🔴 LE CID D'UNE CMap PRÉDÉFINIE, QUAND NOUS TENONS SA TABLE (03/11/2026 : « go ! »). Adobe-CNS1 est
       // la seule embarquée (`./cns-cmap-data.ts`) : c'est la seule que la mesure du 31/10 ait trouvée dans des
       // fichiers réels. Le code donne alors le CID, le CID donne `/W`, et l'avance est EXACTE.
       // Sans table — toute autre CMap prédéfinie — il reste `/DW`, la largeur par défaut que la police déclare

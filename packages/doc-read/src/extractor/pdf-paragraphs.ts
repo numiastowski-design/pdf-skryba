@@ -29,7 +29,7 @@
  * A heading IS promoted from SIZE ALONE (document and page scales,
  * `extractor/pdf-document-scale.ts`). The criteria path, the numbered-bold rule,
  * the series pass, the grey bands and the figure demotion were removed on
- * 05/11/2026 — Mikolaj : « on se base sur la taille des textes et on essaye de
+ * 05/11/2026: « on se base sur la taille des textes et on essaye de
  * rester fidèle aux proportions, quitte à inventer des titres ».
  */
 
@@ -301,7 +301,7 @@ const opensWithNoteNumber = (line: Line): boolean => {
 /** Does `line` open a new paragraph after `prev`? A font-size change, a large vertical gap, a new list item, a note
  *  number opening the line, a centred pair or a deliberate break (see the predicates of `pdf-line-breaks.ts`). */
 /**
- * A COLUMN RUNNING ALONGSIDE A PICTURE IS MEASURED AGAINST ITS OWN LINES (Mikolaj, 12/11/2026 : « on repère les lignes
+ * A COLUMN RUNNING ALONGSIDE A PICTURE IS MEASURED AGAINST ITS OWN LINES (12/11/2026 : « on repère les lignes
  * qui sont collées à la photo, de celles qui finissent avant […] si une ligne est significativement plus courte que
  * celles qui étaient à côté de l'image », « le nb à fixer c'est 4 caractères »). A picture narrows the column it stands
  * beside: those lines stop at the picture, far short of the SEGMENT's margin, so `isDeliberateBreak` called every one
@@ -376,7 +376,7 @@ interface SegmentContext {
  * THE GEOMETRIC HALF of the paragraph decision: `prev` is short, and the question is whether it is short BECAUSE the
  * author ended there.
  *
- * THE LINE ABOVE IS JUDGED ON THE OBSTACLE *IT* HAD (Mikolaj, 12/11/2026). The question asked here is « does `prev`
+ * THE LINE ABOVE IS JUDGED ON THE OBSTACLE *IT* HAD (12/11/2026). The question asked here is « does `prev`
  * stop short? », so only `prev`'s own geometry can answer it. Until 12/11 both lines had to share the picture, and
  * the pair crossing the picture's BOTTOM edge fell back on the segment's margin — a width `prev` could never reach,
  * the picture was in the way, so it was declared deliberately short and cut. Measured on
@@ -423,7 +423,7 @@ export const paragraphsFromLines = (
   /** One list candidate per emitted block, in the same order — see `listRuns`. */
   const candidates: ListCandidate[] = [];
   // Les marqueurs que CE segment se donne, induits une fois puis relus pour chaque bloc : un jeton court qui ouvre
-  // trois lignes au MÊME retrait est une puce de ce document (`layout/induced-markers.ts`, Mikolaj 30/10/2026).
+  // trois lignes au MÊME retrait est une puce de ce document (`layout/induced-markers.ts`, 30/10/2026).
   // La liste fixe de `markerOf` passe d'abord ; l'induction ne sert que là où elle ne voit rien.
   const induced = inducedMarkers(lines.map((line) => ({ text: line.text, left: line.left })));
   const pending: PendingParagraph = { runs: [], size: undefined, first: 0, count: 0 };

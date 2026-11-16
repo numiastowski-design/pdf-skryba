@@ -115,7 +115,7 @@ export interface PagePlanReader {
 
 /**
  * 🔴 EACH DROP CAP OPENS THE LINE IT OVERHANGS INSIDE ITS OWN COLUMN — and the plan MOVES it there (step 2,
- * correction 1, Mikolaj 13/11/2026: « lettrine puis image, go »).
+ * correction 1, 13/11/2026: « lettrine puis image, go »).
  *
  * It is the rule of `pdf-lines.ts#liftDropCaps`, imported and not copied, applied to a narrower set of lines: that
  * module searches the WHOLE page, before the columns are split, and gives the « L » of Alouette page 2 to the
@@ -175,7 +175,7 @@ const capsOfColumn = (lines: readonly (readonly PdfTextRun[])[], inks: readonly 
 
 /**
  * 🔴 EACH DROP CAP OPENS THE LINE IT OVERHANGS INSIDE ITS OWN COLUMN — and the plan MOVES it there (step 2,
- * correction 1, Mikolaj 13/11/2026: « lettrine puis image, go »).
+ * correction 1, 13/11/2026: « lettrine puis image, go »).
  *
  * It is the rule of `pdf-lines.ts#liftDropCaps`, imported and not copied, applied to a narrower set of lines: that
  * module searches the WHOLE page, before the columns are split, and gives the « L » of Alouette page 2 to the

@@ -3,7 +3,7 @@
  *  Called by: `pipeline/publish-conservation.ts`, once per checked PDF render. */
 
 /**
- * THE RULE (Mikolaj, 21/09/2026, lot 5). A lost passage is a run of
+ * THE RULE (21/09/2026, lot 5). A lost passage is a run of
  * consecutive source words neither reading found. Its neighbours are the
  * source words right before and right after it. It goes back ONLY when:
  *  - each neighbour is a word the page matched (not an alt text, a list

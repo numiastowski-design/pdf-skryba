@@ -73,7 +73,7 @@ export function ourWeightOf(weightValue: number | undefined, name: string | unde
   return standardFontOf(name) !== undefined ? "normal" : "unknown";
 }
 
-/** ITALIC, FROM OUR DICTIONARY (Mikolaj, 05/11/2026 : « à faire oui ») — explicit in the PDF three times over. Order:
+/** ITALIC, FROM OUR DICTIONARY (05/11/2026 : « à faire oui ») — explicit in the PDF three times over. Order:
  *  the descriptor's `/Flags` bit 7 (value 64, ISO 32000-1 Table 123 « Italic »), its `/ItalicAngle` when not zero
  *  (Table 122), then the `/BaseFont` name (Italic, Oblique). A base font of the standard (Table 9) with none of these is
  *  upright: a fact. Any other mute name stays `undefined`, never « upright ». */

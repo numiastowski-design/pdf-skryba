@@ -1,5 +1,5 @@
 /** WHY a picture of a PDF page could not be read, in eight words we own — the field `why` of each place a
- *  `pdf-image-unread` notice names (`lib/reader-types.ts`). Mikolaj, 03/11/2026: naming WHERE was not enough, the
+ *  `pdf-image-unread` notice names (`lib/reader-types.ts`). 03/11/2026: naming WHERE was not enough, the
  *  dashboard said « 1 image illisible » and the cause took a throwaway probe to find.
  *  🔴 WHAT THIS MODULE IS, AND WHAT IT IS NOT. The cause is READ FROM THE PICTURE'S DICTIONARY, with the very
  *  predicates the decoders decide on (`imageFilterOf`, `chainRefusal`, `pictureSizeOk`, `maskSupported`,

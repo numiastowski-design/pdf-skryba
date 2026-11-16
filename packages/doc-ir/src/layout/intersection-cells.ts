@@ -133,7 +133,7 @@ const touches = (a: CellRect, b: CellRect): boolean => {
 };
 
 /**
- * BOXES SEPARATED BY VOIDS IS NOT A TABLE (rule R1, Mikolaj 01/10/2026).
+ * BOXES SEPARATED BY VOIDS IS NOT A TABLE (rule R1, 01/10/2026).
  * True when the vector region `grid` holds at least `MIN_ISOLATED_BOXES` painted cells (of `cells`, the page's closed
  * rectangles) and NONE of them touches another: that is a diagram of boxes (PowerPoint, Word drawing) or a layout of cards,
  * not rows and columns. The page then flows as paragraphs and images in reading order, all words kept (bias: a missed table

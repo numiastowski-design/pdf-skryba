@@ -97,7 +97,7 @@ export function interleaveRegions(
     // word for word, the behaviour from before 16/09/2026.
     //
     // PROSE ENTIRELY ABOVE A MULTI-REGION BAND BELONGS TO NONE OF ITS REGIONS
-    // (21/09/2026, Mikolaj's "option A"). Pairing it anyway split a paragraph lying
+    // (21/09/2026, "option A"). Pairing it anyway split a paragraph lying
     // above two phones of the MFA guide (fixture 24, pages 5 and 7) between them,
     // decided by a 1-pt difference in their tops. Such lines are read top to bottom
     // as plain prose BEFORE the band. No threshold: the boundary is the band's
@@ -149,7 +149,7 @@ export function interleaveRegions(
 
 /**
  * AN IMAGE THAT COVERS SEVERAL LINES IS NOT INSERTED BETWEEN THEM: IT PASSES
- * BEFORE THE BLOCK IT OVERLAPS (Mikolaj, 23/09/2026). Its median then decides
+ * BEFORE THE BLOCK IT OVERLAPS (23/09/2026). Its median then decides
  * nothing.
  *
  * THE CASE that raised it is the CEO message of booklet 26 page 3, published as
@@ -190,7 +190,7 @@ const imageFrontier = (region: PageRegion, mine: readonly PdfTextRun[]): number 
 
 /**
  * LES ÉLÉMENTS CÔTE À CÔTE SE LISENT DE GAUCHE À DROITE, TOUT LE TEMPS
- * (décision de Mikolaj, 16/09/2026).
+ * (décision de 16/09/2026).
  *
  * L'ordre se décidait sur le seul bord HAUT. Mesuré sur la page 3 du guide MFA :
  * deux codes QU côte à côte, bords hauts à 771 et 776 — **cinq points**
@@ -233,7 +233,7 @@ export const readingOrder = (regions: readonly PageRegion[]): PageRegion[][] => 
  * sentence was cut in two places of the page. So the WHOLE line is measured, and all its
  * fragments follow.
  *
- * ...EXCEPT WHERE THE LINE CROSSES A GUTTER WITH NO TEXT OVER IT (21/09/2026, Mikolaj's
+ * ...EXCEPT WHERE THE LINE CROSSES A GUTTER WITH NO TEXT OVER IT (21/09/2026, the maintainer's
  * "option B"). On fixture 24 page 7, the label "GSM" (boxed, right of the phone) and
  * "Ecran PC" (boxed, on the PC screenshot) share a baseline within one point. As one line
  * they spanned both images, lay inside the phone's box, and both went to it: the render

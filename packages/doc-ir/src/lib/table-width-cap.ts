@@ -1,4 +1,4 @@
-/** The size caps of a table (`MAX_TABLE_COLS` and `MAX_TABLE_ROWS`, Mikolaj, 08/10/2026): a table wider than the column cap, measured on
+/** The size caps of a table (`MAX_TABLE_COLS` and `MAX_TABLE_ROWS`, 08/10/2026): a table wider than the column cap, measured on
  *  its GRID after the empty columns are removed (`table-empty-parts.ts`, a merged cell counting for its span), or longer than the
  *  row cap (its rows after the empty header row is removed), is not published; the walk
  *  counts the ones it takes out so the document can say so (`table-withheld` notice, `reader-limits.ts#unpublishedPartNotices`).

@@ -21,7 +21,7 @@ const JPEG = "image/jpeg";
 export type SupportedKind = "google-doc" | "google-sheet" | "google-slides" | "docx" | "xlsx" | "pptx" | "pdf" | "image";
 
 /** What the dashboard says when a file is set aside as « unsupported format »
- *  (rules review, Mikolaj 18/09/2026) — one line per `SupportedKind` family,
+ *  (rules review, 18/09/2026) — one line per `SupportedKind` family,
  *  kept next to the whitelist it describes. */
 export const ACCEPTED_FORMATS_TEXT =
   "Accepted formats: Google Docs, Sheets and Slides; Word (.docx), Excel (.xlsx) and PowerPoint (.pptx) files; PDF; PNG and JPEG images.";

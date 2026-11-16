@@ -1,4 +1,4 @@
-/** Une URL coupée d'une rangée à l'autre revient entière (Mikolaj, 30/10/2026 : « une url doit pas être coupée, voire
+/** Une URL coupée d'une rangée à l'autre revient entière (30/10/2026 : « une url doit pas être coupée, voire
  *  même des lettres collées, ça se règle en regex non ? commençons juste par URL »).
  *  Decides: quand la dernière cellule d'une rangée finit sur une URL et que la rangée suivante n'a qu'une cellule qui la
  *  continue, les deux moitiés se rejoignent sans séparateur — et rien d'autre.
@@ -9,7 +9,7 @@
  *  + une ligne de tableau) : AUCUNE ne finit sur une URL. Le discriminant est donc l'URL, pas la rangée étroite.
  *  SA FAIBLESSE, ÉCRITE : sa population est de 1 (`38-SOP` page 6, « …/revalidation/my-db- » + « tool, for more
  *  information. »). Elle répare le défaut connu et ne peut mordre nulle part ailleurs sur le corpus ; on ne peut pas
- *  prouver qu'elle généralise. Arbitrage de Mikolaj : on commence par les URL.
+ *  prouver qu'elle généralise. Arbitrage : on commence par les URL.
  *
  *  🔴 PRÉDICAT À ELLE, JAMAIS PARTAGÉ. Le 29/10/2026, un prédicat de trait d'union emprunté à `layout/cell-text.ts` a
  *  collé « Total - » à « 12,00 » — un nombre que le document ne porte pas. Une règle ne vaut que par ce que son APPELANT

@@ -6,7 +6,7 @@
  *  all otherwise, which is an ABSTENTION (`undefined`), never an invented character. A composite font without
  *  `/ToUnicode` falls in that last case: its codes are glyph numbers, and only its font program's CHARSTRINGS —
  *  the encrypted part, which we do not read — could say what they paint.
- *  ⚠️ The rule « we will never read a font program » (Mikolaj, 24/10/2026) was LIFTED, narrowly, on 04/11/2026:
+ *  ⚠️ The rule « we will never read a font program » (24/10/2026) was LIFTED, narrowly, on 04/11/2026:
  *  a simple Type 1 font that declares no encoding has its own read from its program's CLEARTEXT header
  *  (`./type1-encoding.ts`). Nothing else of a program is read, and no glyph outline ever is.
  *  NOT here: the data (`./glyph-data.ts`), the CMap reading (`./to-unicode.ts`), the name rules (`./names.ts`),
@@ -69,7 +69,7 @@ function differencesOf(reader: FontReader, encoding: PdfDict | undefined): Diffe
  *  line shifted. Two readings of the same thing always end up diverging.
  *  `builtIn` is the internal encoding of a standard font when it has one (Symbol, ZapfDingbats). */
 /** The encoding a simple Type 1 font's own PROGRAM declares, read from its cleartext header only
- *  (`./type1-encoding.ts`, Mikolaj 04/11/2026). Asked for ONLY when the font declares no encoding of its own, so a
+ *  (`./type1-encoding.ts`, 04/11/2026). Asked for ONLY when the font declares no encoding of its own, so a
  *  file that states its encoding is never second-guessed.
  *  Limits, written: `/FontFile` only — a TrueType program (`/FontFile2`) and a CFF one (`/FontFile3`) are other
  *  formats, unread; and the program is decoded once per FONT, not once per object, so a document naming the same
@@ -132,7 +132,7 @@ function toUnicodeOf(reader: FontReader, font: PdfDict, memo: FontTextMemo | und
 /** What this font's `/ToUnicode` DECLARES for a code where `fontText` refuses to publish — the half-pair
  *  of an emoji, which a NEIGHBOURING code completes. `undefined` everywhere else.
  *  Who calls it and why: `extractor/pdf-glyph-source.ts`, the only one to see the sequence of painted codes, pairs these
- *  half-pairs (Mikolaj, 31/10/2026: "we have to do it ourselves", for emojis). It is therefore not a
+ *  half-pairs (31/10/2026: "we have to do it ourselves", for emojis). It is therefore not a
  *  second reading of the CMap: it is the SAME table, whose refused part is exposed. */
 export function fontDeclaredText(reader: FontReader, font: PdfDict, memo?: FontTextMemo, budget?: TableBudget): (code: number) => string | undefined {
   const toUnicode = toUnicodeOf(reader, font, memo, budget);

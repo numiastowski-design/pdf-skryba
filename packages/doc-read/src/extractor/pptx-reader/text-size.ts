@@ -1,5 +1,5 @@
 /** The size a PLACEHOLDER's run inherits when its `a:rPr` writes no `sz`,
- *  for the slide drawing only (Mikolaj, 29/09/2026 — lifts the limit of
+ *  for the slide drawing only (29/09/2026 — lifts the limit of
  *  MIKSUDOC « Spécification fonctionnelle » §9.3.7): per paragraph level (`a:pPr lvl`, 0-based →
  *  `a:lvl{n+1}pPr/a:defRPr sz`), the first size written along the chain
  *  PowerPoint reads — the shape's own `a:lstStyle`, then the layout's
@@ -15,7 +15,7 @@
  *  `extractor/slide-svg.ts`).
  *  Called by: `pptx-reader/shapes.ts`. */
 
-import { child, type XNode } from "../ooxml/xml";
+import { findChild, type XNode } from "../ooxml/xml";
 import { placeholderOf } from "./placeholder";
 import { sizeOf } from "./text";
 import { placeholderStyles, type TextStyleSources } from "./text-color";
@@ -32,11 +32,11 @@ export const inheritedTextSizes = (
 ): Readonly<Record<number, number>> | undefined => {
   const ph = placeholderOf(element);
   if (ph === undefined) return undefined;
-  const chain = [child(body, "a:lstStyle"), ...placeholderStyles(ph, sources)];
+  const chain = [findChild(body, "a:lstStyle"), ...placeholderStyles(ph, sources)];
   const sizes: Record<number, number> = {};
   for (const level of new Set(levels)) {
     for (const style of chain) {
-      const size = sizeOf(child(child(style ?? {}, `a:lvl${level + 1}pPr`) ?? {}, "a:defRPr"));
+      const size = sizeOf(findChild(findChild(style ?? {}, `a:lvl${level + 1}pPr`) ?? {}, "a:defRPr"));
       if (size !== undefined) {
         sizes[level] = size;
         break;

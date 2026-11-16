@@ -7,7 +7,7 @@
  *  an inherited colour (`pptx-reader/text-color.ts`).
  *  Called by: `pptx-reader/shapes.ts`, `pptx-reader/text-color.ts`. */
 
-import { attr, child, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, type XNode } from "../ooxml/xml";
 
 export interface PptxPlaceholder {
   type?: string;
@@ -15,9 +15,9 @@ export interface PptxPlaceholder {
 }
 
 export const placeholderOf = (sp: XNode): PptxPlaceholder | undefined => {
-  const ph = child(child(child(sp, "p:nvSpPr") ?? {}, "p:nvPr") ?? {}, "p:ph");
+  const ph = findChild(findChild(findChild(sp, "p:nvSpPr") ?? {}, "p:nvPr") ?? {}, "p:ph");
   if (!ph) return undefined;
-  const type = attr(ph, "type");
-  const idx = attr(ph, "idx");
+  const type = attributeOf(ph, "type");
+  const idx = attributeOf(ph, "idx");
   return { ...(type === undefined ? {} : { type }), ...(idx === undefined ? {} : { idx }) };
 };

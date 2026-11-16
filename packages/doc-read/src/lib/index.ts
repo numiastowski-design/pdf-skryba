@@ -28,6 +28,6 @@ export { detectLanguage } from "doc-ir/pipeline/detect-language";
 // La décision du recollage : son `noWorse` ne compare pas les mêmes choses que celui des mots collés, donc la porte
 // les nomme distinctement plutôt que de laisser l'appelant deviner.
 export { cutParagraphEdits, noWorse as joinNoWorse } from "../pipeline/cut-paragraph-repair";
-export { XMLFragmentParser } from "../extractor/xml/xml-parser";
+export { XmlFragmentParser } from "../extractor/xml/xml-parser";
 export { attrOf, kidsOf, tagOf } from "../pipeline/source-reading-package";
 export type { N } from "../pipeline/source-reading-package";

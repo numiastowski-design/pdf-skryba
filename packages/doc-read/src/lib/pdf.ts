@@ -1,5 +1,5 @@
 /**
- * THE DOOR OF THE PUBLISHED PDF PACKAGE (`skryba`), and nothing else (Mikolaj, 09/11/2026: « séparer la partie pdf,
+ * THE DOOR OF THE PUBLISHED PDF PACKAGE (`skryba`), and nothing else (09/11/2026: « séparer la partie pdf,
  * pour que skryba ne gère QUE le pdf »).
  *
  * WHY A DOOR AND NOT A FOLDER, for now. The package is an esbuild BUNDLE: what it contains is what its entry REACHES,
@@ -11,7 +11,7 @@
  * `pipeline/conservation-source.ts`. It does not: that is an `import type`, which esbuild erases. The bundle is the
  * measure, not the specifiers.)
  * That boundary is held by a TEST on the built artefact (`tools/build-library.test.ts`), not by the filesystem — so it
- * is DETECTED, not impossible. Mikolaj took the physical split as the next chantier, which is where it becomes
+ * is DETECTED, not impossible. The maintainer took the physical split as the next chantier, which is where it becomes
  * impossible; this door and that guard survive it.
  *
  * Decides: what a third party may call to read a PDF, and nothing more. One name per thing it needs.

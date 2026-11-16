@@ -28,7 +28,7 @@ import { fillBetween } from "./pdf-links";
 const SPACE = /\s/u;
 
 /**
- * A cell paragraph's inlines, cut at its links and its raised calls (links Mikolaj, 07/10/2026; calls 23/10/2026). The links are
+ * A cell paragraph's inlines, cut at its links and its raised calls (links 07/10/2026; calls 23/10/2026). The links are
  * the ones `pdf-links.ts` tied to the GLYPHS (`hrefOf`), the calls the ones the lines read as raised (`raised`,
  * `layout/cell-text.ts#CellLine.raised`), never a second geometry: each non-space character of `text` is led back to the glyph
  * that paints it by ORDER alone — `fragments` are the paragraph's glyphs in reading order, and `text` is their texts joined,
@@ -128,7 +128,7 @@ export function cellsOfRow<T>(
 }
 
 /*
- * NO COLOUR BAR IS PUBLISHED ANY MORE (Mikolaj, 23/09/2026).
+ * NO COLOUR BAR IS PUBLISHED ANY MORE (23/09/2026).
  *
  * What lived here: `cellDataFills`, which output the fills of a cell — a
  * background discarded for its geometry, a fill straddling a boundary dropped —
@@ -148,7 +148,7 @@ export function cellsOfRow<T>(
  * proposed separate nothing: « a bar alone on its LINE » keeps the 16
  * lines of 0000713 (their line carries all the prose of the cell); « a bar
  * alone in its CELL » keeps the black bar of 0000523 next to « LCU », which
- * Mikolaj wants gone, and the magenta line laid over a screenshot of 0000754.
+ * the maintainer wants gone, and the magenta line laid over a screenshot of 0000754.
  * Colour does not separate either — black is decorative here and named by the
  * report card's legend elsewhere. When the discriminant is not defined, we do not
  * decide: we remove everything.
@@ -158,7 +158,7 @@ export function cellsOfRow<T>(
  * respectively. The TEXT of their row stays whole — the title of the
  * skill, the grade, the assessment. It is a colour that is lost, not a word.
  *
- * SWATCHES ARE REMOVED TOO (Mikolaj, 07/10/2026): a cell's disc
+ * SWATCHES ARE REMOVED TOO (07/10/2026): a cell's disc
  * (`cellDisc`) rendered the cell as an SVG image whose text lived only in
  * the alt attribute — not findable by search. The digit or word of a
  * cell on a disc now comes out as TEXT, like any other. Colour
@@ -193,7 +193,7 @@ function imagesPerCell(images: readonly CellImage[], grid: TableGrid, merge: Mer
 }
 
 /**
- * THE CELL LINE JOIN, KEPT BEHIND ONE SWITCH (Mikolaj, 23/09/2026).
+ * THE CELL LINE JOIN, KEPT BEHIND ONE SWITCH (23/09/2026).
  *
  * Set this to `false` and a cell's lines are NEVER joined: every line the PDF
  * drew keeps its own break, and `cellParagraphs` separates them with a `<br/>`
@@ -207,10 +207,10 @@ function imagesPerCell(images: readonly CellImage[], grid: TableGrid, merge: Mer
  * does LITTLE: 25 paragraphs out of 267 on booklet 26, because only a line that
  * reaches the cell's DRAWN right edge is joined, and few lines of that booklet
  * do. And those 25 are exactly what makes the published line lengths UNEVEN —
- * a few long lines among lines that kept the PDF's own break. Mikolaj saw it on
+ * a few long lines among lines that kept the PDF's own break. The maintainer saw it on
  * the rendered page.
  *
- * Its removal was prepared on 23/09/2026 and CALLED OFF by Mikolaj: « keep it
+ * Its removal was prepared on 23/09/2026 and CALLED OFF by « keep it
  * for now ». The question it hangs on is open, not settled — *does the
  * join earn the uneven lines?* — and it is answered by looking at more real
  * documents, not by reasoning. Flipping this constant IS the experiment.
@@ -218,14 +218,14 @@ function imagesPerCell(images: readonly CellImage[], grid: TableGrid, merge: Mer
 const JOIN_CELL_LINES = true;
 
 /**
- * AN IMAGE WHOSE CENTRE IS IN A CELL IS PUBLISHED IN THAT CELL (Mikolaj,
+ * AN IMAGE WHOSE CENTRE IS IN A CELL IS PUBLISHED IN THAT CELL (
  * 21/09/2026), among its text lines by height: before the first line whose
  * middle lies below the image's centre — the median rule of the page flow
  * (`pdf-region-order.ts`). The text keeps its own order; images meeting at the
  * same place go top to bottom, then left to right. An unreadable image leaves
  * nothing. Mutates `blocks`, whose paragraphs `lines` describes one to one.
  *
- * AN IMAGE BESIDE A BLOCK OF TEXT IS NOT INSERTED INTO IT (Mikolaj,
+ * AN IMAGE BESIDE A BLOCK OF TEXT IS NOT INSERTED INTO IT (
  * 23/09/2026): it goes before that block, `imageFrontier`. The cell path
  * carries the rule because the booklet is where it bites — every page of
  * fixture 26 is one framed cell, so its images are placed HERE and never by
@@ -254,7 +254,7 @@ interface CellParagraphBox {
 
 /**
  * AN IMAGE THAT COVERS SEVERAL LINES IS NOT INSERTED BETWEEN THEM: IT PASSES
- * BEFORE THE BLOCK IT OVERLAPS (Mikolaj, 23/09/2026). Its median then decides
+ * BEFORE THE BLOCK IT OVERLAPS (23/09/2026). Its median then decides
  * nothing.
  *
  * THE CASE: booklet 26 page 3, the CEO's welcome message. The portrait is
@@ -359,7 +359,7 @@ function recordCollapsedPaintings(
  * Abstentions (the table stays cells, and past the cap is withheld as before): more than one row, a merged cell, an image,
  * a link or a repainted glyph (those live in cells), a box holding more than one grapheme (NFC, zero-width characters
  * removed, `Intl.Segmenter`).
- * ⚠️ WRITTEN BIAS, ACCEPTED (Mikolaj, 15/10/2026, judged by impact): a tight one-row strip of DISTINCT single letters (a
+ * ⚠️ WRITTEN BIAS, ACCEPTED (15/10/2026, judged by impact): a tight one-row strip of DISTINCT single letters (a
  * weekday legend « S M T W T F S » in narrow boxes) is joined into one token. Single letters carry no search value; the
  * joined form fields do. Pinned by a test. ⚠️ WRITTEN LIMITS: a right-to-left strip is never joined, and is space-separated
  * in column (visual) order, not reading order; a leading label box (« No. ») is read as one more letter of the first word.
@@ -605,7 +605,7 @@ export function renderTableRegion(
   for (const image of images) contentColumns.add(columnOf((image.xMin + image.xMax) / 2));
 
   // A REGION OF ONE COLUMN: THE CONDITION UNDER WHICH A CELL JOINS ITS LINES
-  // (Mikolaj, 23/09/2026 — the whole reasoning is at `pdf-cell-paragraphs.ts`)
+  // (23/09/2026 — the whole reasoning is at `pdf-cell-paragraphs.ts`)
   // AND, SINCE 26/10/2026, THE CONDITION UNDER WHICH THE REGION IS PUBLISHED
   // FLAT (`flatOneColumnRegion`, at the end of this function). Read on the
   // columns that actually CARRY something, the same set `dropEmptyColumns`
@@ -705,7 +705,7 @@ export function renderTableRegion(
         //    0000754 disappear, but the school reports keep 12 (their narrow
         //    « Matières » column) and the booklet only gains 29 joins instead of
         //    64 — Canva lays its text far inside its page frame. Neither reading
-        //    reaches zero wrong, and one wrong is enough to give up (Mikolaj,
+        //    reaches zero wrong, and one wrong is enough to give up (
         //    23/09: fidelity before comfort).
         //    WHAT THIS REFUTES: the blocking case is NOT booklet 26 p13. Neither
         //    geometric reading joins its two drawn-bullet items — « Le chat via
@@ -743,7 +743,7 @@ type TableBlock = Extract<IRBlock, { kind: "table" }>;
 
 /**
  * A REGION OF ONE CONTENT COLUMN IS PUBLISHED AS ITS CELLS' BLOCKS, FLAT, IN ROW
- * ORDER — NOT AS A TABLE (Mikolaj, 26/10/2026, on measurement). No exception of
+ * ORDER — NOT AS A TABLE (26/10/2026, on measurement). No exception of
  * form. It supersedes « one-column tables stay tables » of 22/09/2026, below.
  *
  * WHY. A grid of one column offers no second reading that confirms a table:
@@ -787,7 +787,7 @@ type TableBlock = Extract<IRBlock, { kind: "table" }>;
  * p3-6). Its costs, seen on the page images: 29 p3, a page of prose cut into
  * 38 one-line cells, came out as 38 paragraphs with 31 mid-sentence breaks as
  * soon as a cell boundary had to stay a paragraph boundary; without that
- * boundary, 0000713 p5 joined lines of different cells. Mikolaj's decision
+ * boundary, 0000713 p5 joined lines of different cells. the decision
  * then: ONE-COLUMN TABLES STAY TABLES, in every case. A borderless table does
  * not exist in Confluence Cloud (the editor offers no border option), so
  * making the grid "transparent" would mean "no table" — and the table was
@@ -799,7 +799,7 @@ function flatOneColumnRegion(built: readonly (readonly { blocks: IRBlock[] }[])[
 }
 
 /**
- * A GRID COLUMN WITH NOTHING IN IT, IN ANY ROW, IS NOT PUBLISHED (Mikolaj,
+ * A GRID COLUMN WITH NOTHING IN IT, IN ANY ROW, IS NOT PUBLISHED (
  * 22/09/2026). Nothing means no text, no image, no disc and no data fill
  * located in that column (`contentColumns`). A merged cell that crosses the
  * column keeps it only if part of its content lies IN it; otherwise the cell
@@ -827,7 +827,7 @@ function flatOneColumnRegion(built: readonly (readonly { blocks: IRBlock[] }[])[
  * (4 → 2, its screenshot frames) and the 0000669 footer (3 → 2, a spacer) were
  * dropped here too.
  *
- * A HEADING IS CONTENT (Mikolaj, 22/09/2026): an entirely empty column has no
+ * A HEADING IS CONTENT (22/09/2026): an entirely empty column has no
  * heading either, so a column headed and empty below is kept. Measured the same
  * day, in tables with a body: 9 columns carry text in their heading only, all
  * kept. 5 have painted data below (bars, discs). 4 hold no text and no painted

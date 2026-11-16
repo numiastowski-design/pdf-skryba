@@ -24,7 +24,7 @@
  *  whether or not the page shows its content.
  *
  *  The diagram slides' text (`extractPptx`'s single `diagramText` block, one section per slide) is NOT on the page since 19/10/2026
- *  (no collapsed block): the control EXCUSES them (a diagram is published as a drawing only, Mikolaj 22/10/2026)
+ *  (no collapsed block): the control EXCUSES them (a diagram is published as a drawing only, 22/10/2026)
  *  (`declared-format-conservation.ts#diagramTextWords`). Our
  *  own composed text (`Slide N` tab titles and diagram section labels) needs
  *  no exclusion: production only checks for MISSING source words, never for
@@ -238,7 +238,7 @@ export const readPptxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
     const n = Number(raw);
     return Number.isInteger(n) && Math.abs(n) <= 27_273_042_329_600 ? n : undefined;
   };
-  /** Rule « Rien d'invisible » (Mikolaj, 09/10/2026), written here on its own, not shared with the extractor: a TOP-LEVEL element
+  /** Rule « Rien d'invisible » (09/10/2026), written here on its own, not shared with the extractor: a TOP-LEVEL element
    *  (a group by its own frame, never its members) wholly outside the slide is not published, so none of its words is expected.
    *  PowerPoint shows the pasteboard only in normal view, never in slideshow, print or export (observed behaviour, not sourced).
    *  A rotated element, an unwritten box (a placeholder inheriting from its layout) or an unknown slide size is kept. */
@@ -280,7 +280,7 @@ export const readPptxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
     if (["0", "false"].includes(attrOf(slide, "show") ?? "")) continue; // hidden: not a unit at all, like the page
 
     const number = slides.length + 1;
-    // The display cap (Mikolaj, 27/09/2026): mirrors `extractPptx`'s own
+    // The display cap (27/09/2026): mirrors `extractPptx`'s own
     // slice of VISIBLE slides — this reading's own count, never the page's
     // notice text (see this file's header).
     if (number > (limits?.presentationTabs ?? NO_CAP)) {
@@ -291,7 +291,7 @@ export const readPptxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
 
     const tree = first(first(slide, "p:cSld"), "p:spTree");
     const elementCount = tree ? countElements(tree) : 0;
-    // The element-cap withhold (Mikolaj, 28/09/2026): this reading's own
+    // The element-cap withhold (28/09/2026): this reading's own
     // structural count, never the page's notice text (see this file's header).
     if (elementCount > (limits?.slideElements ?? NO_CAP)) {
       slides.push({ number, text: "", overCap: false, withheld: true, structure: emptyUnitStructure() });
@@ -411,7 +411,7 @@ export const readPptxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
  * become tokens at all (`excludedUnits`, or simply never collected — the
  * repeated title). A read that cannot be trusted becomes a named failure
  * instead of throwing through to the caller: never a reason not to publish
- * (Mikolaj, 21/09/2026).
+ * (21/09/2026).
  */
 export async function readPptxConservationSource(
   bytes: Uint8Array,

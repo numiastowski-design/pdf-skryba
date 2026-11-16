@@ -5,7 +5,7 @@
  *  `./names.ts` abstained and the text was lost. Measured on 04/11/2026: `sd-7133949.pdf`, a LaTeX report, published
  *  **214 words of 4 019** — everything we published came from its included figures, and all of its body text, set in
  *  Computer Modern subsets, was gone. It alone held 52 % of the measured word losses of the corpus.
- *  🔴 THE RULE OF 24/10/2026 — « we will never read a font program » — IS LIFTED, NARROWLY, by Mikolaj on
+ *  🔴 THE RULE OF 24/10/2026 — « we will never read a font program » — IS LIFTED, NARROWLY, on
  *  04/11/2026, and the narrowness is the point: we read the PostScript header UP TO `eexec` and not one byte
  *  beyond. The outlines stay closed, so no glyph is ever interpreted, and nothing is decrypted.
  *  Decides: the 256 glyph NAMES a program declares; that reading stops at `eexec` (`./bounds.ts#TYPE1_CLEARTEXT_LIMIT`

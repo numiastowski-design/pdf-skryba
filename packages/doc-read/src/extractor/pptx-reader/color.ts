@@ -1,7 +1,7 @@
 /** The EXACT colour a DrawingML fill writes, for the slide drawing only
  *  (`extractor/slide-svg.ts`): a `a:solidFill` whose one colour element,
  *  with no modifier child (but the four zero offsets), is an `a:srgbClr`, an `a:sysClr` (its `lastClr`,
- *  held exact: Mikolaj, 25/09/2026) or an `a:schemeClr` (through the slide's
+ *  held exact: 25/09/2026) or an `a:schemeClr` (through the slide's
  *  colour map to its theme's colour scheme); and the colours a shape's
  *  `p:style` refers to (`a:fillRef` through the theme's fill styles;
  *  `a:fontRef` is read in `pptx-reader/text-color.ts`). Anything else is not known: a modifier (`lumMod`, `alpha`…)
@@ -14,7 +14,7 @@
  *  Called by: `pptx-reader/index.ts`, `pptx-reader/shapes.ts`,
  *  `pptx-reader/text-color.ts`. */
 
-import { attr, attrs, child, kids, tagOf, type XNode } from "../ooxml/xml";
+import { attributeOf, attributesOf, findChild, childNodesOf, qualifiedNameOf, type XNode } from "../ooxml/xml";
 
 /** "#RRGGBB", uppercase. */
 export type Hex = `#${string}`;
@@ -42,8 +42,8 @@ export interface ColorContext {
 
 /** The element children of a node, character data left out. */
 export const elements = (node: XNode): XNode[] =>
-  kids(node).filter((k) => {
-    const tag = tagOf(k);
+  childNodesOf(node).filter((k) => {
+    const tag = qualifiedNameOf(k);
     return tag !== undefined && tag !== "#text";
   });
 
@@ -55,7 +55,7 @@ const hexOf = (value: string | undefined): Hex | undefined =>
  *  black on white). Any other modifier, or any of these at another value, still makes the colour unknown (decision 12 of 25/09/2026). */
 const NEUTRAL_OFFSETS: ReadonlySet<string> = new Set(["a:hueOff", "a:satOff", "a:lumOff", "a:alphaOff"]);
 
-const changesNothing = (modifier: XNode): boolean => NEUTRAL_OFFSETS.has(tagOf(modifier) ?? "") && Number(attr(modifier, "val")) === 0;
+const changesNothing = (modifier: XNode): boolean => NEUTRAL_OFFSETS.has(qualifiedNameOf(modifier) ?? "") && Number(attributeOf(modifier, "val")) === 0;
 
 /** Channels stay unrounded (0..255) between modifiers: only the final colour is rounded. */
 /** sRGB channel (0..255) to linear light (0..1), and back (IEC 61966-2-1). */
@@ -107,10 +107,10 @@ const clamp01 = (v: number): number => Math.min(Math.max(v, 0), 1);
 /** One modifier applied to a colour, or `undefined` for one this reader does not resolve (`alpha`, `hueMod`, `comp`…). `tint` and `shade`
  *  work in linear light (ECMA-376 §20.1.2.3.34 and §20.1.2.3.31; Office's PDF paints #CFD5EA for accent1 4472C4 at `tint 40000`). */
 const modified = (rgb: Rgb, modifier: XNode): Rgb | undefined => {
-  const val = Number(attr(modifier, "val")) / 100_000;
+  const val = Number(attributeOf(modifier, "val")) / 100_000;
   if (!Number.isFinite(val)) return undefined;
   const [h, s, l] = toHsl(rgb);
-  switch (tagOf(modifier)) {
+  switch (qualifiedNameOf(modifier)) {
     case "a:tint":
       return rgb.map((c) => fromLinear(1 - (1 - toLinear(c)) * val)) as Rgb;
     case "a:shade":
@@ -139,13 +139,13 @@ const withModifiers = (base: Hex, color: XNode, context: ColorContext | undefine
 };
 
 const baseColorOf = (color: XNode, context: ColorContext | undefined, placeholder: Hex | undefined): Hex | undefined => {
-  switch (tagOf(color)) {
+  switch (qualifiedNameOf(color)) {
     case "a:srgbClr":
-      return hexOf(attr(color, "val"));
+      return hexOf(attributeOf(color, "val"));
     case "a:sysClr":
-      return hexOf(attr(color, "lastClr"));
+      return hexOf(attributeOf(color, "lastClr"));
     case "a:schemeClr": {
-      const val = attr(color, "val");
+      const val = attributeOf(color, "val");
       if (val === undefined) return undefined;
       if (val === "phClr") return placeholder;
       if (context === undefined) return undefined;
@@ -176,7 +176,7 @@ const FILLS = new Set(["a:noFill", "a:solidFill", "a:gradFill", "a:blipFill", "a
 
 /** The fill a properties element writes, or `undefined` when it writes none. */
 export const writtenFillOf = (props: XNode | undefined): XNode | undefined =>
-  kids(props ?? {}).find((k) => FILLS.has(tagOf(k) ?? ""));
+  childNodesOf(props ?? {}).find((k) => FILLS.has(qualifiedNameOf(k) ?? ""));
 
 /** The fill `p:style/a:fillRef` gives: `idx` 0 and 1000 mean no fill
  *  (ECMA-376 Part 1 §20.1.4.2.10), "none"; 1 to 999, the theme's fill
@@ -185,12 +185,12 @@ export const writtenFillOf = (props: XNode | undefined): XNode | undefined =>
  *  style, a background style (`idx` 1001 and above) or a missing one
  *  "unknown". */
 export const styleFill = (fillRef: XNode, context: ColorContext | undefined): PptxFill => {
-  const idx = Number(attr(fillRef, "idx"));
+  const idx = Number(attributeOf(fillRef, "idx"));
   if (idx === 0 || idx === 1000) return "none";
   const style = context === undefined || idx >= 1000 ? undefined : context.fillStyles[idx - 1];
   if (style === undefined) return "unknown";
-  if (tagOf(style) === "a:noFill") return "none";
-  if (tagOf(style) !== "a:solidFill") return "unknown";
+  if (qualifiedNameOf(style) === "a:noFill") return "none";
+  if (qualifiedNameOf(style) !== "a:solidFill") return "unknown";
   const own = elements(fillRef);
   const refColor = own.length === 1 ? exactColorOf(own[0]!, context) : undefined;
   return solidFillColor(style, context, refColor) ?? "unknown";
@@ -200,7 +200,7 @@ export const styleFill = (fillRef: XNode, context: ColorContext | undefined): Pp
 export const schemeOf = (clrScheme: XNode | undefined): Record<string, Hex> => {
   const scheme: Record<string, Hex> = {};
   for (const slot of elements(clrScheme ?? {})) {
-    const tag = tagOf(slot);
+    const tag = qualifiedNameOf(slot);
     const colors = elements(slot);
     const hex = colors.length === 1 ? exactColorOf(colors[0]!) : undefined;
     if (tag !== undefined && tag.startsWith("a:") && hex !== undefined) scheme[tag.slice(2)] = hex;
@@ -209,11 +209,11 @@ export const schemeOf = (clrScheme: XNode | undefined): Record<string, Hex> => {
 };
 
 /** A `p:clrMap` or `a:overrideClrMapping`'s attributes. */
-export const colorMapOf = (node: XNode): Record<string, string> => ({ ...attrs(node) });
+export const colorMapOf = (node: XNode): Record<string, string> => ({ ...attributesOf(node) });
 
 /** The `a:overrideClrMapping` of a slide or layout's `p:clrMapOvr`, if any
  *  (`a:masterClrMapping` keeps the mapping above). */
 export const overrideMapOf = (part: XNode | undefined): Record<string, string> | undefined => {
-  const override = child(child(part ?? {}, "p:clrMapOvr") ?? {}, "a:overrideClrMapping");
+  const override = findChild(findChild(part ?? {}, "p:clrMapOvr") ?? {}, "a:overrideClrMapping");
   return override === undefined ? undefined : colorMapOf(override);
 };

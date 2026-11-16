@@ -59,7 +59,7 @@ export const SUPERSCRIPT_MIN_RISE_EM = 0.2;
  *  rebuilt would join the line (review 23/10/2026). Starting value to calibrate: the population of calls ending their line (gap
  *  past the edge) and the population of unrelated raised small items just past a line's end are not measured yet. */
 export const TRAILING_CALL_GAP_EM = 0.3;
-/** THE OTHER SIDE (04/11/2026, Mikolaj on the published Federal Register: « corriges »): a note NUMBER opens its note at
+/** THE OTHER SIDE (04/11/2026 on the published Federal Register: « corriges »): a note NUMBER opens its note at
  *  the foot of a column — a small raised digit that ENDS just before the line's left edge. Measured on `sd-4133285`,
  *  25 numbers: the white between the number's right edge and its note is 0.13 to 0.16 em of the note's size. Such a
  *  number is reseated onto the line it opens, in every flow: it is then the line's first item, so `isRaisedCall`
@@ -205,7 +205,7 @@ export const reseatSuperscripts = <T extends SuperscriptReading>(
   /** How far past the host's right edge (em x host size) an item may start and still follow it; 0 = inside the host's span. */
   trailingGapEm = 0,
 ): T[][] => {
-  // 🔴 L'HÔTE EST LA LIGNE QUE L'ITEM SURPLOMBE, PAS LA SUIVANTE DE LA LISTE (04/11/2026, Mikolaj sur la page
+  // 🔴 L'HÔTE EST LA LIGNE QUE L'ITEM SURPLOMBE, PAS LA SUIVANTE DE LA LISTE (04/11/2026 sur la page
   // publiée : « pourquoi le 6 de registration n'est pas en exposant ? »). Les lignes d'une page à plusieurs colonnes
   // s'entrelacent dans l'ordre des ordonnées : la ligne qui suit un appel de note est souvent celle d'une AUTRE
   // colonne, qui ne le contient pas, et l'appel restait seul — publié comme un paragraphe d'un caractère. Mesuré sur

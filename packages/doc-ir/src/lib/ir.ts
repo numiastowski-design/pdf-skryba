@@ -39,7 +39,7 @@ export interface ImageRef {
   widthPt?: number;
   /** The file's OWN width in pixels, as its header declares it (PNG, JPEG,
    *  GIF; `extractor/image-pixel-width.ts`). The page never draws an image
-   *  wider than this: an upscaled screenshot is blurry (G2, Mikolaj
+   *  wider than this: an upscaled screenshot is blurry (G2
    *  24/09/2026). Absent (another format, or no drawn width to limit): the
    *  drawn width alone decides, as before. */
   pixelWidth?: number;
@@ -121,9 +121,9 @@ export interface Inline {
   marks?: InlineMark[];
   /** The colour of the TEXT, exactly as the FILE states it: a `#rrggbb`, or a colour keyword the file names
    *  (`w:highlight` writes « yellow », not a value). NEVER a colour we worked out: a theme reference is left out
-   *  rather than resolved, because resolving it means a correspondence table of our own, which Mikolaj refuses
+   *  rather than resolved, because resolving it means a correspondence table of our own, which the maintainer refuses
    *  (14/09/2026 : « je veux pas de table de correspondance pour les couleurs »). Published since 10/11/2026
-   *  (« du coup ne les jetons plus ») — Rovo reads colour and highlight, measured by Mikolaj the same day. */
+   *  (« du coup ne les jetons plus ») — Rovo reads colour and highlight, measured the same day. */
   color?: string;
   /** The colour BEHIND the text (`w:highlight`, or the shading fill the file gives), under the same rule as `color`. */
   background?: string;
@@ -155,7 +155,7 @@ export interface Inline {
 }
 
 /** A paragraph's alignment, when its source DECLARES one the page keeps
- *  (checkpoint A, Mikolaj 24/09/2026): Confluence keeps center and right,
+ *  (checkpoint A, 24/09/2026): Confluence keeps center and right,
  *  and left is its default (docs/PLATFORM-STATUS.md §42/§43). Written only by
  *  formats that declare it (docx `w:jc`) — never inferred from a PDF's
  *  geometry. Absent: the renderer writes nothing. */
@@ -176,14 +176,14 @@ export type IRBlock =
   | {
       kind: "table";
       /** `"image"`: the table is as wide as the image its first cell opens with (the figure of a PDF page, lifted out of
-       *  its columns with its caption — Mikolaj, 05/11/2026). Written `data-table-width` + `align-start`. */
+       *  its columns with its caption — 05/11/2026). Written `data-table-width` + `align-start`. */
       width?: "image";
       /** `true`: a one-cell table born from a closed rectangle DRAWN around a block of a PDF column (the boxed masthead of a
        *  bulletin; `extractor/pdf-framed-blocks.ts`, 06/11/2026). THE ONLY table the renderer keeps nested inside a cell:
        *  every other nested table is flattened for Confluence search (`renderer/storage.ts#flattenTableCellBlocks`, decision
        *  of 29/09/2026, which the .docx readers rely on). Written by the PDF reader only, under its `framed` option.
        *  ⚠️ Confluence stores it as a `nested-table` migration extension, not a native table (measured 06/11/2026,
-       *  PLATFORM-STATUS §97): the variant is stopped pending Mikolaj's decision. */
+       *  PLATFORM-STATUS §97): the variant is stopped pending the decision. */
       framed?: true;
       rows: {
         cells: { blocks: IRBlock[]; colspan?: number; rowspan?: number; header?: boolean }[];
@@ -234,18 +234,18 @@ export type IRBlock =
   | { kind: "toc" }
   /** A titled part of the page (workbook tab). */
   | { kind: "section"; title?: string; blocks: IRBlock[] }
-  /** Tabs of the page, one per slide of a presentation (Mikolaj 25/09/2026:
+  /** Tabs of the page, one per slide of a presentation (25/09/2026:
    *  a slide is a native Confluence tab, docs/PLATFORM-STATUS.md §47). `title`
    *  is the tab's label; `blocks` its content, heading included. */
   | { kind: "tabs"; tabs: IRTab[] }
-  /** The text of the slides drawn as our SVG. NOT published (Mikolaj, 19/10/2026: no collapsed block
-   *  on a page any more): it feeds the conservation control, which EXCUSES these words (a diagram is published as a drawing only, Mikolaj
+  /** The text of the slides drawn as our SVG. NOT published (19/10/2026: no collapsed block
+   *  on a page any more): it feeds the conservation control, which EXCUSES these words (a diagram is published as a drawing only
    *  22/10/2026: its drawn words are not lost), and the language detection. One SECTION per diagram slide: its
    *  `label` (« Slide N », a page label: `core/page-messages.ts`), then its
    *  text as ONE paragraph — or one per chain of relations when the slide's
    *  connectors give an order (`breaks`) — each element's text joined by « · »
-   *  (decision (5 ter), Mikolaj 25/09/2026). ONE block for the whole deck, at page
-   *  level after the tabs (Mikolaj, 29/09/2026; option A of 27/09 already
+   *  (decision (5 ter), 25/09/2026). ONE block for the whole deck, at page
+   *  level after the tabs (29/09/2026; option A of 27/09 already
    *  put them there, one per slide). A section without a
    *  label only lives inside a tab, before the extractor gathers them. */
   | { kind: "diagramText"; sections: DiagramTextSection[] };
@@ -263,13 +263,13 @@ export type IRTable = Extract<IRBlock, { kind: "table" }>;
 export interface DiagramTextSection {
   label?: string;
   /** The slide the section comes from: when present the renderer labels it from the number in the page language, `label`
-   *  being the fallback (Mikolaj, 08/10/2026). */
+   *  being the fallback (08/10/2026). */
   slideNumber?: number;
   inlines: Inline[];
   breaks?: number[];
   /** A SmartArt's outline: the level of each paragraph in the model's tree (`extractor/smartart.ts#dataModelPieces`), one
    *  per paragraph `breaks` cuts, 0 for the first level. ITS PRESENCE IS WHAT PUBLISHES THE SECTION, as the nested bullet
-   *  list Word stores behind the picture (Mikolaj, 29/10/2026: « si c'est en fait des listes à puces dans Word derrière le
+   *  list Word stores behind the picture (29/10/2026: « si c'est en fait des listes à puces dans Word derrière le
    *  SmartArt, alors why not »); a slide's section carries none and stays off the page. All zeros when the model is not a
    *  tree: a flat list invents no structure. */
   levels?: number[];
@@ -283,7 +283,7 @@ export interface DiagramTextSection {
    *  paragraphs as « target ← source, source » (`diagramRelationLine`,
    *  `core/page-messages.ts`). Names only (a shape's first line, plain
    *  text): every word of the diagram is already in `inlines`, so a walk over
-   *  the inlines (links, language) misses nothing. Decision of Mikolaj,
+   *  the inlines (links, language) misses nothing. Decision,
    *  02/10/2026. */
   relations?: DiagramRelation[];
 }
@@ -302,7 +302,7 @@ export type IRTab = {
 } & (
   | {
       /** A presentation's slide number (rank among the published slides). When present the renderer writes the label in the
-       *  PAGE language from it (`slideTabTitle`) and `title` is only the extraction-time fallback (Mikolaj, 08/10/2026). */
+       *  PAGE language from it (`slideTabTitle`) and `title` is only the extraction-time fallback (08/10/2026). */
       slideNumber?: number;
       pageNumber?: never;
     }

@@ -1,5 +1,5 @@
 /** Which characters of a PDF page carry a hyperlink: the page's link annotations tied to the words their rectangle
- *  covers (decision of Mikolaj, 07/10/2026, option B).
+ *  covers (decision of 07/10/2026, option B).
  *  NOT here: reading the annotations (`extractor/pdf-source.ts`), turning a Drive URL into `drive:<id>`
  *  (`pipeline/normalize-links.ts`), nor writing the link into the text (`extractor/pdf-lines.ts`,
  *  `extractor/pdf-paragraphs.ts`).
@@ -32,7 +32,7 @@
  * and 4 under a page-sized Canva link disagreeing with the links inside it, fixture 26 pages 8 and 9).
  *
  * A TABLE CELL is built from glyphs, not runs (`pdf-table-render.ts`): it reads the same tie, per glyph
- * (`linkTieOfPage`), never a second geometry (Mikolaj, 07/10/2026).
+ * (`linkTieOfPage`), never a second geometry (07/10/2026).
  *
  * KNOWN LIMITS, written: a word painted as two runs is judged as two words; the pages whose text the AI reads (a
  * scan) have no position, so no link.

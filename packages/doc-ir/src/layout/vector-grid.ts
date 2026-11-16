@@ -274,7 +274,7 @@ function buildOneRegion(
   //    8 false grids. NARROWED 15/10/2026 (`judgeRegion`): it goes on only on a page with a real table and keeps
   //    only 2 x 2 regions or more.
   // 2. **Also keeping THIN short sides out of the vote** (underlines, ≤ 1.68
-  //    pt; Mikolaj, 22/09/2026). An underline stops the search on 35 passes
+  //    pt; 22/09/2026). An underline stops the search on 35 passes
   //    over 18 documents and never yields a region, yet it acts as a brake:
   //    without it, 27 p1 and 29 p5 gain a false table (an invisible page
   //    frame), 24 p1, 29 p6 and 0000523 p2 a mute grid, and document 29 loses

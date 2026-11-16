@@ -2,7 +2,7 @@
  *  (`unpublishedPartNotices`, `workbookCapNotice`, `sheetUnreadableNotice`, `cutNoticeName`).
  *
  *  ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
- *  TWO FAMILIES, AND ONLY ONE OF THEM HAS A VALUE HERE (Mikolaj, 09/11/2026)
+ *  TWO FAMILIES, AND ONLY ONE OF THEM HAS A VALUE HERE (09/11/2026)
  *  ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
  *  A ceiling shaped by the DESTINATION — the pages of a PDF, the slide tabs and the elements of a slide, the sheet
  *  tabs, the rows and columns of a sheet and of a table — is not the library's business: it is the size of one
@@ -40,7 +40,7 @@ import type { DocumentNotice } from "./reader-types";
  */
 export const NO_CAP = Number.MAX_SAFE_INTEGER;
 
-/** The ONE byte ceiling of a payload read or inflated for a document (Mikolaj, 08/10/2026): a direct download
+/** The ONE byte ceiling of a payload read or inflated for a document (08/10/2026): a direct download
  *  (`adapters/forge-drive.ts#BINARY_MAX_BYTES`), an export link (`EXPORT_LINK_MAX_BYTES`) and the images a docx, pptx or xlsx
  *  inflates (`extractor/ooxml/package.ts#IMAGE_MAX_TOTAL_BYTES`) derive from it. NOT derived: Google's own 10 MB
  *  HTML export limit and `SHEETS_META_MAX_BYTES`. */
@@ -53,7 +53,7 @@ export const MAX_NOTICE_SHEET_NAMES = 5;
 
 /** How many LOST PICTURE PLACES a `pdf-image-unread` notice names (`lib/reader-types.ts#DocumentNotice`): the same
  *  display bound as the sheet names, and for the same reason — a dialog line, not a log; the rest is only counted
- *  (`more`). Mikolaj, 03/11/2026: a count with nowhere to look is not a report. */
+ *  (`more`). 03/11/2026: a count with nowhere to look is not a report. */
 export const MAX_NOTICE_IMAGE_PLACES = MAX_NOTICE_SHEET_NAMES;
 
 /** A sheet name is client text: a notice keeps at most this many characters
@@ -67,7 +67,7 @@ export const cutNoticeName = (name: string): string => (name.length > MAX_NOTICE
 
 /** The folded notices of parts a reader kept out, one line per kind and only when counted: charts withheld whole (a bound,
  *  a damaged part: `chart-withheld`), pictures whose part is damaged (`image-missing`), and hidden content dropped
- *  (`hidden-dropped`, one per `what`; Mikolaj, 08/10/2026). The same lines for every format (Mikolaj, 07/10/2026). */
+ *  (`hidden-dropped`, one per `what`; 08/10/2026). The same lines for every format (07/10/2026). */
 export const unpublishedPartNotices = (counts: {
   chartsWithheld: number;
   imagesMissing: number;

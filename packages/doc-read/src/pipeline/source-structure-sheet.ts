@@ -11,6 +11,7 @@ import { ReaderError } from "doc-ir/lib/reader-error";
 import type { ReaderLimits } from "doc-ir/lib/reader-limits";
 import { resolveTarget } from "../extractor/ooxml/package";
 import { emptyUnitStructure, type UnitStructure } from "./conservation-source";
+import type { SheetCellsResolver } from "./source-chart-reference";
 import { chartReadOf, type ChartShape } from "./source-reading-chart";
 import { attrOf, kidsOf, tagOf, type N } from "./source-reading-package";
 
@@ -41,7 +42,7 @@ export interface SingleFirstGrid {
   headerRows: ReadonlySet<number>;
 }
 
-/** THE PAGE RULE OF 27/10/2026 (Mikolaj, on the published page of FAQ_M365_Migration_CNE.xlsx), mirrored here on its own so the control keeps its two
+/** THE PAGE RULE OF 27/10/2026 (on the published page of FAQ_M365_Migration_CNE.xlsx), mirrored here on its own so the control keeps its two
  *  independent readings: a row whose only text is in the FIRST kept cell publishes as ONE cell spanning the table. The first integration shipped
  *  without this mirror and 9 real workbooks reported false « gap » decisions (found by review the same evening). Returns the cells such rows no
  *  longer write: for each, the cells it would have had in the shown columns, less the one it keeps.
@@ -141,7 +142,7 @@ const allOf = (n: N, tag: string, out: N[] = []): N[] => {
 
 /** What a workbook's reading remembers, so a part is inflated and parsed once however many frames and sheets point at it. */
 export interface ChartCache {
-  /** Chart part path to the table the page holds for it (`undefined`: withheld or damaged). */
+  /** The sheet part and the chart part it anchors (`chartShapeOf`'s key) to the table the page holds for it (`undefined`: withheld or damaged). */
   charts: Map<string, ChartShape | undefined>;
   /** Drawing part path to the chart part each of its `c:chart` frames points at, in order (`undefined`: a relationship that does not resolve). */
   drawings: Map<string, (string | undefined)[]>;
@@ -160,12 +161,14 @@ export class ChartFramesOverBound extends ReaderError {
   }
 }
 
-const chartShapeOf = async (xmlOf: XmlOf, chartPart: string, cache: ChartCache): Promise<ChartShape | undefined> => {
-  if (!cache.charts.has(chartPart)) {
-    const chart = await xmlOf(chartPart);
-    cache.charts.set(chartPart, chart === undefined ? undefined : chartReadOf(chart, cache.limits).shape);
+/** The table of `chartPart` as anchored on the sheet `sheetPath`: keyed by both, as a cache-less chart reads the cells of the sheet that holds it. */
+const chartShapeOf = async (xmlOf: XmlOf, at: { sheetPath: string; chartPart: string }, cache: ChartCache, resolver: SheetCellsResolver | undefined): Promise<ChartShape | undefined> => {
+  const key = JSON.stringify([at.sheetPath, at.chartPart]);
+  if (!cache.charts.has(key)) {
+    const chart = await xmlOf(at.chartPart);
+    cache.charts.set(key, chart === undefined ? undefined : chartReadOf(chart, cache.limits, resolver).shape);
   }
-  return cache.charts.get(chartPart);
+  return cache.charts.get(key);
 };
 
 /** The chart part each `c:chart` frame of a drawing points at, through the drawing's own relationships. Nothing of a chart is read here. */
@@ -181,8 +184,9 @@ const frameTargetsOf = async (xmlOf: XmlOf, drawingPart: string, cache: ChartCac
 
 /** The tables of the charts a sheet part (a worksheet or a chartsheet, parsed as `sheet`) anchors: the `drawing` parts its root names, their `c:chart`
  *  frames. A frame whose relationship does not resolve, a chart the page withholds whole, and a damaged part publish no table. The frames of the
- *  sheet are COUNTED before any chart part is read: more than `MAX_SHEET_CHART_FRAMES` throw `ChartFramesOverBound`. */
-export const chartShapesOf = async (xmlOf: XmlOf, sheetPath: string, sheet: N, cache: ChartCache): Promise<ChartShape[]> => {
+ *  sheet are COUNTED before any chart part is read: more than `MAX_SHEET_CHART_FRAMES` throw `ChartFramesOverBound`. `resolver` reads the cells
+ *  of the sheet for a chart whose file cached no value (`source-chart-reference.ts`); a chartsheet has none. */
+export const chartShapesOf = async (xmlOf: XmlOf, sheetPath: string, sheet: N, cache: ChartCache, resolver?: SheetCellsResolver): Promise<ChartShape[]> => {
   const drawings = kidsOf(sheet).filter((c) => tagOf(c) === "drawing");
   if (drawings.length === 0) return [];
   const sheetTargets = await targetsOf(xmlOf, sheetPath);
@@ -195,7 +199,7 @@ export const chartShapesOf = async (xmlOf: XmlOf, sheetPath: string, sheet: N, c
   }
   const shapes: ChartShape[] = [];
   for (const target of frameTargets) {
-    const shape = target === undefined ? undefined : await chartShapeOf(xmlOf, target, cache);
+    const shape = target === undefined ? undefined : await chartShapeOf(xmlOf, { sheetPath, chartPart: target }, cache, resolver);
     if (shape !== undefined) shapes.push(shape);
   }
   return shapes;

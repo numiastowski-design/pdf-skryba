@@ -1,6 +1,7 @@
 /** The canonical namespace prefixes of the Office vocabularies and the XML nesting bound, a LEAF module imported by
  *  `ooxml/xml.ts` and by our XML reader alike, so the reader never imports `ooxml/xml.ts` (which builds its
- *  parser at load: the cycle would run it before `class XMLParser` exists, `xml/import-direction.test.ts`).
+ *  parser at load: the cycle would run it before `class XmlParser` exists, `xml/import-direction.test.ts`).
+ *  Decides: the canonical prefix of each namespace URI, and the name a prefix maps to in a scope.
  *  NOT here: the parsing, the tree walk and the rewriting itself (`ooxml/xml.ts#canonicalize`), the entity
  *  bounds; this module imports nothing.
  *  Called by: `ooxml/xml.ts` (which re-exports all of it, so its importers do not change), `xml/tree.ts`,
@@ -14,12 +15,12 @@
  *  the same place (`xml/guards.test.ts`). Starting value to calibrate
  *  (review of 27/09/2026 night, finding 7): three real documents measured the
  *  same night reach 8 (docx-reel/08), 18 (docx-reel/10) and 16 (gdoc-docx/10)
- *  levels; a table nested in a cell costs three. Past it the parser refuses
+ *  levels. Past it the parser refuses
  *  the part, which the package layer turns into « damaged »: the recursive
  *  walks (`xml.ts#canonicalize`, `body.ts#storyUnits`…) never meet a depth
- *  that could exhaust the stack — a test reads a document ~500 deep through
- *  the whole reader. Before this constant the parser's own default (100)
- *  held, unnamed: a library upgrade could have dropped it in silence. */
+ *  that could exhaust the stack (a document ~500 deep is read through the
+ *  whole reader: `docx-reader/docx-reader.test.ts`). The bound is named here so that it never
+ *  rests on a default of the reader. */
 export const MAX_XML_DEPTH = 512;
 
 /**
@@ -50,16 +51,15 @@ export const CANONICAL_PREFIX: Record<string, string> = {
   "urn:schemas-microsoft-com:vml": "v",
   "http://schemas.openxmlformats.org/drawingml/2006/chart": "c",
   "http://purl.oclc.org/ooxml/drawingml/chart": "c",
-  // SmartArt: the data model (ECMA-376 Part 1 §21.4) and Office's drawing cache.
+  // SmartArt: the data model (ECMA-376 Part 1 §21.4) and its drawing part.
   "http://schemas.openxmlformats.org/drawingml/2006/diagram": "dgm",
   "http://purl.oclc.org/ooxml/drawingml/diagram": "dgm",
   "http://schemas.microsoft.com/office/drawing/2008/diagram": "dsp",
   "http://schemas.openxmlformats.org/package/2006/relationships": "rel",
   "http://schemas.openxmlformats.org/package/2006/content-types": "ct",
-  // Spreadsheets (revue HIGH 28/09 soir, constat 5). Excel spells the main
-  // namespace as the DEFAULT one (bare tags) — the canonical spelling is
-  // therefore the EMPTY prefix, and a producer that binds one gets it
-  // stripped. Excel spells the drawing namespace `xdr:`.
+  // Spreadsheets (review HIGH of 28/09 evening, finding 5). The canonical spelling
+  // of the main namespace is the EMPTY prefix (bare tags), and a producer that
+  // binds a prefix to it gets that prefix stripped. The drawing namespace is `xdr:`.
   "http://schemas.openxmlformats.org/spreadsheetml/2006/main": "",
   "http://purl.oclc.org/ooxml/spreadsheetml/main": "",
   "http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing": "xdr",
@@ -77,20 +77,20 @@ export interface PrefixScope {
 /** A name with its producer's prefix replaced by the canonical one. Exported so `xml/namespaces.ts` checks the
  *  collisions of THIS mapping, one definition (attributes become object keys below: two of one name lose a value). */
 export const renamed = (name: string, scope: PrefixScope, isAttribute: boolean): string => {
-  const colon = name.indexOf(":");
-  if (colon < 0) {
+  const colonIndex = name.indexOf(":");
+  if (colonIndex < 0) {
     // An unprefixed ATTRIBUTE is in no namespace (XML Namespaces §6.2); an
     // unprefixed element is in the default namespace.
     if (isAttribute) return name;
-    const uri = scope.get("");
-    const canonical = uri === undefined ? undefined : canonicalPrefixOf(uri);
-    return canonical ? `${canonical}:${name}` : name;
+    const namespaceUri = scope.get("");
+    const canonicalPrefix = namespaceUri === undefined ? undefined : canonicalPrefixOf(namespaceUri);
+    return canonicalPrefix ? `${canonicalPrefix}:${name}` : name;
   }
-  const prefix = name.slice(0, colon);
+  const prefix = name.slice(0, colonIndex);
   if (prefix === "xml" || prefix === "xmlns") return name;
-  const uri = scope.get(prefix);
-  const canonical = uri === undefined ? undefined : canonicalPrefixOf(uri);
-  if (canonical === undefined) return name;
+  const namespaceUri = scope.get(prefix);
+  const canonicalPrefix = namespaceUri === undefined ? undefined : canonicalPrefixOf(namespaceUri);
+  if (canonicalPrefix === undefined) return name;
   // An EMPTY canonical prefix (spreadsheetml) strips the producer's one.
-  return canonical === "" ? name.slice(colon + 1) : `${canonical}:${name.slice(colon + 1)}`;
+  return canonicalPrefix === "" ? name.slice(colonIndex + 1) : `${canonicalPrefix}:${name.slice(colonIndex + 1)}`;
 };

@@ -12,7 +12,7 @@ import type { PdfDocumentInfo, PdfSource } from "./pdf-source";
 export interface PdfDocumentFacts {
   pages: number;
   /** What the file WRITES as its producer (its Producer, else its Creator), as written — « Xerox PrimeLink(TM) ». Absent when it
-   *  writes none: never a placeholder (Mikolaj, 02/10/2026). The tool LABEL below stays ours. */
+   *  writes none: never a placeholder (02/10/2026). The tool LABEL below stays ours. */
   producer?: string;
   /** Files attached to the document, and digital signatures it carries (counted, never read nor verified). Absent at zero. */
   attachedFiles?: number;

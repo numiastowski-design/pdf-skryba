@@ -9,13 +9,13 @@
  * search for « livret » did not find it. The glyphs, rebuilt from the content
  * stream, carry the letters and only the document's real spaces.
  *
- * THE RULE (decided by Mikolaj, 22/09/2026). Outside a table, a run
+ * THE RULE (decided by 22/09/2026). Outside a table, a run
  * letter-spaced takes the glyphs' text ONLY if both readings hold the same
  * characters once every space is removed. Otherwise we abstain and the run
  * keeps its own text. A document that spaces its own letters with real space
  * glyphs (« V I N E T I A », 0000846) reads the same both ways: nothing moves.
  *
- * A RUN THAT ALSO HOLDS A WORD abstains (Mikolaj, 22/09/2026): in
+ * A RUN THAT ALSO HOLDS A WORD abstains (22/09/2026): in
  * « Chapitre S T A M P S » with no real space glyph, the glyphs read
  * « ChapitreSTAMPS » and nothing tells the word boundary from a letter gap.
  * Every token of the run must be a single character.

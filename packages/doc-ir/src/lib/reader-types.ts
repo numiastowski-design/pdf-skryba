@@ -7,7 +7,7 @@
  *  app's own imports of them are unchanged. */
 
 /** The ONE language a connection's pages are written in (features/page-language.feature,
- *  Mikolaj 30/09/2026): the labels the app puts on a page and the numbers and
+ *  30/09/2026): the labels the app puts on a page and the numbers and
  *  dates of spreadsheets. Not the dashboard's language (`context.locale`).
  *  A setting, prefilled from the admin's locale, because no API gives the site's
  *  indexing language; `systemInfo.defaultLocale` was dropped: its scope
@@ -15,7 +15,7 @@
  *  is a MAJOR version, and the value was never observed. */
 export type PageLanguage = "fr" | "en";
 
-/** A class-1 "remark" (docs/CONCEPTION-CARTE-ET-REMARQUES.md lot A, Mikolaj
+/** A class-1 "remark" (docs/CONCEPTION-CARTE-ET-REMARQUES.md lot A
  *  29/09/2026): a fact an extraction produced that used to be a marker line
  *  ON the published page — moved off it entirely (the owner rule: the app
  *  adds nothing to a page, not even a banner since 30/09/2026). One entry per occurrence, carried
@@ -66,7 +66,7 @@ export type DocumentNotice =
   /** `extractor/xlsx.ts`, `extractor/google-sheet.ts` (A7): a sheet past
    *  `MAX_SHEET_ROWS`/`MAX_SHEET_COLS` carries no tab at all. */
   | { kind: "sheet-withheld"; sheet: string; rows: number; cols: number }
-  /** `lib/table-width-cap.ts` (Mikolaj, 08/10/2026): tables wider than `MAX_TABLE_COLS` (grid columns, after the empty ones are
+  /** `lib/table-width-cap.ts` (08/10/2026): tables wider than `MAX_TABLE_COLS` (grid columns, after the empty ones are
    *  removed) or longer than `MAX_TABLE_ROWS` are not published. One entry per document, `count` >= 1, absent at 0. */
   | { kind: "table-withheld"; count: number }
   /** `extractor/xlsx.ts`, `extractor/google-sheet.ts`: the workbook tab cap
@@ -90,14 +90,14 @@ export type DocumentNotice =
   /** `extractor/docx-reader/`: charts kept out whole — past a bound (series, points, levels, cells) or in a damaged
    *  part. Their title and labels are not on the page. One entry per document, `count` >= 1. */
   | { kind: "chart-withheld"; count: number }
-  /** `extractor/docx-reader/`, `extractor/google-sheet.ts` (Mikolaj, 08/10/2026): hidden content the reader drops, said by
+  /** `extractor/docx-reader/`, `extractor/google-sheet.ts` (08/10/2026): hidden content the reader drops, said by
    *  its count only, never its content — `shape`: hidden drawings (each counts 1, text box included); `filtered-rows`:
    *  non-empty rows a sheet filter hides; `tracked-deletion`: tracked deletions (`w:del`) holding text. One entry per
    *  document and per `what`, `count` >= 1. */
   | { kind: "hidden-dropped"; what: "shape" | "filtered-rows" | "tracked-deletion"; count: number }
   /** `extractor/pdf.ts`: images a PDF page places but the extraction could not obtain — `slow` were not delivered
    *  in time, `unreadable` failed any other way. The page is published without them, nothing drawn in their place.
-   *  `places` NAMES them (Mikolaj, 03/11/2026: « est-ce que notre compteur sait dire les images qu'on manque ? »): the
+   *  `places` NAMES them (03/11/2026: « est-ce que notre compteur sait dire les images qu'on manque ? »): the
    *  page number, counted from 1, and a TECHNICAL id — the PDF object (`103R`) when our reader gave one, else the
    *  resource name the page uses (`X0`). NO CLIENT CONTENT: an id and a page number are what a count needs to be
    *  checked by eye. Each place also says WHY, in the eight words of `extractor/pdf-image-refusal.ts` — read from what
@@ -115,7 +115,7 @@ export type DocumentNotice =
    *  published in its source language. Never raised for a passing failure (retried) nor for the month's cap (own marker). */
   | { kind: "translation-failed" }
   /** `extractor/{docx-reader,xlsx,pptx-reader}`: a styles part (docx `styles.xml` / `numbering.xml`, xlsx `styles.xml`, pptx
-   *  theme) could not be read, so the document is published with DEFAULT formatting (Mikolaj, 08/10/2026). No other field;
+   *  theme) could not be read, so the document is published with DEFAULT formatting (08/10/2026). No other field;
    *  one entry per document. */
   | { kind: "styles-defaulted" };
 
@@ -134,7 +134,7 @@ export type DocumentNotice =
 export type PictureRefusal = "codec" | "filters" | "mask" | "shape" | "too-large" | "ambiguous" | "absent" | "bytes";
 
 /** The source element a missing word came from (MIKSUDOC « Spécification technique » T11,
- *  lot C addendum, Mikolaj 29/09/2026) — recorded by the independent reader
+ *  lot C addendum, 29/09/2026) — recorded by the independent reader
  *  so `DocumentConservation.causeCounts` and the dev-only log line
  *  (`adapters/conservation-log.ts`) can say WHY, grouped, never just THAT.
  *  `"unrepaired"` is the PDF's own, single cause: after its existing repairs
@@ -148,7 +148,7 @@ export type PictureRefusal = "codec" | "filters" | "mask" | "shape" | "too-large
  *  is the default: ordinary paragraph/table text, no special container — the
  *  most common cause is likely to be this one, and that is itself diagnostic
  *  (a body-text bug, not a specialty one). `"number"`/`"date"` are xlsx-only
- *  (lot E addendum, Mikolaj 29/09/2026, MIKSUDOC « Spécification technique » T11):
+ *  (lot E addendum, 29/09/2026, MIKSUDOC « Spécification technique » T11):
  *  a NON-EMPTY numeric or date-formatted source cell whose published
  *  position is empty or missing — checked by POSITION against the page table
  *  (`pipeline/xlsx-page-cells.ts`), never by word match (a number's page text
@@ -167,9 +167,9 @@ export type MissingWordCause =
   | "date"
   /** A word of a SmartArt's data model that the picture drawn from its saved drawing does not show: a shape the drawer leaves out, a
    *  drawing kept out, a model richer than its last-saved drawing, or a SmartArt with no drawing at all.
-   *  The words that ARE drawn are not lost (a diagram is published as a drawing only, Mikolaj 22/10/2026). */
+   *  The words that ARE drawn are not lost (a diagram is published as a drawing only, 22/10/2026). */
   | "smartart-not-drawn"
-  /** NOT A LOSS — A CASE FOR A HUMAN (Mikolaj, 29/10/2026: « le compteur peut nous demander une vérif humaine si
+  /** NOT A LOSS — A CASE FOR A HUMAN (29/10/2026: « le compteur peut nous demander une vérif humaine si
    *  nécessaire »). The source carries one word where the page carries its pieces, side by side: not a letter is missing,
    *  but the word is no longer a word, so a search will not find it. Measured the same day on a real report: the document
    *  puts a heading and the next paragraph in ONE `w:p` with nothing between the two runs, so the source reads
@@ -202,12 +202,12 @@ export interface DocumentConservation {
    *  naming (`pages`
    *  renamed `units`, pre-launch — no compatibility kept). */
   units: string[];
-  /** Lot 6 (Mikolaj, 21/09/2026): letters and digits of the storage we sent
+  /** Lot 6 (21/09/2026): letters and digits of the storage we sent
    *  that the ADF Confluence read back lacks (`pipeline/adf-conservation.ts`).
    *  Absent when the publisher read no ADF back, or when the comparison
    *  failed. */
   adfLostLetters?: number;
-  /** Lot C addendum (Mikolaj, 29/09/2026, MIKSUDOC « Spécification technique » T11):
+  /** Lot C addendum (29/09/2026, MIKSUDOC « Spécification technique » T11):
    *  `missingWords` grouped by the source element each missing word came
    *  from — a technical cause tag and a count, never the words (the
    *  preview decided on 29/09/2026 is withdrawn, owner decision 09/10/2026).

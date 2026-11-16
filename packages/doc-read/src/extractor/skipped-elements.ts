@@ -1,4 +1,4 @@
-/** THE ONE TABLE OF WHAT WE KNOWINGLY DO NOT RENDER, and what the page gets in its place (Mikolaj, 29/10/2026: « il faut
+/** THE ONE TABLE OF WHAT WE KNOWINGLY DO NOT RENDER, and what the page gets in its place (29/10/2026: « il faut
  *  pouvoir dire : ce truc on sait qu'on peut pas le gérer, donc espace » — « une table et basta »).
  *  Decides: for each such element, whether its neighbours keep a WORD BOUNDARY, and what the page gets in its place.
  *  NOT here: the notice a reader raises for an omission (`core/fidelity.ts#NOTICE_IS_OMISSION`), the limits of each reader
@@ -11,7 +11,7 @@
  *  WHAT CONFLUENCE ITSELF CANNOT HOLD bounds what is worth rendering at all — an element the storage format has no native
  *  shape for (maths: no native block, the LaTeX macro is a Marketplace app) is excluded for good, where one we merely fail
  *  to READ is a possible chantier. That difference belongs on each line, in its `why`. A table of what their .docx IMPORTER
- *  loses was tried on 29/10/2026 and thrown away the same day (Mikolaj: « vire les docs, ils vont nous polluer »): their
+ *  loses was tried on 29/10/2026 and thrown away the same day (« vire les docs, ils vont nous polluer »): their
  *  importer is a lossy converter, not the format's ceiling, and a line nobody measured would have been read as a fact.
  *  Lines enter here ONE AT A TIME, when we meet the case, with the measurement that decided them.
  *  Called by: `./docx-reader/body.ts`, `./skipped-elements.test.ts`. */

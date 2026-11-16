@@ -7,7 +7,7 @@
  *  Called by: `extractor/pdf-source.ts` (`runsOfGlyphs`, on the glyphs it already built). */
 
 /**
- * WHY (docs/CONCEPTION-TEXTE-PDF-GLYPHES.md, decided by Mikolaj on 13/10/2026). pdf.js cut a word in two cycles at a
+ * WHY (docs/CONCEPTION-TEXTE-PDF-GLYPHES.md, decided by on 13/10/2026). pdf.js cut a word in two cycles at a
  * change of font (319 words on 27 documents) and between two glued paint operators (166), and gave the second cycle a
  * wrong position: `pdf-lines.ts#separatorBefore` then sees a gap and writes « é lectrique ». Our glyphs have the right
  * positions already. Measured on 58 French and English PDFs against Poppler 25.07 frozen: the word rule below, applied to
@@ -23,7 +23,7 @@
  *    `minWordBreakSpace`, `TextOutputDev.cc` l. 2773).
  *  - A glyph outside the page's view box (CropBox within MediaBox) makes no run, as pdf.js's `getTextContent` did (worker
  *    `compareWithLastPosition`: the glyph's origin outside the box, or its end before the left edge): choice B of
- *    Mikolaj, 09/10/2026, a word that crosses the edge keeps its visible letters. The glyphs themselves are not cut.
+ *    09/10/2026, a word that crosses the edge keeps its visible letters. The glyphs themselves are not cut.
  *  - A LETTER run neither starts nor ends with a blank, like the cycles of the former pdf.js (its origin is the first letter, its width ends
  *    with the last): inside it a blank is spacing between two letters. Without this a block ends with a space and a space
  *    and a gap make two (measured on the fixtures, 14/10/2026: « firefighting  this season »).

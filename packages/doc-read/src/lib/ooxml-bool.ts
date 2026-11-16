@@ -18,7 +18,7 @@ export const isOnOff = (value: string | undefined, whenAbsent: boolean): boolean
   value === undefined ? whenAbsent : value === "1" || value === "true" || value === "on";
 
 /** The « hidden » attribute of a drawing or shape (`wp:docPr`, `p:cNvPr`), read tolerantly: blanks and case ignored, "1" or "true".
- *  Only this flag is tolerant (Mikolaj, 12/10/2026); every other boolean stays at the norm above. */
+ *  Only this flag is tolerant (12/10/2026); every other boolean stays at the norm above. */
 export const isHiddenFlag = (value: string | undefined): boolean => {
   const v = value?.trim().toLowerCase();
   return v === "1" || v === "true";

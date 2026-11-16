@@ -1,6 +1,6 @@
 /** A SmartArt's SAVED DRAWING (`dsp:drawing`, [MS-ODRAWXML]; Office writes it beside the data model: `word/diagrams/drawingN.xml`,
  *  `ppt/diagrams/drawingN.xml`) read into the shape model `extractor/slide-svg.ts` already draws, so a SmartArt is published as a
- *  picture (Mikolaj, 19/10/2026).
+ *  picture (19/10/2026).
  *  What is read, per `dsp:sp`: its frame (`a:xfrm`, with `rot`), its preset geometry and `adj`/`vf` guides, its fill and line (written
  *  on `dsp:spPr`, else the `dsp:style` references, through the part's theme colours), its text body, and `dsp:txXfrm` (the text
  *  rectangle, whose `rot` ADDS to the shape's: Word's own PDF of smart-art.docx shows the hexagons' text horizontal, 90 + (-90), and
@@ -12,7 +12,7 @@
  *  (`undrawnWords`).
  *  No saved drawing (other software, broken relationship, damaged part, no traced `dsp:sp`, over `MAX_SLIDE_ELEMENTS` shapes): no picture, and the
  *  model's words are counted `smartart-not-drawn`; a damaged part never refuses the document. A nested list rebuilt from the model was
- *  rejected (Mikolaj: no collapsed text, and the model's order is not the drawing's); Office's layout engine (`layout*.xml`) is not reproduced.
+ *  rejected (no collapsed text, and the model's order is not the drawing's); Office's layout engine (`layout*.xml`) is not reproduced.
  *  Google Docs and Slides exports hold no SmartArt.
  *  NOT here: how a shape is drawn (`extractor/slide-svg.ts`), which drawing a frame owns (`extractor/smartart.ts`: the data model's
  *  `dsp:dataModelExt relId`), the words of the model (`extractor/smartart.ts`), where the picture goes (`extractor/pptx.ts`,
@@ -24,7 +24,7 @@ import { wordsOf } from "../lib/words";
 import type { Box } from "doc-ir/layout/slide-elements";
 import { IDENTITY_MATRIX } from "doc-ir/layout/painted-paths";
 import type { Relationship } from "./ooxml/package";
-import { attr, child, children, descendants, tagOf, type XNode } from "./ooxml/xml";
+import { attributeOf, findChild, findChildren, findDescendants, qualifiedNameOf, type XNode } from "./ooxml/xml";
 import { type ColorContext, elements, exactColorOf, type Hex, type PptxFill, schemeOf, solidFillColor, styleFill, writtenFillOf } from "./pptx-reader/color";
 import { frameOf, type Frame, FULL_TURN, QUARTER_TURN, visibleBox } from "./pptx-reader/geometry";
 import { guidesOf, presetOf } from "./pptx-reader/shape-parts";
@@ -48,10 +48,10 @@ const NO_RELATIONSHIPS: ReadonlyMap<string, Relationship> = new Map();
 const fillOf = (spPr: XNode | undefined, style: XNode | undefined, context: ColorContext | undefined): PptxFill => {
   const written = writtenFillOf(spPr);
   if (written === undefined) {
-    const ref = child(style ?? {}, "a:fillRef");
+    const ref = findChild(style ?? {}, "a:fillRef");
     return ref === undefined ? "none" : styleFill(ref, context);
   }
-  switch (tagOf(written)) {
+  switch (qualifiedNameOf(written)) {
     case "a:noFill":
       return "none";
     case "a:solidFill":
@@ -63,15 +63,15 @@ const fillOf = (spPr: XNode | undefined, style: XNode | undefined, context: Colo
 
 /** The line shows unless `a:ln` writes `a:noFill`; with no fill written, when `dsp:style/a:lnRef` has an `idx` above 0. */
 const lineShownOf = (spPr: XNode | undefined, style: XNode | undefined): boolean => {
-  const written = writtenFillOf(child(spPr ?? {}, "a:ln"));
-  if (written !== undefined) return tagOf(written) !== "a:noFill";
-  const idx = Number(attr(child(style ?? {}, "a:lnRef") ?? {}, "idx"));
+  const written = writtenFillOf(findChild(spPr ?? {}, "a:ln"));
+  if (written !== undefined) return qualifiedNameOf(written) !== "a:noFill";
+  const idx = Number(attributeOf(findChild(style ?? {}, "a:lnRef") ?? {}, "idx"));
   return Number.isInteger(idx) && idx > 0;
 };
 
 /** The colour `dsp:style/a:fontRef` gives the text (a runs writing none takes it); `undefined` when none or not exact. */
 const fontColorOf = (style: XNode | undefined, context: ColorContext | undefined): Hex | undefined => {
-  const colors = elements(child(style ?? {}, "a:fontRef") ?? {});
+  const colors = elements(findChild(style ?? {}, "a:fontRef") ?? {});
   return colors.length === 1 ? exactColorOf(colors[0]!, context) : undefined;
 };
 
@@ -83,13 +83,13 @@ const isUpright = (upright: string | undefined): boolean => upright === "1" || u
  *  not known and the words are left out: stacked glyphs, `upright`, a `bodyPr rot` (the standard does not say which of the two wins
  *  with `txXfrm rot`), a mirrored shape. 0 occurrences of those in 355 documents (measured 20/10/2026). */
 const textPlacement = (sp: XNode, frame: Frame, body: XNode | undefined): { textFrame: Frame; textTurn: number | undefined; swapped: boolean } => {
-  const tx = frameOf(child(sp, "dsp:txXfrm"));
+  const tx = frameOf(findChild(sp, "dsp:txXfrm"));
   const textFrame = tx ?? frame;
   if (body === undefined) return { textFrame, textTurn: 0, swapped: false };
-  const bodyPr = child(body, "a:bodyPr") ?? {};
-  const upright = attr(bodyPr, "upright");
-  const vert = VERT_TURN.get(attr(bodyPr, "vert") ?? "horz");
-  const unknown = vert === undefined || isUpright(upright) || Number(attr(bodyPr, "rot") ?? "0") !== 0 || frame.flipH || frame.flipV;
+  const bodyPr = findChild(body, "a:bodyPr") ?? {};
+  const upright = attributeOf(bodyPr, "upright");
+  const vert = VERT_TURN.get(attributeOf(bodyPr, "vert") ?? "horz");
+  const unknown = vert === undefined || isUpright(upright) || Number(attributeOf(bodyPr, "rot") ?? "0") !== 0 || frame.flipH || frame.flipV;
   // `vert` turns the glyphs but leaves the written width and height of the box as they are (a `txXfrm rot`, the hexagons', has them swapped
   // by Office already): with a quarter `vert` the lines run along the written HEIGHT, so the box is laid with its sides swapped.
   return { textFrame, textTurn: unknown ? undefined : folded((tx?.rot ?? 0) + vert), swapped: !unknown && vert !== 0 && vert % (2 * QUARTER_TURN) !== 0 };
@@ -103,15 +103,15 @@ const presetGuides = (guides: Readonly<Record<string, number>>): { vf?: number; 
 
 /** One `dsp:sp`, in the drawing's own space (EMU, origin the frame's corner). */
 const readShape = (sp: XNode, rank: number, context: ColorContext | undefined): PptxTextShape => {
-  const spPr = child(sp, "dsp:spPr");
-  const style = child(sp, "dsp:style");
-  const body = child(sp, "dsp:txBody");
-  const frame = frameOf(child(spPr ?? {}, "a:xfrm"));
+  const spPr = findChild(sp, "dsp:spPr");
+  const style = findChild(sp, "dsp:style");
+  const body = findChild(sp, "dsp:txBody");
+  const frame = frameOf(findChild(spPr ?? {}, "a:xfrm"));
   const geometry = presetOf(spPr);
   const guides = guidesOf(spPr);
   const fontColor = fontColorOf(style, context);
   const colors: RunColors = { ...(context === undefined ? {} : { context }), inherited: () => fontColor };
-  const paragraphs: PptxParagraph[] = body === undefined ? [] : children(body, "a:p").map((p) => readParagraph(p, NO_RELATIONSHIPS, colors));
+  const paragraphs: PptxParagraph[] = body === undefined ? [] : findChildren(body, "a:p").map((p) => readParagraph(p, NO_RELATIONSHIPS, colors));
   // `bodyOf` marks every `vert` as a turned text (right for a slide); `textPlacement` knows the ones that are only a turn.
   const bodyRead = bodyOf(body ?? {});
   delete bodyRead.turnedText;
@@ -151,7 +151,7 @@ export type DrawingRead = { shapes: PptxTextShape[] } | "too-many";
 
 /** The shapes of a `dsp:drawing` root, in the drawing's own space. `context`: the colours of the part that holds the frame. */
 export const readSmartArtDrawing = (root: XNode, context: ColorContext | undefined, limits?: ReaderLimits): DrawingRead => {
-  const sps = descendants(root, "dsp:sp");
+  const sps = findDescendants(root, "dsp:sp");
   if (sps.length > (limits?.slideElements ?? NO_CAP)) return "too-many";
   // Office writes the tints and shades of its colour styles on the drawing's colours (`tint 40000`, `lumMod`…): resolved here, for a
   // SmartArt only ([C5]; the slides keep decision 12 of 25/09/2026).
@@ -175,13 +175,13 @@ export const placeShapes = (shapes: readonly PptxTextShape[], origin: { x: numbe
  *  default mapping (`bg1` is `lt1`…). The document's own `w:clrSchemeMapping` is not read: a SmartArt drawing writes `lt1`/`accent1`
  *  directly (all 4 of smart-art.docx), the mapped names only matter to a colour written through them. */
 export const themeColorContext = (theme: XNode | undefined): ColorContext | undefined => {
-  const elementsOfTheme = child(theme ?? {}, "a:themeElements");
+  const elementsOfTheme = findChild(theme ?? {}, "a:themeElements");
   if (elementsOfTheme === undefined) return undefined;
-  const fmt = child(elementsOfTheme, "a:fmtScheme");
+  const fmt = findChild(elementsOfTheme, "a:fmtScheme");
   return {
     map: { bg1: "lt1", tx1: "dk1", bg2: "lt2", tx2: "dk2" },
-    scheme: schemeOf(child(elementsOfTheme, "a:clrScheme")),
-    fillStyles: elements(child(fmt ?? {}, "a:fillStyleLst") ?? {}),
+    scheme: schemeOf(findChild(elementsOfTheme, "a:clrScheme")),
+    fillStyles: elements(findChild(fmt ?? {}, "a:fillStyleLst") ?? {}),
   };
 };
 

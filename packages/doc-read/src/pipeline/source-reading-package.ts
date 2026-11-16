@@ -17,7 +17,7 @@
  *  `source-reading-xlsx.ts`. */
 
 import { ReaderError } from "doc-ir/lib/reader-error";
-import { openPackage, orDamaged } from "../extractor/ooxml/package";
+import { openPackage, readUnlessDamaged } from "../extractor/ooxml/package";
 
 /** One node of the `preserveOrder` tree: `{ [tag]: children, ":@": attributes }`. */
 export type SourceNode = Record<string, unknown>;
@@ -40,7 +40,7 @@ export const openSourceParts = async (bytes: Uint8Array): Promise<{ xmlOf: (path
 
 /** A STYLES part read tolerantly: unreadable (corrupt stream, XML that does not parse) comes back as absent, as the extractors
  *  publish such a file with default formatting (08/10/2026) and this check must not abstain on a document that is published. */
-export const stylesOrAbsent = (read: () => Promise<SourceNode | undefined>): Promise<SourceNode | undefined> => orDamaged(read);
+export const stylesOrAbsent = (read: () => Promise<SourceNode | undefined>): Promise<SourceNode | undefined> => readUnlessDamaged(read);
 
 /** Runs a read that ONLY the structure control makes (never the words): when the part is refused (damaged, over a ceiling: a `ReaderError`, which covers
  *  `PartDamagedError` and the inflation ceilings) the structure is `unreadable` and the document's words stay checked as they were; a defect of our own

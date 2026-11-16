@@ -1,4 +1,4 @@
-/** The one light check of the « Attachment only » mode, which reads nothing else (Mikolaj, 25/10/2026, option B): for a zip-based Office
+/** The one light check of the « Attachment only » mode, which reads nothing else (25/10/2026, option B): for a zip-based Office
  *  file, the sizes the central directory DECLARES are compared with the ceilings the readers use (`PART_MAX_BYTES`, `PACKAGE_MAX_BYTES`,
  *  one definition in `ooxml/package.ts`). Nothing is inflated; local headers and the directory are all that is read. Past a ceiling,
  *  or for the overlapping-entries bomb, the file is refused `FILE_UNSAFE`. A zip our layer refuses for any other reason is merely damaged

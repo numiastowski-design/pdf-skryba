@@ -17,7 +17,7 @@ import { isXsdTrue } from "../../lib/ooxml-bool";
 import { isSymbolFont, symbolFontText } from "doc-ir/lib/symbol-font";
 import { externalLinkTarget } from "doc-ir/lib/link-schemes";
 import type { Relationship } from "../ooxml/package";
-import { attr, child, children, kids, tagOf, textOf, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, childNodesOf, qualifiedNameOf, textContentOf, type XNode } from "../ooxml/xml";
 import type { ColorContext, Hex } from "./color";
 import { writtenTextColor } from "./text-color";
 
@@ -91,14 +91,14 @@ export const fractionOf = (raw: string | undefined): number | undefined => {
  *  percent, or a percent string in Strict) or ST_TextSpacingPoint
  *  (hundredths of a point). */
 const lineSpacingOf = (pPr: XNode | undefined): PptxParagraph["lineSpacing"] => {
-  const lnSpc = pPr === undefined ? undefined : child(pPr, "a:lnSpc");
+  const lnSpc = pPr === undefined ? undefined : findChild(pPr, "a:lnSpc");
   if (!lnSpc) return undefined;
-  const pct = attr(child(lnSpc, "a:spcPct") ?? {}, "val");
+  const pct = attributeOf(findChild(lnSpc, "a:spcPct") ?? {}, "val");
   if (pct !== undefined && pct.trim() !== "") {
     const fraction = fractionOf(pct);
     return fraction !== undefined && fraction > 0 ? { percent: fraction } : undefined;
   }
-  const pts = Number(attr(child(lnSpc, "a:spcPts") ?? {}, "val") ?? Number.NaN);
+  const pts = Number(attributeOf(findChild(lnSpc, "a:spcPts") ?? {}, "val") ?? Number.NaN);
   return Number.isFinite(pts) && pts > 0 ? { points: pts / 100 } : undefined;
 };
 
@@ -114,13 +114,13 @@ const isStruck = (value: string | undefined): boolean => value !== undefined && 
 const marksOf = (rPr: XNode | undefined): InlineMark[] => {
   if (!rPr) return [];
   const marks: InlineMark[] = [];
-  if (isTrue(attr(rPr, "b"))) marks.push("strong");
-  if (isTrue(attr(rPr, "i"))) marks.push("em");
-  if (isUnderlined(attr(rPr, "u"))) marks.push("underline");
-  if (isStruck(attr(rPr, "strike"))) marks.push("strike");
+  if (isTrue(attributeOf(rPr, "b"))) marks.push("strong");
+  if (isTrue(attributeOf(rPr, "i"))) marks.push("em");
+  if (isUnderlined(attributeOf(rPr, "u"))) marks.push("underline");
+  if (isStruck(attributeOf(rPr, "strike"))) marks.push("strike");
   // ST_Percentage: thousandths of a percent ("30000"), or "30%" in Strict;
   // only the sign matters here.
-  const baseline = Number.parseInt(attr(rPr, "baseline") ?? "", 10);
+  const baseline = Number.parseInt(attributeOf(rPr, "baseline") ?? "", 10);
   if (baseline > 0) marks.push("sup");
   if (baseline < 0) marks.push("sub");
   return marks;
@@ -133,17 +133,17 @@ const marksOf = (rPr: XNode | undefined): InlineMark[] => {
  *  declare (`lib/ir.ts#INTERNAL_HREF_FORM` — provenance, which the door
  *  cannot know). */
 const hrefOf = (rPr: XNode | undefined, rels: ReadonlyMap<string, Relationship>): string | undefined => {
-  const click = rPr ? child(rPr, "a:hlinkClick") : undefined;
+  const click = rPr ? findChild(rPr, "a:hlinkClick") : undefined;
   if (!click) return undefined;
-  if (attr(click, "action")?.startsWith("ppaction://")) return undefined;
-  const id = attr(click, "r:id");
+  if (attributeOf(click, "action")?.startsWith("ppaction://")) return undefined;
+  const id = attributeOf(click, "r:id");
   const rel = id === undefined || id === "" ? undefined : rels.get(id);
   return externalLinkTarget(rel);
 };
 
 /** ST_TextFontSize: an integer from 100 to 400 000, hundredths of a point. */
 export const sizeOf = (rPr: XNode | undefined): number | undefined => {
-  const raw = rPr === undefined ? undefined : attr(rPr, "sz");
+  const raw = rPr === undefined ? undefined : attributeOf(rPr, "sz");
   const n = raw === undefined || raw.trim() === "" ? Number.NaN : Number(raw);
   return Number.isInteger(n) && n >= 100 && n <= 400_000 ? n / 100 : undefined;
 };
@@ -166,16 +166,16 @@ export interface RunColors {
  *  `a:sym` decides alone: `a:latin` Symbol with `a:sym` Wingdings keeps its points (counter-review of 26/10/2026). */
 export const isSymbolRun = (rPr: XNode | undefined): boolean => {
   if (rPr === undefined) return false;
-  const sym = child(rPr, "a:sym");
-  return isSymbolFont(attr(sym ?? child(rPr, "a:latin") ?? {}, "typeface"));
+  const sym = findChild(rPr, "a:sym");
+  return isSymbolFont(attributeOf(sym ?? findChild(rPr, "a:latin") ?? {}, "typeface"));
 };
 
 const readRun = (node: XNode, rels: ReadonlyMap<string, Relationship>, colors: RunColors, level: number, shown?: string): PptxRun[] => {
-  const rPr = child(node, "a:rPr");
+  const rPr = findChild(node, "a:rPr");
   const raw =
     shown ??
-    children(node, "a:t")
-      .map((t) => textOf(t))
+    findChildren(node, "a:t")
+      .map((t) => textContentOf(t))
       .join("");
   const text = isSymbolRun(rPr) ? symbolFontText(raw) : raw;
   if (text === "") return [];
@@ -197,7 +197,7 @@ const readRun = (node: XNode, rels: ReadonlyMap<string, Relationship>, colors: R
 
 /** `a:pPr lvl` as a positive integer; 0 when absent or unreadable. */
 const levelOf = (pPr: XNode | undefined): number => {
-  const lvl = Number.parseInt(attr(pPr ?? {}, "lvl") ?? "0", 10);
+  const lvl = Number.parseInt(attributeOf(pPr ?? {}, "lvl") ?? "0", 10);
   return Number.isInteger(lvl) && lvl > 0 ? lvl : 0;
 };
 
@@ -207,34 +207,34 @@ const levelOf = (pPr: XNode | undefined): number => {
 export const bulletOf = (pPr: XNode | undefined, level: number): PptxListPlace | "none" | undefined => {
   if (!pPr) return undefined;
   // EG_TextBullet: at most one of buNone, buAutoNum, buChar, buBlip.
-  const autoNum = child(pPr, "a:buAutoNum");
+  const autoNum = findChild(pPr, "a:buAutoNum");
   if (autoNum) {
     // ECMA-376 ST_TextBulletStartAtNum: 1..32767, clamped at the read — a
     // written "-2147483648" or "999999999" crossed into the IR as `start`.
-    const startAt = Number.parseInt(attr(autoNum, "startAt") ?? "1", 10);
+    const startAt = Number.parseInt(attributeOf(autoNum, "startAt") ?? "1", 10);
     const start = Number.isInteger(startAt) ? Math.min(Math.max(startAt, 1), 32_767) : 1;
     return { ordered: true, level, ...(start === 1 ? {} : { start }) };
   }
   // A picture bullet (`buBlip`) is a bullet like a character one.
-  if (child(pPr, "a:buChar") || child(pPr, "a:buBlip")) return { ordered: false, level };
-  return child(pPr, "a:buNone") ? "none" : undefined;
+  if (findChild(pPr, "a:buChar") || findChild(pPr, "a:buBlip")) return { ordered: false, level };
+  return findChild(pPr, "a:buNone") ? "none" : undefined;
 };
 
 export const readParagraph = (paragraph: XNode, rels: ReadonlyMap<string, Relationship>, colors: RunColors = {}): PptxParagraph => {
-  const pPr = child(paragraph, "a:pPr");
+  const pPr = findChild(paragraph, "a:pPr");
   const level = levelOf(pPr) || undefined;
-  const runs = kids(paragraph).flatMap((node): PptxRun[] => {
-    switch (tagOf(node)) {
+  const runs = childNodesOf(paragraph).flatMap((node): PptxRun[] => {
+    switch (qualifiedNameOf(node)) {
       case "a:r":
         return readRun(node, rels, colors, level ?? 0);
       case "a:fld":
         // Every field (date, custom text) keeps the text it displays; the slide
-        // number stores a placeholder, so the number PowerPoint shows is published (Mikolaj, 19/10/2026).
-        return readRun(node, rels, colors, level ?? 0, attr(node, "type") === "slidenum" ? colors.slideNumber?.toString() : undefined);
+        // number stores a placeholder, so the number PowerPoint shows is published (19/10/2026).
+        return readRun(node, rels, colors, level ?? 0, attributeOf(node, "type") === "slidenum" ? colors.slideNumber?.toString() : undefined);
       case "a:br": {
         // A break writes its own `a:rPr`: its size is the height of the
         // line it ends when that line is empty (IT 3 writes sz 900 on it).
-        const size = sizeOf(child(node, "a:rPr"));
+        const size = sizeOf(findChild(node, "a:rPr"));
         return [{ text: "\n", ...(size === undefined ? {} : { size }) }];
       }
       default:
@@ -244,10 +244,10 @@ export const readParagraph = (paragraph: XNode, rels: ReadonlyMap<string, Relati
   // An empty paragraph inherits no bullet: nothing is published for it, and it ends no list (`extractor/pptx.ts`).
   const written = bulletOf(pPr, levelOf(pPr));
   const list = written === "none" ? undefined : (written ?? (runs.length === 0 ? undefined : colors.inheritedBullet?.(levelOf(pPr))));
-  const algn = pPr === undefined ? undefined : attr(pPr, "algn");
+  const algn = pPr === undefined ? undefined : attributeOf(pPr, "algn");
   const align = algn === "ctr" || algn === "r" ? algn : undefined;
   const lineSpacing = lineSpacingOf(pPr);
-  const endSize = sizeOf(child(paragraph, "a:endParaRPr"));
+  const endSize = sizeOf(findChild(paragraph, "a:endParaRPr"));
   return {
     runs,
     ...(list === undefined ? {} : { list }),

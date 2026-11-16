@@ -1,43 +1,42 @@
-/** Builds the PUBLISHABLE package of the reading library (étape 9 de `docs/PLAN-BIBLIOTHEQUE.md`), with esbuild, into
- *  `packages/reader/dist/`.
- *  Decides: ce que le paquet emporte et ce qu'il laisse à l'appelant — et rien d'autre. Deux entrées, celles que l'étape 8
- *  a dessinées : la porte LOURDE (`src/lib/index.ts`, qui charge les lecteurs) et la porte LÉGÈRE (`src/lib/light.ts`,
- *  qui n'en charge aucun). Deux dépendances restent EXTERNES, parce qu'un consommateur les installe lui-même et qu'en
- *  les emportant on les publierait en double.
+/** Builds the PUBLISHABLE packages of the reading library (step 9 of `docs/PLAN-BIBLIOTHEQUE.md`), with esbuild, each
+ *  into its own `dist/` (`PACKAGES` names them).
+ *  Decides: what each package carries and what it leaves to the caller, and nothing else. Two entries per package: the
+ *  HEAVY door, which loads the readers, and the LIGHT door, which loads none. What `external` names stays outside,
+ *  because a consumer installs it itself and carrying it would publish it twice.
  *
- *  POURQUOI UN BUNDLE ET NON `tsc` : les sources sont écrites en résolution « Bundler » — un import relatif n'y porte
- *  pas son extension (`./foo`, jamais `./foo.js`). Node refuse ces chemins-là. Réécrire 1 500 imports pour publier
- *  serait un changement de tout le dépôt ; un bundle les résout une fois pour toutes, et c'est déjà ce que fait
- *  `build-functions.ts` pour les fonctions Forge.
+ *  WHY A BUNDLE AND NOT `tsc`: the sources are written in "Bundler" resolution, where a relative import carries no
+ *  extension (`./foo`, never `./foo.js`). Node refuses those paths. Rewriting 1,500 imports to publish would change the
+ *  whole repository; a bundle resolves them once and for all, and it is already what `build-functions.ts` does for the
+ *  Forge functions.
  *
- *  MESURÉ le 30/10/2026, et c'est ce qui rend l'étape possible : AUCUN fichier source de la bibliothèque n'importe
- *  `@forge/*` (le seul qui le fasse, `pipeline/translation-payload.ts`, est l'un des sept qui restent dans l'app), et
- *  `fast-xml-parser`, `jszip` et `jpeg-js` ne sont plus importés que par des TESTS — le détachement a porté.
- *  NOT here: la licence, le README et les défauts qu'il nomme (`packages/reader/`), le `package.json` publié, ni la
- *  publication elle-même (geste de Mikolaj).
+ *  MEASURED on 30/10/2026, which is what makes the step possible: NO source file of the library imports `@forge/*` (the
+ *  only one that does, `pipeline/translation-payload.ts`, is one of the seven that stay in the app), and
+ *  `fast-xml-parser`, `jszip` and `jpeg-js` are now imported only by TESTS and by the bench: the detachment held.
+ *  NOT here: the licence, the README and the defects it names (each package's folder), the published `package.json`,
+ *  nor the publication itself (the maintainer's gesture).
  *  Called by: `npm run build:lib`, `build-library.test.ts`. */
 
 import { spawnSync } from "node:child_process";
-import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { build, type BuildOptions } from "esbuild";
 
-/** UN DESCRIPTIF PAR PAQUET PUBLIÉ (Mikolaj, 09/11/2026 : le PDF d'un côté, les formats déclarés de l'autre).
- *  Chaque paquet est un BUNDLE : ce qu'il contient est ce que ses portes ATTEIGNENT, jamais où ses fichiers sont posés.
- *  C'est pourquoi deux paquets sortent d'un seul arbre de sources, et pourquoi un test les mesure sur l'artefact
- *  (`build-library.test.ts`) : la frontière est détectée là où elle compte, et le déménagement physique — chantier
- *  suivant — la rendra en plus impossible.
- *  `external` : les paquets qu'un consommateur installe, laissés dehors pour ne pas les dupliquer chez qui les a déjà.
- *  Le PDF n'a plus besoin de `parse5` depuis que les formats déclarés sont partis : il ne servait qu'au HTML d'un dessin
- *  Google dans un export Word. */
+/** ONE DESCRIPTOR PER PUBLISHED PACKAGE (09/11/2026: the PDF on one side, the declared formats on the other).
+ *  Each package is a BUNDLE: what it holds is what its doors REACH, never where its files sit.
+ *  That is why two packages come out of a single source tree, and why a test measures them on the artefact
+ *  (`build-library.test.ts`): the boundary is detected where it counts, and the physical move — the next step —
+ *  will also make it impossible to cross.
+ *  `external`: the packages a consumer installs, left outside so that they are not duplicated for whoever already has them.
+ *  The PDF no longer needs `parse5` since the declared formats left: it was used only for the HTML of a Google drawing
+ *  in a Word export. */
 export interface LibraryPackage {
-  /** Dossier du paquet dans le dépôt. */
+  /** The package's folder in the repository. */
   dir: string;
-  /** Les portes publiées, nom de sortie → fichier source. `index` est l'entrée principale, `light` celle sans lecteur. */
+  /** The published doors, output name → source file. `index` is the main entry, `light` the one with no reader. */
   entries: { index: string; light: string };
-  /** Spécificateurs laissés externes. */
+  /** Specifiers left external. */
   external: readonly string[];
 }
 
@@ -58,40 +57,38 @@ export const distDirOf = (pkg: LibraryPackage): string => join(pkg.dir, "dist");
 export const tsconfigOf = (pkg: LibraryPackage): string => join(pkg.dir, "tsconfig.build.json");
 
 
-/** Partagé avec le test, pour que le paquet mesuré soit celui qui sera publié. ESM : le dépôt est en modules, et un
- *  paquet neuf n'a aucune raison de naître en CommonJS. Non minifié, comme les fonctions Forge : une trace de pile
- *  lisible vaut mieux que quelques octets. */
+/** Shared with the test, so that the package measured is the one that will be published. ESM: the repository is in
+ *  modules, and a new package has no reason to be born CommonJS. Minified, for the reason written at `minify` below. */
 export const LIBRARY_BUILD_OPTIONS = {
   bundle: true,
   platform: "node",
   target: "node20",
   format: "esm",
-  // AUCUN COMMENTAIRE NE SORT (revue sécurité du 30/10/2026). Le bundle en emportait six qui nommaient Mikolaj,
-  // citaient des arbitrages internes, des chemins de `docs/` et jusqu'au CONTENU d'une fixture — les mots d'un vrai
-  // document, exactement ce que la règle du dépôt garde hors de tout ce qui est expédié. Sans minification, esbuild
-  // recopie les commentaires du source ; `legalComments` ne touche que ceux de licence. La minification est donc ce
-  // qui les enlève, et c'est l'usage d'un paquet publié : qui veut lire le code lit les SOURCES, publiques sous AGPL.
-  // (Les fonctions Forge restent non minifiées : leurs traces de pile vont dans NOS journaux, celles d'un
-  // consommateur ne nous reviennent jamais.)
+  // NO COMMENT LEAVES (security review of 30/10/2026). The bundle carried six that named the maintainer, cited
+  // internal arbitrations, `docs/` paths and even the CONTENT of a fixture — the words of a real document, exactly what
+  // the repository's rule keeps out of everything shipped. Without minification, esbuild copies the source's comments;
+  // `legalComments` only touches the licence ones. Minification is therefore what removes them, and it is the usual
+  // choice for a published package: whoever wants to read the code reads the SOURCES, public under AGPL.
+  // (The Forge functions stay unminified: their stack traces go to OUR logs, a consumer's never come back to us.)
   minify: true,
   legalComments: "none",
   logLevel: "warning",
 } satisfies BuildOptions;
 
-/** Ce que le bundle a VRAIMENT avalé, dit par esbuild lui-même : les fichiers du dépôt qu'il a emportés, et les paquets
- *  qu'il a laissés dehors. Rendu plutôt que relu dans le texte du bundle — minifié, celui-ci ne porte plus ni
- *  commentaire de provenance ni mise en forme sur laquelle s'appuyer (revue sécurité du 30/10/2026). */
+/** What the bundle REALLY swallowed, as told by esbuild itself: the repository files it carried, and the packages it
+ *  left outside. Returned rather than re-read from the bundle's text — once minified, that text holds neither a
+ *  provenance comment nor any formatting to rely on (security review of 30/10/2026). */
 export interface BuiltGraph {
-  /** Chemins du dépôt, séparateurs normalisés (`src/extractor/pdf.ts`). */
+  /** Repository paths, separators normalised (`packages/doc-read/src/extractor/pdf.ts`). */
   inputs: string[];
-  /** Spécificateurs laissés externes, tels qu'ils sont écrits (`@cantoo/pdf-lib`). */
+  /** Specifiers left external, as written (`@cantoo/pdf-lib`). */
   external: string[];
 }
 
-/** Les DÉCLARATIONS, émises par tsc dans le même dossier que les bundles. Elles font partie du paquet (c'est son champ
- *  `types`), donc elles se construisent avec lui : les laisser au `npm run build:lib` de la machine de l'auteur a fait
- *  tomber la CI, où `dist/` n'existe pas — il est ignoré par git (30/10/2026). Le compilateur est appelé par son
- *  chemin dans `node_modules`, jamais par `npx` : une CI hors ligne n'irait rien chercher. */
+/** The DECLARATIONS, emitted by tsc into `types/`, under the folder of the bundles. They are part of the package (its `types`
+ *  field), so they are built with it: leaving them to the author's machine's `npm run build:lib` broke the CI, where
+ *  `dist/` does not exist — git ignores it (30/10/2026). The compiler is called by its path in `node_modules`, never
+ *  through `npx`: an offline CI would fetch nothing. */
 const buildTypes = (pkg: LibraryPackage, outDir: string): void => {
   const tsc = resolve("node_modules", "typescript", "bin", "tsc");
   const result = spawnSync(process.execPath, [tsc, "--project", tsconfigOf(pkg), "--outDir", resolve(outDir, "types")], { encoding: "utf8" });
@@ -99,31 +96,50 @@ const buildTypes = (pkg: LibraryPackage, outDir: string): void => {
   inlineWorkspaceSpecifiers(resolve(outDir, "types"));
 };
 
-/** 🔴 UN PAQUET PRIVÉ NE S'INSTALLE PAS, DONC SON NOM NE DOIT PAS SURVIVRE DANS LES DÉCLARATIONS PUBLIÉES.
- *  Depuis le déménagement du 09/11/2026, le noyau vit dans `packages/doc-ir`, importé par son nom npm. Le BUNDLE de
- *  code l'emporte (esbuild le résout et l'inline : zéro occurrence mesurée). Les DÉCLARATIONS, elles, gardent le
- *  spécificateur tel quel — tsc ne réécrit jamais un chemin de module — et 36 fichiers de `skryba` annonçaient donc
- *  `from "doc-ir/lib/ir"` à un consommateur qui ne peut pas l'installer : le paquet s'installait et ses types ne
- *  résolvaient rien. Mesuré sur l'artefact avant d'écrire ces lignes.
- *  Ici, chaque spécificateur d'un paquet de l'espace de travail devient le chemin RELATIF du fichier émis à côté :
- *  `tsc` a émis les deux arbres sous `dist/types` (grâce à `rootDir` sur la racine du dépôt), donc la cible existe.
- *  Déterministe, et tenu par un garde : aucune déclaration publiée ne nomme un paquet privé
- *  (`build-library.test.ts`). */
-/** 🔴 CONSTRUITE À CHAQUE FICHIER, JAMAIS PARTAGÉE. Une regex globale porte son `lastIndex` d'un appel au suivant : la
- *  même expression, gardée en module, a répondu « ne matche pas » sur un fichier dont le contenu matchait parfaitement
- *  hors du build — 155 déclarations lues, zéro réécrite, et aucune erreur pour le dire. Mesuré le 09/11/2026, trouvé
- *  en comptant les fichiers réécrits au lieu de croire le code. */
-const workspaceSpecifier = (): RegExp => /(from\s*|import\s*\(\s*)(["'])(doc-ir)\/([^"']+)\2/g;
+/** 🔴 A PRIVATE PACKAGE CANNOT BE INSTALLED, SO ITS NAME MUST NOT SURVIVE IN THE PUBLISHED DECLARATIONS.
+ *  Since the move of 09/11/2026, the core lives in `packages/doc-ir`, imported by its npm name. The code BUNDLE carries
+ *  it away (esbuild resolves and inlines it: zero occurrences measured). The DECLARATIONS keep the specifier as it is —
+ *  tsc never rewrites a module path — so 36 files of `skryba` told a consumer who cannot install it
+ *  `from "doc-ir/lib/ir"`: the package installed and its types resolved nothing. Measured on the artefact before
+ *  these lines were written.
+ *  Here, each specifier of a PRIVATE workspace package becomes the RELATIVE path of the file emitted beside it: `tsc`
+ *  emitted every tree under `dist/types` (thanks to `rootDir` on the repository root), so the target exists.
+ *  Deterministic. The private packages are read from the workspace, never listed: the list once named `doc-ir` alone,
+ *  and `doc-gate` went out in the declarations of two published versions (found on 15/11/2026). */
+const privateWorkspacePackages = (): Map<string, string> => {
+  const directoryOfName = new Map<string, string>();
+  for (const entry of readdirSync("packages", { withFileTypes: true })) {
+    const manifestPath = join("packages", entry.name, "package.json");
+    if (!entry.isDirectory() || !existsSync(manifestPath)) continue;
+    // A manifest that does not parse throws here: skipping it would let its specifiers out.
+    const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as { name?: string; private?: boolean };
+    // A specifier carries the package's NAME; the emitted tree is laid out by DIRECTORY.
+    if (manifest.private === true && manifest.name !== undefined) directoryOfName.set(manifest.name, entry.name);
+  }
+  return directoryOfName;
+};
+
+const escapeForRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
+
+/** 🔴 BUILT FOR EACH FILE, NEVER SHARED. A global regex carries its `lastIndex` from one call to the next: the same
+ *  expression, kept at module level, answered « no match » on a file whose content matched perfectly outside the
+ *  build — 155 declarations read, none rewritten, and no error to say so. Measured on 09/11/2026, found by counting
+ *  the rewritten files instead of trusting the code. */
+const workspaceSpecifier = (packageNames: readonly string[]): RegExp =>
+  new RegExp(String.raw`(from\s*|import\s*\(\s*)(["'])(${packageNames.map(escapeForRegExp).join("|")})\/([^"']+)\2`, "g");
 
 const inlineWorkspaceSpecifiers = (typesDir: string): void => {
   const walk = (dir: string): string[] =>
     readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
       entry.isDirectory() ? walk(join(dir, entry.name)) : entry.name.endsWith(".d.ts") ? [join(dir, entry.name)] : [],
     );
+  const directoryOfName = privateWorkspacePackages();
+  const packageNames = [...directoryOfName.keys()].sort();
+  if (packageNames.length === 0) throw new Error("build-library: no private workspace package was found under packages/");
   for (const file of walk(typesDir)) {
     const text = readFileSync(file, "utf8");
-    const rewritten = text.replace(workspaceSpecifier(), (_whole, lead: string, quote: string, pkgName: string, sub: string) => {
-      const target = join(typesDir, "packages", pkgName, "src", `${sub}`);
+    const rewritten = text.replace(workspaceSpecifier(packageNames), (_whole, lead: string, quote: string, pkgName: string, sub: string) => {
+      const target = join(typesDir, "packages", directoryOfName.get(pkgName) ?? pkgName, "src", `${sub}`);
       const relative = posixRelative(dirname(file), target);
       return `${lead}${quote}${relative}${quote}`;
     });
@@ -131,7 +147,7 @@ const inlineWorkspaceSpecifiers = (typesDir: string): void => {
   }
 };
 
-/** Un chemin relatif de module : séparateurs POSIX, et le `./` explicite qu'un spécificateur exige. */
+/** A relative module path: POSIX separators, and the explicit `./` that a specifier requires. */
 const posixRelative = (from: string, to: string): string => {
   const path = relative(from, to).replaceAll("\\", "/");
   return path.startsWith(".") ? path : `./${path}`;

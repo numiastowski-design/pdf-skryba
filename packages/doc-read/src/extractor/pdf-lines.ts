@@ -246,7 +246,7 @@ const isRaisedCall = (it: PositionedItem, host: PositionedItem | undefined, size
 };
 
 /**
- * A NOTE NUMBER OPENS ITS NOTE (05/11/2026, Mikolaj on the published Federal Register `sd-4133285`: « 6 See id. … 7 Id. »
+ * A NOTE NUMBER OPENS ITS NOTE (05/11/2026 on the published Federal Register `sd-4133285`: « 6 See id. … 7 Id. »
  * came out as one paragraph). Since 04/11 the small raised digit at the foot of a column is reseated onto the line it
  * opens (`layout/superscript.ts#LEADING_CALL_GAP_EM`); it is then the line's FIRST item, and « follows nothing », so it
  * was published as a plain « 7 » that no paragraph rule could tell from a first word. A leading DIGIT run that ends
@@ -265,7 +265,7 @@ const opensAsNoteNumber = (it: PositionedItem, host: PositionedItem, size: numbe
 const oneLetterShape = /^\p{L}\p{P}?$/u;
 
 /**
- * A DROP CAP IS PUBLISHED IN BOLD, AND NOTHING ELSE IS DONE TO IT (Mikolaj, 12/11/2026, evening: « pour lettrines on
+ * A DROP CAP IS PUBLISHED IN BOLD, AND NOTHING ELSE IS DONE TO IT (12/11/2026, evening: « pour lettrines on
  * revert en effet. on met juste en gras […] basta »). It keeps its size, its width and its place.
  *
  * WHY NOTHING MORE. Confluence serves no text size above Normal that is not a heading — its editor offers « Small

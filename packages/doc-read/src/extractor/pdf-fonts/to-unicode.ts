@@ -256,7 +256,7 @@ interface Declared {
 
 interface Placing {
   readonly into: Map<number, string>;
-  /** 🔴 WHAT THE FILE DECLARES WHERE WE REFUSE TO PUBLISH IT (Mikolaj, 31/10/2026: "we have to do it
+  /** 🔴 WHAT THE FILE DECLARES WHERE WE REFUSE TO PUBLISH IT (31/10/2026: "we have to do it
    *  ourselves", for emojis). A producer can write the UTF-16 units as CIDs: an emoji then occupies two
    *  neighbouring painted codes, and each carries an isolated half-pair that the filter rightly rejects, taken alone.
    *  It is `extractor/pdf-glyph-source.ts` that PAIRS them, because only it sees the sequence of painted codes.

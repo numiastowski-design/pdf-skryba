@@ -1,7 +1,7 @@
 /** What the small BITMAP markers of ONE page attach to: a character-sized picture the document puts in front of a label
  *  (the badges of a bulletin's legend). They are the document's own pixels, copied as they are.
  *  NOT here: reading those pictures off the page (`extractor/pdf-table-detector.ts`).
- *  NO COLOUR DISC IS PUBLISHED (Mikolaj, 07/10/2026): a word on a coloured disc or panel is plain text like any other.
+ *  NO COLOUR DISC IS PUBLISHED (07/10/2026): a word on a coloured disc or panel is plain text like any other.
  *  Colour carries nothing for Confluence search or Rovo, and the removed mechanism turned 58 words of a panel into pictures
  *  whose text lived only in the alt attribute (not searchable). Its code, its SVG renderer and their tests are deleted.
  *  Called by: `extractor/pdf.ts`. */

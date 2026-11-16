@@ -1,21 +1,18 @@
-/** Namespace checks of an Office part, for our own XML reader (detachment of
- *  fast-xml-parser, `d2c-propositions/xml/plan.md`, tranche 5): qualified
- *  names, and attributes that would collide after the product's prefix
- *  rewriting. Checks only: the tree keeps every name as written, as
- *  fast-xml-parser does with the product's options.
- *  NOT here: the rewriting itself (`ooxml/xml.ts#canonicalize`, our own
- *  code, unchanged by the detachment; only its `renamed` is shared); the prefixes named inside attribute VALUES (`mc:Ignorable`,
- *  `mc:Choice Requires`: ECMA-376 Part 3, read by `canonicalize`); storage
- *  XHTML (its `ac:`/`ri:` prefixes are never declared: `tree.ts` runs this
- *  in document mode only).
+/** Namespace checks of an Office part for our own XML reader: qualified names, and attributes that would collide after
+ *  the product's prefix rewriting. Checks only: the tree keeps every name as written.
+ *  Decides: which parts are refused, either as not namespace-well-formed or because two attributes would collide once
+ *  their prefixes are rewritten.
+ *  NOT here: the rewriting itself (`ooxml/xml.ts#canonicalize`; only its `renamed` is shared); the prefixes named
+ *  inside attribute VALUES (`mc:Ignorable`, `mc:Choice Requires`: ECMA-376 Part 3, read by `canonicalize`); storage
+ *  XHTML (its `ac:`/`ri:` prefixes are never declared: `tree.ts` runs this in document mode only).
  *  Called by: `tree.ts`. */
 
 import { renamed } from "../ooxml/prefixes";
 import { xmlRefusal } from "./tokenizer";
 
 /**
- * Two checks, each of an Office part that would otherwise be read WRONG, never merely unusual (product owner, 25/10/2026:
- * refuse only what would publish wrong; read the rest exactly as fast-xml-parser reads it):
+ * Two checks, each of an Office part that would otherwise be read WRONG, never merely unusual (decision of the
+ * maintainer, 25/10/2026: refuse only what would publish wrong; read the rest as written):
  * - W3C Namespaces in XML 1.0 (Third Edition) §4 QName = Prefix ':' LocalPart, both NCNames: at most one colon, neither
  *   side empty, the part after the colon starting with a NameStartChar (`p:1a` is a valid XML 1.0 Name, not a QName). A
  *   namespace declaration's prefix is an NCName too (§3 [3] PrefixedAttName). The product's readers never recognise
@@ -24,10 +21,9 @@ import { xmlRefusal } from "./tokenizer";
  *   by namespace URI (Transitional and Strict vocabularies to one prefix, spreadsheetml to none) and builds the
  *   attributes with `Object.fromEntries`, so two attributes of one element with the same canonical name lose a value.
  *   The check calls the same `renamed`. A prefix bound nowhere stays as written there, so it is read, not refused.
- * NOT checked, because the product reads those parts correctly and so does fast-xml-parser: an undeclared prefix,
- * the reserved prefixes and names (§3), an empty name for a prefix (§5), §7 (no colon in a PI target).
- * Each refusal is of WELL-FORMED XML 1.0, which fast-xml-parser reads: ours alone, outside the shadow's list of what no
- * valid part can hold.
+ * NOT checked, because the product reads those parts correctly: an undeclared prefix, the reserved prefixes and names
+ * (§3), an empty name for a prefix (§5), §7 (no colon in a PI target).
+ * Each refusal is of WELL-FORMED XML 1.0: ours alone, not a rule of the standard's well-formedness.
  *
  * WORK: one binding costs O(1). Each prefix has a stack of names, pushed by a declaration and popped when its element
  * closes; no scope is ever copied (as `canonicalize` does), so deep nesting under many declarations stays linear.
@@ -37,86 +33,88 @@ import { xmlRefusal } from "./tokenizer";
 
 const XMLNS = "xmlns";
 
-/** §2.3 NameChar that are not NameStartChar: `-`, `.`, digits, U+00B7, U+0300-036F, U+203F-2040. A LocalPart may
- *  not start with one; the tokenizer has already checked the rest of the Name. */
-const startsAsNcName = (part: string): boolean => {
-  const c = part.charCodeAt(0);
-  if (c === 0x2d || c === 0x2e || (c >= 0x30 && c <= 0x39) || c === 0xb7) return false;
-  return !((c >= 0x300 && c <= 0x36f) || c === 0x203f || c === 0x2040);
+/** Whether the first character of a Name the tokenizer has already checked is a NameStartChar: the NameChar of §2.3
+ *  that are not NameStartChar (`-`, `.`, digits, U+00B7, U+0300-036F, U+203F-2040) are the only ones left to exclude.
+ *  A LocalPart may not start with one. */
+const isNameStartCharOfCheckedName = (part: string): boolean => {
+  const firstCharCode = part.charCodeAt(0);
+  if (firstCharCode === 0x2d || firstCharCode === 0x2e || (firstCharCode >= 0x30 && firstCharCode <= 0x39) || firstCharCode === 0xb7) return false;
+  return !((firstCharCode >= 0x300 && firstCharCode <= 0x36f) || firstCharCode === 0x203f || firstCharCode === 0x2040);
 };
 
 /** Splits a QName into prefix and local part; refuses what is not one. */
-const split = (name: string): readonly [string | undefined, string] => {
+const splitQualifiedName = (name: string): readonly [string | undefined, string] => {
   const colon = name.indexOf(":");
   if (colon < 0) return [undefined, name];
   if (colon === 0 || colon === name.length - 1 || name.includes(":", colon + 1)) throw xmlRefusal("malformed qualified name");
-  const local = name.slice(colon + 1);
-  if (!startsAsNcName(local)) throw xmlRefusal("malformed qualified name");
-  return [name.slice(0, colon), local];
+  const localName = name.slice(colon + 1);
+  if (!isNameStartCharOfCheckedName(localName)) throw xmlRefusal("malformed qualified name");
+  return [name.slice(0, colon), localName];
 };
 
 /** The prefix an attribute declares (`""` for the default namespace), or `undefined` when it declares none. */
-const declaredPrefix = (prefix: string | undefined, local: string): string | undefined => {
-  if (prefix === XMLNS) return local;
-  return prefix === undefined && local === XMLNS ? "" : undefined;
+const findDeclaredPrefix = (prefix: string | undefined, localName: string): string | undefined => {
+  if (prefix === XMLNS) return localName;
+  if (prefix === undefined && localName === XMLNS) return "";
+  return undefined;
 };
 
 /** The namespace scopes of one document, element by element, as the tree opens and closes them. */
 export class NamespaceChecker {
   private readonly bindings = new Map<string, string[]>();
   /** Per open element, the prefixes it declared (to pop on close); `undefined` when none. */
-  private readonly declaredBy: (string[] | undefined)[] = [];
+  private readonly declaredPrefixesByOpenElement: (string[] | undefined)[] = [];
 
   /** The scope in force, as `renamed` reads it. */
   private readonly scope = { get: (prefix: string): string | undefined => this.bindings.get(prefix)?.at(-1) };
 
   /** Checks an element's name and attributes against its own declarations and those in force. */
-  open(name: string, attributes: readonly (readonly [string, string])[], selfClosing: boolean): void {
+  open(name: string, attributes: readonly (readonly [string, string])[], isSelfClosing: boolean): void {
     // A refusal ends the reading of the part: the checker is dropped with the tree, never used again.
-    const declared = this.declare(attributes);
-    split(name);
+    const declaredPrefixes = this.declare(attributes);
+    splitQualifiedName(name);
     this.checkAttributes(attributes);
-    if (selfClosing) this.undeclare(declared);
-    else this.declaredBy.push(declared);
+    if (isSelfClosing) this.undeclare(declaredPrefixes);
+    else this.declaredPrefixesByOpenElement.push(declaredPrefixes);
   }
 
   close(): void {
-    this.undeclare(this.declaredBy.pop());
+    this.undeclare(this.declaredPrefixesByOpenElement.pop());
   }
 
   /** Binds the element's own declarations first: they apply to its own attributes. */
   private declare(attributes: readonly (readonly [string, string])[]): string[] | undefined {
-    let declared: string[] | undefined;
+    let declaredPrefixes: string[] | undefined;
     for (const [attribute, value] of attributes) {
-      const [prefix, local] = split(attribute);
-      const declares = declaredPrefix(prefix, local);
-      if (declares === undefined) continue;
-      const stack = this.bindings.get(declares);
-      if (stack) stack.push(value);
-      else this.bindings.set(declares, [value]);
-      declared ??= [];
-      declared.push(declares);
+      const [prefix, localName] = splitQualifiedName(attribute);
+      const declaredPrefix = findDeclaredPrefix(prefix, localName);
+      if (declaredPrefix === undefined) continue;
+      const bindingStack = this.bindings.get(declaredPrefix);
+      if (bindingStack) bindingStack.push(value);
+      else this.bindings.set(declaredPrefix, [value]);
+      declaredPrefixes ??= [];
+      declaredPrefixes.push(declaredPrefix);
     }
-    return declared;
+    return declaredPrefixes;
   }
 
   /** §6.3: no two attributes of the element with the same canonical name (the product would keep one value). */
   private checkAttributes(attributes: readonly (readonly [string, string])[]): void {
     if (attributes.length < 2) return;
-    const seen = new Set<string>();
+    const seenCanonicalNames = new Set<string>();
     for (const [attribute] of attributes) {
-      const canonical = renamed(attribute, this.scope, true);
-      if (seen.has(canonical)) throw xmlRefusal("attributes repeated under their namespace");
-      seen.add(canonical);
+      const canonicalName = renamed(attribute, this.scope, true);
+      if (seenCanonicalNames.has(canonicalName)) throw xmlRefusal("attributes repeated under their namespace");
+      seenCanonicalNames.add(canonicalName);
     }
   }
 
   /** Pops each binding; a prefix bound nowhere any more leaves the map, so what is kept is what is in force. */
   private undeclare(prefixes: readonly string[] | undefined): void {
     for (const prefix of prefixes ?? []) {
-      const stack = this.bindings.get(prefix)!;
-      stack.pop();
-      if (stack.length === 0) this.bindings.delete(prefix);
+      const bindingStack = this.bindings.get(prefix)!;
+      bindingStack.pop();
+      if (bindingStack.length === 0) this.bindings.delete(prefix);
     }
   }
 }

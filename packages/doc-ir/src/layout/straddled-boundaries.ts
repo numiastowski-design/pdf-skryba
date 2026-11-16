@@ -40,7 +40,7 @@ export function mergeDoubledBoundaries(
   fragmentCenters: readonly number[],
   delta: number,
   /**
-   * LE TEXTE PASSE-T-IL AU-DESSUS de cette paire de frontières ? (Mikolaj, 30/10/2026 : inférer la colonne du TEXTE.)
+   * LE TEXTE PASSE-T-IL AU-DESSUS de cette paire de frontières ? (30/10/2026 : inférer la colonne du TEXTE.)
    *
    * Une paire TRAVERSÉE se replie quel que soit son écart, là où `delta` seul ne sait pas trancher. Mesuré le
    * 30/10/2026 sur 77 PDF, 445 grilles, 193 colonnes de moins de 12 pt : 127 sont traversées (largeur moyenne

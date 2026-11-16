@@ -425,7 +425,7 @@ function recordPath(walker: PageWalker, args: unknown): void {
   // table, the legend dots — and its colour survives nowhere
   // else in the chain.
   // A FILL AT ZERO FILL OPACITY LEAVES NO INK, so it is no fill (lot « 33 »,
-  // Mikolaj, 22/09/2026). Canva ends each page of fixture 26 with one
+  // 22/09/2026). Canva ends each page of fixture 26 with one
   // invisible rectangle per tagged figure (`ca 0`, initial colour black):
   // 13 of them were published as black panels. `ca === 0` is an exact
   // value, not a threshold. A PARTIAL opacity is deliberately NOT decided:
@@ -914,7 +914,7 @@ export async function detectPdfPageSignals(
     // STAGE 0 — the vector grid decides alone: it reads the grid IN the
     // document, where everything else infers it.
     // An image frame is never a grid border (`withoutImageFrames`).
-    // RULE R1 (Mikolaj 01/10/2026): a region whose painted cells are boxes separated by voids (>= 2 closed cells, none touching
+    // RULE R1 (01/10/2026): a region whose painted cells are boxes separated by voids (>= 2 closed cells, none touching
     // another) is a diagram or a layout of cards, not a table — `isBoxesInVoidsRegion`. It is dropped and the page flows as
     // paragraphs and images in reading order, all words kept. A page left with no region records `no-grid` and must NOT fall to
     // the alignment path (not measured on these pages). Tried and set aside: a page-wide « non-axis edge >= 5 pt » rule (R2)

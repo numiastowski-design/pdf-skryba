@@ -5,7 +5,7 @@
  *  published: an external `r:link` (never fetched), a missing part, a video
  *  or a sound, a crop that cannot be applied.
  *  Its alternative text (`p:cNvPr descr`) is never read: a presentation's
- *  alt text is not published (Mikolaj, 25/09/2026).
+ *  alt text is not published (25/09/2026).
  *  NOT here: the published width, capped by the file's own pixels and 744 px
  *  (`renderer/storage.ts#publishedImageWidthPx`), the group scale
  *  (`chOff`/`chExt`, applied in `pptx-reader/shapes.ts`), decoding a PNG
@@ -15,7 +15,7 @@
 import { encodeJpegRgba } from "../jpeg/encode";
 
 import type { Relationship } from "../ooxml/package";
-import { attr, child, kids, tagOf, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, childNodesOf, qualifiedNameOf, type XNode } from "../ooxml/xml";
 import { sniffImage } from "doc-ir/extractor/image-format";
 import { imagePixelWidth, jpegHeader } from "doc-ir/extractor/image-pixel-width";
 import { decodeJpegGuarded, isTurnedByExif, MAX_DECODED_MP } from "../image-reduction";
@@ -97,7 +97,7 @@ const percentage = (raw: string | undefined): number | undefined => {
  *  when an inset is unreadable. */
 const insetsOf = (srcRect: XNode | undefined): Insets | null | undefined => {
   if (!srcRect) return null;
-  const [l, t, r, b] = ["l", "t", "r", "b"].map((k) => percentage(attr(srcRect, k)));
+  const [l, t, r, b] = ["l", "t", "r", "b"].map((k) => percentage(attributeOf(srcRect, k)));
   if (l === undefined || t === undefined || r === undefined || b === undefined) return undefined;
   return l === 0 && t === 0 && r === 0 && b === 0 ? null : { l, t, r, b };
 };
@@ -109,7 +109,7 @@ const insetsOf = (srcRect: XNode | undefined): Insets | null | undefined => {
  *  (same with `t`, `b`). An empty or inverted window (`l + r >= WHOLE`) is
  *  not "outside": it keeps the marker.
  *  Such a picture is published WHOLE, bytes untouched: PowerPoint shows the
- *  whole image there, nothing is hidden from the author. Observed by Mikolaj
+ *  whole image there, nothing is hidden from the author. Observed
  *  on 25/09/2026 on the USA deck's image7.png "headset" icons (slides 9 and
  *  10, Google exports, `t="-184570" b="184570" l="22220" r="-22220"`). A
  *  window only partly outside keeps the marker: no specimen shows what
@@ -164,24 +164,24 @@ const crop = (bytes: Uint8Array, insets: Insets): PptxImage | undefined => {
 /** The declared display width, in points: `p:spPr/a:xfrm/a:ext cx`. Inside
  *  a group it is in the group's own coordinates: the caller scales it. */
 export const pictureWidthPt = (pic: XNode): number | undefined => {
-  const ext = child(child(child(pic, "p:spPr") ?? {}, "a:xfrm") ?? {}, "a:ext");
-  const cx = Number(attr(ext ?? {}, "cx"));
+  const ext = findChild(findChild(findChild(pic, "p:spPr") ?? {}, "a:xfrm") ?? {}, "a:ext");
+  const cx = Number(attributeOf(ext ?? {}, "cx"));
   return ext && Number.isFinite(cx) && cx > 0 ? cx / EMU_PER_PT : undefined;
 };
 
 export const readPicture = (pic: XNode, rels: ReadonlyMap<string, Relationship>, media: PptxMedia): PptxPictureContent => {
-  const nvPr = child(child(pic, "p:nvPicPr") ?? {}, "p:nvPr");
-  if (nvPr && kids(nvPr).some((k) => MEDIA_TAGS.has(tagOf(k) ?? ""))) return { notPublished: "video-or-audio" };
-  const blipFill = child(pic, "p:blipFill");
-  const blip = child(blipFill ?? {}, "a:blip");
-  const embed = attr(blip ?? {}, "r:embed");
+  const nvPr = findChild(findChild(pic, "p:nvPicPr") ?? {}, "p:nvPr");
+  if (nvPr && childNodesOf(nvPr).some((k) => MEDIA_TAGS.has(qualifiedNameOf(k) ?? ""))) return { notPublished: "video-or-audio" };
+  const blipFill = findChild(pic, "p:blipFill");
+  const blip = findChild(blipFill ?? {}, "a:blip");
+  const embed = attributeOf(blip ?? {}, "r:embed");
   const rel = embed === undefined ? undefined : rels.get(embed);
-  if (rel?.external || (embed === undefined && attr(blip ?? {}, "r:link") !== undefined)) return { notPublished: "external-link" };
+  if (rel?.external || (embed === undefined && attributeOf(blip ?? {}, "r:link") !== undefined)) return { notPublished: "external-link" };
   const part = embed === undefined ? undefined : media.get(embed);
   if (!part) return { notPublished: "missing-part" };
   if (part === "damaged") return { notPublished: "damaged-part" };
 
-  const insets = insetsOf(child(blipFill ?? {}, "a:srcRect"));
+  const insets = insetsOf(findChild(blipFill ?? {}, "a:srcRect"));
   // A JPEG that its EXIF turns (orientation other than 1) is published whole, not cropped:
   // re-encoding drops the EXIF orientation. Same policy as image-reduction.ts (audit 07/10).
   const turned = insets !== undefined && insets !== null && isTurnedByExif(jpegHeader(part.bytes)?.orientation);

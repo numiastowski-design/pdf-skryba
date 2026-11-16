@@ -13,7 +13,7 @@ import { componentDims, refuse, type JpegFrame } from "./markers";
 
 /**
  * UPSAMPLING. T.81 does not say how a decoder fills the pixels between
- * subsampled chroma samples. Since 06/10/2026 (Mikolaj's decision) a component
+ * subsampled chroma samples. Since 06/10/2026 (decision) a component
  * subsampled 2:1 horizontally, with 1:1 or 2:1 vertically (4:2:2, 4:2:0), is
  * upsampled as libjpeg-turbo's `h2v1_fancy_upsample` / `h2v2_fancy_upsample`
  * (`jdsample.c`) compute it: each output sample is a weighted mean of the two

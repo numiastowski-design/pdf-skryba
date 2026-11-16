@@ -11,7 +11,7 @@
 
 /**
  * pdf-reading-order — ON PREND LES BALISES POUR L'ORDRE, JAMAIS POUR LE TYPE
- * (décision de Mikolaj, 23/09/2026).
+ * (décision de 23/09/2026).
  *
  * A tagged PDF carries a structure tree, and that tree states the order its
  * author meant the page to be read in. That order — and only that order —

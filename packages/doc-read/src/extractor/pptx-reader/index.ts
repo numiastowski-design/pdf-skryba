@@ -13,9 +13,9 @@
 import { ReaderError } from "doc-ir/lib/reader-error";
 import type { Size } from "doc-ir/layout/slide-elements";
 import { NO_CAP, type ReaderLimits } from "doc-ir/lib/reader-limits";
-import { type DocxPackage, IMAGE_MAX_TOTAL_BYTES, openPackage, orDamaged, PartDamagedError, type Relationship, relationOfKind } from "../ooxml/package";
+import { type OpcPackage, IMAGE_MAX_TOTAL_BYTES, openPackage, readUnlessDamaged, PartDamagedError, type Relationship, findRelationshipOfKind } from "../ooxml/package";
 import { isXsdFalse } from "../../lib/ooxml-bool";
-import { attr, child, children, tagOf, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, qualifiedNameOf, type XNode } from "../ooxml/xml";
 import { cachesWithoutModel, readSmartArt } from "../smartart";
 import { placeShapes, readSmartArtDrawing } from "../smartart-drawing";
 import { readChartOrWithheld } from "./chart";
@@ -102,7 +102,7 @@ const titleText = (shape: PptxTextShape): string | undefined => {
  *  bomb, never degradable. Chart-part renderings stay under the package
  *  ceilings only: they are not slide media. */
 const mediaOf = async (
-  pkg: DocxPackage,
+  pkg: OpcPackage,
   rels: ReadonlyMap<string, Relationship>,
   parts: Map<string, Uint8Array | "damaged" | undefined>,
   budget: { left: number },
@@ -119,7 +119,7 @@ const mediaOf = async (
         // A corrupt image part degrades to the picture's own marker
         // (arbitrage of 28/09/2026); any other failure is ours — the
         // budget's own refusal is NOT PartDamagedError and passes through.
-        // Not `orDamaged`: « damaged » must stay apart from « absent » here.
+        // Not `readUnlessDamaged`: « damaged » must stay apart from « absent » here.
         if (!(e instanceof PartDamagedError)) throw e;
         parts.set(rel.target, "damaged");
       }
@@ -142,13 +142,13 @@ interface DrawingBudget {
  *  shapes (`budget`: the SmartArt that crosses it is not drawn, the slide's element count never moves), or a frame a group scales, turns
  *  or mirrors. `undefined`: nothing to draw (no part, damaged, no shape), the words then stay in the diagram text alone. */
 const drawingOf = async (
-  pkg: DocxPackage,
+  pkg: OpcPackage,
   shape: PptxGraphicShape,
   part: string | undefined,
   context: ColorContext | undefined,
   budget: DrawingBudget,
 ): Promise<PptxGraphicShape["drawing"]> => {
-  const root = part === undefined ? undefined : await orDamaged(() => pkg.readXml(part));
+  const root = part === undefined ? undefined : await readUnlessDamaged(() => pkg.readXml(part));
   if (root === undefined) return undefined;
   const read = readSmartArtDrawing(root, context, budget.limits);
   if (read === "too-many") return "not-drawn";
@@ -161,13 +161,13 @@ const drawingOf = async (
 /** A SmartArt frame with its words and its saved drawing. `claimed`: the drawing part its data model names; `modelless`: no data model
  *  part could be read (a damaged one degrades to the frame's own marker, like a chart part). */
 const readSmartArtFrame = async (
-  pkg: DocxPackage,
+  pkg: OpcPackage,
   shape: PptxGraphicShape,
   slideRels: ReadonlyMap<string, Relationship>,
   context: ColorContext | undefined,
   budget: DrawingBudget,
 ): Promise<{ shape: PptxGraphicShape; claimed: string | undefined; modelless: boolean }> => {
-  const read = await orDamaged(() => readSmartArt(pkg, slideRels, shape.dataPart));
+  const read = await readUnlessDamaged(() => readSmartArt(pkg, slideRels, shape.dataPart));
   const drawing = read === undefined ? undefined : await drawingOf(pkg, shape, read.claimed, context, budget);
   const words = read !== undefined && read.words.length > 0 ? { words: read.words } : {};
   return { shape: { ...shape, ...words, ...(drawing === undefined ? {} : { drawing }) }, claimed: read?.claimed, modelless: read === undefined };
@@ -175,7 +175,7 @@ const readSmartArtFrame = async (
 
 /** Each chart frame with its part's data (`pptx-reader/chart.ts`), each SmartArt frame with its words and its saved drawing. */
 const withCharts = async (
-  pkg: DocxPackage,
+  pkg: OpcPackage,
   shapes: PptxShape[],
   slideRels: ReadonlyMap<string, Relationship>,
   context: ColorContext | undefined,
@@ -198,12 +198,12 @@ const withCharts = async (
       out.push(shape);
       continue;
     }
-    // A chart frame whose relationship does not resolve has no part: said like a missing one (Mikolaj, 07/10/2026).
+    // A chart frame whose relationship does not resolve has no part: said like a missing one (07/10/2026).
     if (shape.part === undefined) {
       out.push({ ...shape, chart: "withheld" });
       continue;
     }
-    // A damaged chart part is a chart kept out whole, like a bound (docx and xlsx say the same: Mikolaj, 07/10/2026).
+    // A damaged chart part is a chart kept out whole, like a bound (docx and xlsx say the same: 07/10/2026).
     const chart = await readChartOrWithheld(pkg, shape.part, { limits });
     out.push(chart === undefined ? shape : { ...shape, chart });
   }
@@ -221,7 +221,7 @@ const withCharts = async (
 
 /** The first relationship of `kind` a part names, inside the package. */
 const targetOf = (rels: ReadonlyMap<string, Relationship>, kind: string): string | undefined =>
-  relationOfKind(rels, kind)?.target;
+  findRelationshipOfKind(rels, kind)?.target;
 
 /** What a slide's `a:schemeClr` resolves through (`pptx-reader/color.ts`),
  *  and its layout and master (what its text inherits a colour from,
@@ -232,7 +232,7 @@ const targetOf = (rels: ReadonlyMap<string, Relationship>, kind: string): string
  *  `undefined` when the slide names no layout, master or theme. `parts`
  *  keeps each part read once for the whole deck. */
 const colorContextOf = async (
-  pkg: DocxPackage,
+  pkg: OpcPackage,
   slide: XNode,
   slideRels: ReadonlyMap<string, Relationship>,
   parts: Map<string, XNode | undefined>,
@@ -250,7 +250,7 @@ const colorContextOf = async (
   const readTheme = async (path: string | undefined): Promise<XNode | undefined> => {
     if (path === undefined) return undefined;
     if (!parts.has(path)) {
-      const read = await orDamaged(() => pkg.readXml(path));
+      const read = await readUnlessDamaged(() => pkg.readXml(path));
       if (read === undefined && pkg.hasPart(path)) themeDamaged.value = true;
       parts.set(path, read);
     }
@@ -261,17 +261,17 @@ const colorContextOf = async (
   const masterPath = layoutPath === undefined ? undefined : targetOf(await pkg.relationships(layoutPath), "slideMaster");
   const master = await read(masterPath);
   const themePath = masterPath === undefined ? undefined : targetOf(await pkg.relationships(masterPath), "theme");
-  const theme = child(await readTheme(themePath) ?? {}, "a:themeElements");
+  const theme = findChild(await readTheme(themePath) ?? {}, "a:themeElements");
   const override = await readTheme(targetOf(slideRels, "themeOverride"));
-  const masterMap = child(master ?? {}, "p:clrMap");
+  const masterMap = findChild(master ?? {}, "p:clrMap");
   const parents = { ...(layout === undefined ? {} : { layout }), ...(master === undefined ? {} : { master }) };
   if (theme === undefined || masterMap === undefined) return parents;
-  const clrScheme = child(override ?? {}, "a:clrScheme") ?? child(theme, "a:clrScheme");
-  const fmtScheme = child(override ?? {}, "a:fmtScheme") ?? child(theme, "a:fmtScheme");
+  const clrScheme = findChild(override ?? {}, "a:clrScheme") ?? findChild(theme, "a:clrScheme");
+  const fmtScheme = findChild(override ?? {}, "a:fmtScheme") ?? findChild(theme, "a:fmtScheme");
   const context = {
     map: overrideMapOf(slide) ?? overrideMapOf(layout) ?? colorMapOf(masterMap),
     scheme: schemeOf(clrScheme),
-    fillStyles: elements(child(fmtScheme ?? {}, "a:fillStyleLst") ?? {}),
+    fillStyles: elements(findChild(fmtScheme ?? {}, "a:fillStyleLst") ?? {}),
   };
   return { ...parents, context };
 };
@@ -296,9 +296,9 @@ export interface ReadPptxOptions {
 
 /** `p:sldSz` as a size, only when both sides are positive integers within ECMA's bound. */
 const readSlideSize = (presentation: XNode): Size | undefined => {
-  const sldSz = child(presentation, "p:sldSz");
-  const cx = Number(attr(sldSz ?? {}, "cx"));
-  const cy = Number(attr(sldSz ?? {}, "cy"));
+  const sldSz = findChild(presentation, "p:sldSz");
+  const cx = Number(attributeOf(sldSz ?? {}, "cx"));
+  const cy = Number(attributeOf(sldSz ?? {}, "cy"));
   // ECMA-376 ST_PositiveCoordinate caps at 27 273 042 316 900 EMU; a size
   // past it ("1e300" is an integer to `Number.isInteger`) is treated as not
   // written — no geometry is invented, the slides come out in file order.
@@ -308,7 +308,7 @@ const readSlideSize = (presentation: XNode): Size | undefined => {
 
 /** What every slide of one deck reads against: the package, the deck's own parts and the caches shared by its slides (each part read once). */
 interface DeckReading {
-  pkg: DocxPackage;
+  pkg: OpcPackage;
   defaultTextStyle: XNode | undefined;
   slideSize: Size | undefined;
   detailCap: number | undefined;
@@ -322,12 +322,12 @@ interface DeckReading {
 }
 
 /** The slide part a `p:sldId` names, parsed; a slide the list names but the package lacks (or that is no `p:sld`) is damage. */
-const openSlidePart = async (pkg: DocxPackage, rels: ReadonlyMap<string, Relationship>, sldId: XNode): Promise<{ target: string; slide: XNode }> => {
-  const relId = attr(sldId, "r:id");
+const openSlidePart = async (pkg: OpcPackage, rels: ReadonlyMap<string, Relationship>, sldId: XNode): Promise<{ target: string; slide: XNode }> => {
+  const relId = attributeOf(sldId, "r:id");
   const rel = relId === undefined ? undefined : rels.get(relId);
   if (!rel || rel.external || rel.kind !== "slide") throw damaged();
   const slide = await pkg.readXml(rel.target);
-  if (!slide || tagOf(slide) !== "p:sld") throw damaged();
+  if (!slide || qualifiedNameOf(slide) !== "p:sld") throw damaged();
   return { target: rel.target, slide };
 };
 
@@ -374,12 +374,12 @@ const readSlide = async (
   const { pkg, detailCap } = deck;
   const { target, slide } = await openSlidePart(pkg, rels, sldId);
   // ECMA-376: `show="0"` hides the slide; it produces nothing.
-  if (isXsdFalse(attr(slide, "show"))) return undefined;
+  if (isXsdFalse(attributeOf(slide, "show"))) return undefined;
   // Past the detail cap the slide is counted but its shapes are not read:
   // no media part is inflated, no chart part is opened (a broken image on
   // a slide the caller drops used to fail the whole deck).
   if (detailCap !== undefined && slides.length >= detailCap) return unreadSlide(slides, listIndex, target, 0);
-  const tree = child(child(slide, "p:cSld") ?? {}, "p:spTree");
+  const tree = findChild(findChild(slide, "p:cSld") ?? {}, "p:spTree");
   // The element-cap withhold is DECIDED on a structural count BEFORE
   // anything else touches the slide (re-revue du 28/09, R1+R2: deciding
   // after inflating media let a withheld slide burst the shared budget,
@@ -412,7 +412,7 @@ const readSlide = async (
 const defaultTextSizesOf = (defaultTextStyle: XNode | undefined): Record<number, number> => {
   const sizes: Record<number, number> = {};
   for (let level = 0; level < 9; level++) {
-    const size = sizeOf(child(child(defaultTextStyle ?? {}, `a:lvl${level + 1}pPr`) ?? {}, "a:defRPr"));
+    const size = sizeOf(findChild(findChild(defaultTextStyle ?? {}, `a:lvl${level + 1}pPr`) ?? {}, "a:defRPr"));
     if (size !== undefined) sizes[level] = size;
   }
   return sizes;
@@ -420,21 +420,21 @@ const defaultTextSizesOf = (defaultTextStyle: XNode | undefined): Record<number,
 
 /** ECMA-376 Part 1 §19.3.1.26: `firstSlideNum` is an integer, 1 when absent; an unreadable value counts as absent. */
 const firstSlideNumOf = (presentation: XNode): number => {
-  const n = Number(attr(presentation, "firstSlideNum"));
+  const n = Number(attributeOf(presentation, "firstSlideNum"));
   return Number.isInteger(n) && n >= 0 && n < 10 ** 9 ? n : 1;
 };
 
 export const readPptx = async (bytes: Uint8Array, options: ReadPptxOptions = {}): Promise<PptxReadResult> => {
   const pkg = await openPackage(bytes, damaged);
   const presentation = await pkg.readXml(pkg.mainPart);
-  if (!presentation || tagOf(presentation) !== "p:presentation") throw damaged();
+  if (!presentation || qualifiedNameOf(presentation) !== "p:presentation") throw damaged();
   const rels = await pkg.relationships(pkg.mainPart);
 
   // The slide order is the order of `p:sldIdLst`, never the part names.
   // A slide the list names but the package lacks is damage, not a slide to
   // skip quietly.
   const slides: PptxSlide[] = [];
-  const defaultTextStyle = child(presentation, "p:defaultTextStyle");
+  const defaultTextStyle = findChild(presentation, "p:defaultTextStyle");
   const slideSize = readSlideSize(presentation);
   const deck: DeckReading = {
     pkg,
@@ -448,7 +448,7 @@ export const readPptx = async (bytes: Uint8Array, options: ReadPptxOptions = {})
     themeDamaged: { value: false },
     firstSlideNum: firstSlideNumOf(presentation),
   };
-  const listed = children(child(presentation, "p:sldIdLst") ?? {}, "p:sldId");
+  const listed = findChildren(findChild(presentation, "p:sldIdLst") ?? {}, "p:sldId");
   for (const [listIndex, sldId] of listed.entries()) {
     const slide = await readSlide(deck, rels, slides, listIndex, sldId);
     if (slide !== undefined) slides.push(slide);

@@ -1,26 +1,13 @@
-/** The XML tree, parser and serialiser everything Confluence-shaped goes
- *  through: build elements, escape text and attributes, parse a fragment back.
- *  One escaping implementation, not two.
- *  NOT here: what a page's XML says (`renderer/storage.ts`), nor the
- *  normalisation used for comparison (`core/canonicalize.ts`).
- *  Called by: `renderer/storage.ts`, `core/canonicalize.ts`,
- *  `adapters/forge-confluence-api.ts`, `adapters/google-auth.ts`. */
-
-/**
- * xml.ts — a minimal, dependency-free XML tree + parser + serializer.
- *
- * Confluence storage format is XML (namespaced `ac:`/`ri:` elements, meaningful
- * self-closing tags), not HTML5 — an HTML parser (parse5) would misparse it: a
- * self-closing `<ri:attachment .../>` is dropped by HTML5 parsing rules for any
- * element outside the void-element list, silently swallowing following siblings
- * as children. This module is the single source of truth both the renderer
- * (build a tree, serialize) and `canonicalizeStorage()` (parse, normalize,
- * serialize) share — one escaping/self-closing implementation, not two.
- *
- * Deliberately narrow: elements, attributes, text, CDATA sections. No DTD, no
- * processing instructions, no XML namespaces resolution (tag/attribute names
- * are opaque strings, e.g. "ac:image" — exactly what storage format needs).
- */
+/** A minimal, dependency-free XML tree, parser and serialiser: the one place everything Confluence-shaped goes through
+ *  to build elements, escape text and attributes, and parse a fragment back. One escaping and self-closing
+ *  implementation, not two.
+ *  Decides: storage format is XML (namespaced `ac:`/`ri:` elements, meaningful self-closing tags), not HTML5: an HTML
+ *  parser would misparse it. Deliberately narrow: elements, attributes, text, CDATA sections. No DTD, no processing
+ *  instructions, no namespace resolution (tag and attribute names are opaque strings, e.g. "ac:image").
+ *  NOT here: what a page's XML says (`renderer/storage.ts`), nor the normalisation used for comparison
+ *  (`core/canonicalize.ts`).
+ *  Called by: `renderer/storage.ts`, `core/canonicalize.ts`, `adapters/forge-confluence-api.ts`,
+ *  `adapters/google-auth.ts`. */
 
 export interface XmlElement {
   readonly type: "element";
@@ -50,32 +37,26 @@ export const cdata = (value: string): XmlText => ({ type: "text", value, cdata: 
 // ---------------------------------------------------------------------------
 // Serialization
 
-// Exported (04/09/2026, STATUS.md — security audit finding): also reused by
-// `google-auth.ts`'s OAuth callback webtrigger to escape untrusted query
-// params before interpolating them into a plain HTML response — the same
-// three characters need escaping for an HTML text node as for an XML one,
-// and this module's own doc already commits to "one escaping implementation,
-// not two".
+// Exported (04/09/2026, security audit finding): also reused to escape untrusted values before they go into an HTML
+// text node, because the same three characters need escaping there as in an XML one ("one escaping implementation,
+// not two").
 //
 // TEXT NODES ONLY, and the distinction is not pedantic (07/09/2026): this
 // leaves `"` and `'` untouched, which is correct between tags and WRONG the
 // moment the value lands in an attribute value, where a quote closes the
 // attribute and reopens the injection. Use `escapeAttr` below for those, and
-// note that neither function makes a value safe inside a `<script>` — no
-// HTML escape does; a value belongs in JSON there, or nowhere.
+// note that neither function makes a value safe inside a `<script>`:
+// a value belongs in JSON there, or nowhere.
 /**
  * Characters that XML 1.0 does NOT admit, and that no escaping can save
  * (spec §2.2: `Char ::= #x9 | #xA | #xD | [#x20-#xD7FF] | …`). A numeric
  * reference does not redeem them either — `&#1;` is just as invalid as
  * the bare byte. The only conforming treatment is REMOVAL.
  *
- * This is not a theoretical precaution (measured on 08/09/2026, fixture
- * `13-Police-Sans-CMap.pdf`): a PDF whose font is an embedded subset
- * WITHOUT `/ToUnicode` made pdf.js (before its removal) return the raw codes as
- * control characters. On this fixture, seventeen of them
- * reached the published XHTML — that is, the body of a request
- * to the Confluence API, which expects valid XML. The storage format is
- * not tolerant HTML: it is XML.
+ * Not a theoretical precaution (found on 08/09/2026, fixture
+ * `13-Police-Sans-CMap.pdf`): control characters extracted from a PDF font
+ * without a Unicode map reached the published XHTML, the body of a request
+ * to Confluence.
  *
  * Remove here, at the last moment, rather than in the extractor: it is the
  * serializer that is responsible for never producing an invalid
@@ -83,10 +64,9 @@ export const cdata = (value: string): XmlText => ({ type: "text", value, cdata: 
  * would let through the next source we have not foreseen.
  *
  * ⚠️ This removal makes the document VALID, it does not make it GOOD. Text
- * extracted as control characters stays unreadable once cleaned — point
- * 10 of the former ideas log (git history) v0.6 (detect the noise and switch to OCR)
- * remains whole, and is not handled here. Do not read this filter as an
- * answer to that point.
+ * extracted as control characters stays unreadable once cleaned: detecting
+ * the noise (and switching to OCR) is not handled here, and this filter is
+ * not an answer to it.
  */
 const INVALID_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g;
 
@@ -97,25 +77,22 @@ const INVALID_XML_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/
  * without a high — a correctly paired emoji goes through intact.
  *
  * Found on 08/09/2026 while fixing the control characters: the fuzz corpus
- * of `storage.property.test.ts` ALREADY contained some (`String
- * .fromCharCode(0xd800)`), and nothing had ever flagged it — our own
- * parser tolerates them, where Confluence's XML parser would reject them.
+ * ALREADY contained some, and nothing had ever flagged it — our own parser
+ * tolerates them.
  */
 const LONE_HIGH_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])/g;
 const LONE_LOW_SURROGATE = /(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
 
-export const stripInvalidXmlChars = (s: string): string =>
-  s.replace(INVALID_XML_CHARS, "").replace(LONE_HIGH_SURROGATE, "").replace(LONE_LOW_SURROGATE, "");
+export const stripInvalidXmlChars = (value: string): string =>
+  value.replace(INVALID_XML_CHARS, "").replace(LONE_HIGH_SURROGATE, "").replace(LONE_LOW_SURROGATE, "");
 
-export const escapeText = (s: string): string =>
-  stripInvalidXmlChars(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-// Exported (04/09/2026, STATUS.md — fuzz finding): callers that need to
-// find a serialized attribute value inside already-rendered XHTML (e.g.
-// storage.ts's own referencedAttachmentShas tracking) must search for the
-// ESCAPED form, the same one this module actually writes — never
-// reimplement escaping a second time (this file's own module doc: "one
-// escaping/self-closing implementation, not two").
-export const escapeAttr = (s: string): string => escapeText(s).replace(/"/g, "&quot;");
+export const escapeText = (value: string): string =>
+  stripInvalidXmlChars(value).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+// Exported (04/09/2026, fuzz finding): callers that need to find a serialized
+// attribute value inside already-rendered XHTML must search for the ESCAPED
+// form, the same one this module actually writes — never reimplement escaping
+// a second time ("one escaping implementation, not two").
+export const escapeAttr = (value: string): string => escapeText(value).replace(/"/g, "&quot;");
 
 export const serializeXml = (node: XmlNode): string => {
   if (node.type === "text") {
@@ -123,9 +100,9 @@ export const serializeXml = (node: XmlNode): string => {
     // stays forbidden inside a CDATA section.
     return node.cdata ? `<![CDATA[${stripInvalidXmlChars(node.value)}]]>` : escapeText(node.value);
   }
-  const attrs = node.attrs.map(([k, v]) => ` ${k}="${escapeAttr(v)}"`).join("");
-  if (node.children.length === 0) return `<${node.tag}${attrs}/>`;
-  return `<${node.tag}${attrs}>${node.children.map(serializeXml).join("")}</${node.tag}>`;
+  const attributesText = node.attrs.map(([name, value]) => ` ${name}="${escapeAttr(value)}"`).join("");
+  if (node.children.length === 0) return `<${node.tag}${attributesText}/>`;
+  return `<${node.tag}${attributesText}>${node.children.map(serializeXml).join("")}</${node.tag}>`;
 };
 
 /** The three prohibitions of §2.2 in a single pattern, WITHOUT `g`: we want
@@ -143,12 +120,8 @@ const ANY_INVALID_XML_CHAR =
  * is pure, with no I/O, and a log nobody reads is not a net.
  *
  * A bare `Error`, not an `AppError`: this module already throws bare `Error`s
- * (`mismatched closing tag`, `unterminated element`), and no existing
- * `ErrorCode` describes this case — `UNKNOWN` is classed TRANSIENT, hence five
- * attempts on a deterministic defect. Accepted consequence: surfacing in
- * `processDocument`, a bare `Error` is classed `UNKNOWN`, so the document is
- * retried five times before ending `failed`. Five attempts lost, but no
- * misleading error code.
+ * (`mismatched closing tag`, `unterminated element`), and a misleading error
+ * code would be worse than none for a deterministic defect of ours.
  *
  * ⚠️ NO DATA CAN REACH THIS NET. The only path that parsed what Confluence
  * RETURNS in order to write it back (`stripBanner`, at detach) disappeared on
@@ -157,48 +130,40 @@ const ANY_INVALID_XML_CHAR =
  *
  * HERE AND NOT IN `serializeXml`: the latter is RECURSIVE, so the check there
  * would rescan the output of every subtree — quadratic. One scan of the final
- * string, measured at 0.18 ms on 780 KB (the ceiling of MIKSUDOC « Spécification technique » §5.7), in
- * a path that already makes a network call.
+ * string.
  *
  * NO CHECK ON TAG NAMES, and it is not an oversight: the serializer emits a
  * TREE whose names are literals of our code, never data. An illegal name cannot
  * be expressed through this path. Do not add one « to be safe ».
  *
  * NO CLIENT CONTENT IN THE MESSAGE: the character's code and its position,
- * nothing else. The message ends up in `SyncedDocument.failure.message`, hence
- * on an administrator's screen (CLAUDE.md).
- *
- * OUT OF REACH, worth knowing: `forge-confluence.ts#FOLDER_PAGE_BODY` is a
- * literal constant sent to the API without ever passing through this
- * serializer. Safe by inspection today, invisible to this net tomorrow.
+ * nothing else. The message may be displayed or logged, and carries no client
+ * content (CLAUDE.md).
  */
 export const serializeXmlFragment = (nodes: readonly XmlNode[]): string => {
-  const out = nodes.map(serializeXml).join("");
-  const found = ANY_INVALID_XML_CHAR.exec(out);
+  const serialized = nodes.map(serializeXml).join("");
+  const found = ANY_INVALID_XML_CHAR.exec(serialized);
   if (found) {
-    const code = out.codePointAt(found.index) ?? 0;
+    const code = serialized.codePointAt(found.index) ?? 0;
     throw new Error(
       `serializeXmlFragment: invalid XML 1.0 character U+${code.toString(16).toUpperCase().padStart(4, "0")} at offset ${found.index}`,
     );
   }
-  return out;
+  return serialized;
 };
 
 // ---------------------------------------------------------------------------
 // Parsing
 
-const NAME = "[^\\s=/>]+";
-const ATTR_RE = new RegExp(`(${NAME})\\s*=\\s*"([^"]*)"|(${NAME})\\s*=\\s*'([^']*)'`, "g");
+const NAME_PATTERN = "[^\\s=/>]+";
+const ATTRIBUTE_PATTERN = new RegExp(`(${NAME_PATTERN})\\s*=\\s*"([^"]*)"|(${NAME_PATTERN})\\s*=\\s*'([^']*)'`, "g");
 
-// The full HTML4 named character reference set (W3C HTML 4.01 spec, §24) —
-// stable and closed since 1999, not a moving target. Confluence Cloud's page
-// GET API was found (verified against a real deployed page, C1) to encode
-// accented/typographic characters this way in its storage-format response,
-// even though what we POST as raw UTF-8 is equally valid XHTML — decoding
-// these here is what lets canonicalizeStorage() compare the two fairly,
+// The full HTML4 named character reference set (W3C HTML 4.01 spec, §24).
+// Decoding these here is what lets canonicalizeStorage() compare an accented
+// character spelled as a named reference with the same character as raw UTF-8,
 // without needing to change what the renderer sends.
 const HTML4_ENTITIES: Record<string, number> = {
-  // The 5 XML predefined entities (apos isn't in HTML4 itself, but this parser
+  // The 5 XML predefined entities (apos is not in HTML 4, §24, but this parser
   // reads XML — storage format — so it must always be decoded regardless).
   quot: 34, amp: 38, lt: 60, gt: 62, apos: 39,
   nbsp: 160, iexcl: 161, cent: 162, pound: 163, curren: 164, yen: 165, brvbar: 166, sect: 167,
@@ -238,105 +203,109 @@ const HTML4_ENTITIES: Record<string, number> = {
   bdquo: 8222, dagger: 8224, Dagger: 8225, permil: 8240, lsaquo: 8249, rsaquo: 8250, euro: 8364,
 };
 
-/** A numeric reference past Unicode becomes U+FFFD (what the HTML spec does), never a throw: one hostile reference in a
+/** A numeric reference past Unicode becomes U+FFFD, never a throw: one hostile reference in a
  *  page must not fail the whole document. A lone surrogate does not throw either and stays decoded as written
  *  (locked by `xml.test.ts`, « décode aussi une référence à un surrogate isolé »). */
-const fromReference = (code: number): string =>
+const decodeCharacterReference = (code: number): string =>
   !Number.isFinite(code) || code > 0x10ffff ? "�" : String.fromCodePoint(code);
 
 /** The ONE entity decoder (numeric and HTML4 named), a single pass: « &#38;lt; » gives the literal « &lt; », not « < ».
  *  An unknown name is kept as written. Shared with the pipeline's page readers. */
-export const decodeEntities = (s: string): string =>
-  s.replace(/&(?:#[xX]([0-9a-fA-F]+)|#(\d+)|([a-zA-Z][a-zA-Z0-9]*));/g, (whole, hex: string | undefined, dec: string | undefined, name: string | undefined) => {
-    if (hex !== undefined) return fromReference(Number.parseInt(hex, 16));
-    if (dec !== undefined) return fromReference(Number.parseInt(dec, 10));
+export const decodeEntities = (value: string): string =>
+  value.replace(/&(?:#[xX]([0-9a-fA-F]+)|#(\d+)|([a-zA-Z][a-zA-Z0-9]*));/g, (reference, hexDigits: string | undefined, decimalDigits: string | undefined, entityName: string | undefined) => {
+    if (hexDigits !== undefined) return decodeCharacterReference(Number.parseInt(hexDigits, 16));
+    if (decimalDigits !== undefined) return decodeCharacterReference(Number.parseInt(decimalDigits, 10));
     // Own members only: `&constructor;` must stay as written, not find Object.prototype's.
-    const codepoint = Object.hasOwn(HTML4_ENTITIES, name!) ? HTML4_ENTITIES[name!] : undefined;
-    return codepoint === undefined ? whole : String.fromCodePoint(codepoint);
+    const codePoint = Object.hasOwn(HTML4_ENTITIES, entityName!) ? HTML4_ENTITIES[entityName!] : undefined;
+    return codePoint === undefined ? reference : String.fromCodePoint(codePoint);
   });
 
 class ParseError extends Error {}
 
 /** Parses a well-formed XML fragment (no single required root) into sibling nodes. */
 export const parseXmlFragment = (source: string): XmlNode[] => {
-  let i = 0;
-  const n = source.length;
+  let position = 0;
+  const sourceLength = source.length;
 
-  const parseAttrs = (raw: string): [string, string][] => {
-    const attrs: [string, string][] = [];
-    for (const m of raw.matchAll(ATTR_RE)) {
-      const name = m[1] ?? m[3];
-      const value = m[2] ?? m[4] ?? "";
-      if (name) attrs.push([name, decodeEntities(value)]);
+  const parseAttributes = (raw: string): [string, string][] => {
+    const attributes: [string, string][] = [];
+    for (const match of raw.matchAll(ATTRIBUTE_PATTERN)) {
+      const name = match[1] ?? match[3];
+      const value = match[2] ?? match[4] ?? "";
+      if (name) attributes.push([name, decodeEntities(value)]);
     }
-    return attrs;
+    return attributes;
   };
 
-  const parseNodes = (stopTag: string | null): XmlNode[] => {
-    const nodes: XmlNode[] = [];
-    let textStart = i;
+  /** Reads the end tag at `position` (on `</`) and checks it closes `expectedClosingTag`; leaves `position` after it. */
+  const consumeEndTag = (expectedClosingTag: string | null): void => {
+    const closeIndex = source.indexOf(">", position);
+    if (closeIndex < 0) throw new ParseError("unterminated closing tag");
+    const closedTag = source.slice(position + 2, closeIndex).trim();
+    if (closedTag !== expectedClosingTag) {
+      throw new ParseError(`mismatched closing tag </${closedTag}>, expected </${expectedClosingTag ?? ""}>`);
+    }
+    position = closeIndex + 1;
+  };
 
-    const flushText = (end: number): void => {
+  /** Reads the start or empty-element tag at `position` (on `<`) and, for a start tag, everything up to its end tag. */
+  const parseElement = (): XmlNode => {
+    const closeIndex = source.indexOf(">", position);
+    if (closeIndex < 0) throw new ParseError("unterminated tag");
+    const isSelfClosing = source[closeIndex - 1] === "/";
+    const tagContent = source.slice(position + 1, isSelfClosing ? closeIndex - 1 : closeIndex);
+    const nameMatch = /^[^\s/]+/.exec(tagContent);
+    if (!nameMatch) throw new ParseError(`malformed tag: <${tagContent}>`);
+    const tag = nameMatch[0];
+    const attrs = parseAttributes(tagContent.slice(tag.length));
+    position = closeIndex + 1;
+    if (isSelfClosing) return { type: "element", tag, attrs, children: [] };
+    return { type: "element", tag, attrs, children: parseNodes(tag) };
+  };
+
+  const parseNodes = (expectedClosingTag: string | null): XmlNode[] => {
+    const nodes: XmlNode[] = [];
+    let textStart = position;
+
+    const flushPendingText = (end: number): void => {
       if (end > textStart) {
         const raw = source.slice(textStart, end);
         if (raw.length > 0) nodes.push(text(decodeEntities(raw)));
       }
     };
 
-    while (i < n) {
-      if (source.startsWith("<!--", i)) {
-        flushText(i);
-        const close = source.indexOf("-->", i + 4);
-        if (close < 0) throw new ParseError("unterminated comment");
-        i = close + 3;
-        textStart = i;
+    while (position < sourceLength) {
+      if (source.startsWith("<!--", position)) {
+        flushPendingText(position);
+        const closeIndex = source.indexOf("-->", position + 4);
+        if (closeIndex < 0) throw new ParseError("unterminated comment");
+        position = closeIndex + 3;
+        textStart = position;
         continue;
       }
-      if (source.startsWith("<![CDATA[", i)) {
-        flushText(i);
-        const close = source.indexOf("]]>", i + 9);
-        if (close < 0) throw new ParseError("unterminated CDATA section");
-        nodes.push(cdata(source.slice(i + 9, close)));
-        i = close + 3;
-        textStart = i;
+      if (source.startsWith("<![CDATA[", position)) {
+        flushPendingText(position);
+        const closeIndex = source.indexOf("]]>", position + 9);
+        if (closeIndex < 0) throw new ParseError("unterminated CDATA section");
+        nodes.push(cdata(source.slice(position + 9, closeIndex)));
+        position = closeIndex + 3;
+        textStart = position;
         continue;
       }
-      if (source[i] === "<") {
-        flushText(i);
-        if (source[i + 1] === "/") {
-          const close = source.indexOf(">", i);
-          if (close < 0) throw new ParseError("unterminated closing tag");
-          const closedTag = source.slice(i + 2, close).trim();
-          if (closedTag !== stopTag) {
-            throw new ParseError(`mismatched closing tag </${closedTag}>, expected </${stopTag ?? ""}>`);
-          }
-          i = close + 1;
-          return nodes;
-        }
-
-        const close = source.indexOf(">", i);
-        if (close < 0) throw new ParseError("unterminated tag");
-        const selfClosing = source[close - 1] === "/";
-        const inner = source.slice(i + 1, selfClosing ? close - 1 : close);
-        const nameMatch = /^[^\s/]+/.exec(inner);
-        if (!nameMatch) throw new ParseError(`malformed tag: <${inner}>`);
-        const tag = nameMatch[0];
-        const attrs = parseAttrs(inner.slice(tag.length));
-        i = close + 1;
-
-        if (selfClosing) {
-          nodes.push({ type: "element", tag, attrs, children: [] });
-        } else {
-          const children = parseNodes(tag);
-          nodes.push({ type: "element", tag, attrs, children });
-        }
-        textStart = i;
+      if (source[position] !== "<") {
+        position++;
         continue;
       }
-      i++;
+      flushPendingText(position);
+      if (source[position + 1] === "/") {
+        consumeEndTag(expectedClosingTag);
+        return nodes;
+      }
+      nodes.push(parseElement());
+      textStart = position;
     }
-    flushText(i);
-    if (stopTag !== null) throw new ParseError(`unterminated element <${stopTag}>`);
+    flushPendingText(position);
+    if (expectedClosingTag !== null) throw new ParseError(`unterminated element <${expectedClosingTag}>`);
     return nodes;
   };
 

@@ -1,4 +1,4 @@
-/** 🔒 **CE MODULE NE SE SUPPRIME PAS** (Mikolaj, 30/10/2026). Il ne répare encore rien — les 26 « o » de
+/** 🔒 **CE MODULE NE SE SUPPRIME PAS** (30/10/2026). Il ne répare encore rien — les 26 « o » de
  *  `013-ft4-sharing-cities-report` restent des paragraphes, quelque chose en aval les refuse — et il ne casse rien
  *  non plus : le projet `pdf` entier est vert avec lui. Il reste parce qu'il est **la première induction de motif
  *  qui tienne dans ce dépôt**, avec sa mesure et ses gardes écrites, et qu'il doit servir de modèle aux suivantes
@@ -12,7 +12,7 @@
  *  ces blocs intercalés sont-ils la SUITE du même item, coupée en paragraphes ? Si oui, le défaut est le découpage en
  *  paragraphes, pas la liste.**
  *
- *  Les marqueurs de liste qu'UN DOCUMENT se donne, induits de lui-même (Mikolaj, 30/10/2026).
+ *  Les marqueurs de liste qu'UN DOCUMENT se donne, induits de lui-même (30/10/2026).
  *  Decides: quels jetons courts, inconnus de la liste fixe de `list.ts#markerOf`, ce document emploie comme puces —
  *  et rien d'autre. Ne décide ni des niveaux, ni de ce qu'on publie.
  *
@@ -31,7 +31,7 @@
  *
  *  NOT here: la liste fixe des marqueurs (`layout/list.ts#markerOf`), le regroupement des items en listes
  *  (`layout/list.ts#listRuns`), ni la décision de publier (`extractor/pdf-paragraphs.ts`). Rien n'enlève le marqueur
- *  du texte : un PDF garde son marqueur visible (Mikolaj, 02/10/2026).
+ *  du texte : un PDF garde son marqueur visible (02/10/2026).
  *  Called by: `extractor/pdf-paragraphs.ts`. */
 
 /** Une ligne telle que l'induction la lit : son texte, et le bord gauche de son bloc. */

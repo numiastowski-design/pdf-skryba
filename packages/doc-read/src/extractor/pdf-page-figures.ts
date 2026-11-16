@@ -1,6 +1,6 @@
 /** The block images of ONE page: whether they are read at all, and how their bytes
  *  are recovered. A QR code is published as the picture it is, like any image:
- *  QR codes are no longer decoded (Mikolaj, 06/10/2026). jsQR read every placed
+ *  QR codes are no longer decoded (06/10/2026). jsQR read every placed
  *  image of a PDF for 4 distinct QR codes in the whole corpus (169 reads over
  *  79 PDFs), and a shape/colour pre-filter cannot separate them (a QR inside a
  *  screenshot: ratio 2.33, 4 % black/white pixels; many non-QR pictures are
@@ -30,7 +30,7 @@ export interface PageFigures {
   /** Garde pour publication les images des blocs RETENUS. */
   place: (blocks: readonly IRBlock[]) => void;
   /** The placements lost so far on this page: read for good by neither reader, by cause — and NAMED, each by the PDF
-   *  object it is (`id`) and by WHY it was refused (`why`), so a count can be checked by eye (Mikolaj, 03/11/2026). */
+   *  object it is (`id`) and by WHY it was refused (`why`), so a count can be checked by eye (03/11/2026). */
   lost: () => { slow: number; unreadable: number; places: readonly LostPlace[] };
 }
 

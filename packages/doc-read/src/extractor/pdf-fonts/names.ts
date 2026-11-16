@@ -97,7 +97,7 @@ export interface EncodingChoice {
   readonly differences: readonly Differences[] | undefined;
   /** §9.8.2, bit 3 of `/Flags`: a symbolic font's encoding is its own, which only its program declares. */
   readonly symbolic: boolean;
-  /** The 256 names the font PROGRAM declares, when we could read them (`./type1-encoding.ts`, Mikolaj 04/11/2026).
+  /** The 256 names the font PROGRAM declares, when we could read them (`./type1-encoding.ts`, 04/11/2026).
    *  Used ONLY when the font declares no base encoding: a declared `/Encoding` is the font's own statement about its
    *  codes (§9.6.6) and wins over its program — including a base we do not know, which keeps naming nothing. */
   readonly builtInTable?: readonly string[];

@@ -1,6 +1,6 @@
 /** Which lines of a PDF column stand inside a closed rectangle DRAWN on the page (a boxed masthead, a « Register here »
  *  box), and how the reader publishes them: flat in their cell, nested at their place, or below the column table (the
- *  product) (`FramedBlocks`, the two variants Mikolaj judges at the bench, 06/11/2026). Decides frame membership and the
+ *  product) (`FramedBlocks`, the two variants the maintainer judges at the bench, 06/11/2026). Decides frame membership and the
  *  split of a band into framed groups and the lines between them.
  *  NOT here: the rectangles themselves (`extractor/pdf-table-detector.ts`, `boxesByPage`), nor what the groups become
  *  (`extractor/pdf-image-anchors.ts#rowBlocks`).
@@ -10,7 +10,7 @@ import type { ContainerBox } from "./pdf-line-breaks";
 import type { PdfTextRun } from "./pdf-source";
 
 /**
- * HOW THE BOXED BLOCKS OF A COLUMN ARE PUBLISHED (Mikolaj, 06/11/2026: « essaye table imbriquée dans sa colonne et
+ * HOW THE BOXED BLOCKS OF A COLUMN ARE PUBLISHED (06/11/2026: « essaye table imbriquée dans sa colonne et
  * tables séparées sous les colonnes en a/b »). The specimen is page 2 of `fixtures/pdf/58-Alouette-Colloque-journal.pdf`:
  * the « Alouette / Parution trimestrielle » masthead, ADHÉREZ, « Informations pratiques », « Inscriptions » and the
  * turned « P.P. 1000 LAUSANNE 12 » banner, each drawn as a closed rectangle inside its column.
@@ -20,12 +20,12 @@ import type { PdfTextRun } from "./pdf-source";
  * The choice will be made by switching the default here, nothing more.
  * ⚠️ `nested` MEASURED ON A PUBLISHED PAGE (06/11/2026, FIDREVIEW 110297110, `docs/PLATFORM-STATUS.md` §97): Confluence
  * stores each nested table as a `nested-table` MIGRATION EXTENSION — the form search does not index (29/09/2026). `below`
- * (FIDREVIEW 110526465) is stored native: 0 extension in a cell. DECIDED by Mikolaj on that page (06/11/2026, « on part
+ * (FIDREVIEW 110526465) is stored native: 0 extension in a cell. DECIDED on that page (06/11/2026, « on part
  * là-dessus »): `below` is the product's default.
  */
 export type FramedBlocks = "flat" | "nested" | "below";
 
-/** The default of the product: `below` (Mikolaj, 06/11/2026, see above). */
+/** The default of the product: `below` (06/11/2026, see above). */
 export const DEFAULT_FRAMED_BLOCKS: FramedBlocks = "below";
 
 /**

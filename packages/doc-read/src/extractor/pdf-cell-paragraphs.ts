@@ -15,7 +15,7 @@ import type { Line } from "./pdf-model";
 import { PARAGRAPH_BREAK_GAP_RATIO } from "./pdf-paragraphs";
 
 /**
- * A CELL JOINS ITS LINES ONLY IN A TABLE OF ONE COLUMN (Mikolaj, 23/09/2026).
+ * A CELL JOINS ITS LINES ONLY IN A TABLE OF ONE COLUMN (23/09/2026).
  * The caller applies that condition; this file assumes it and does nothing else.
  *
  * WHAT CAME BEFORE. Lot « 41 » applied these same predicates in EVERY cell.
@@ -49,7 +49,7 @@ import { PARAGRAPH_BREAK_GAP_RATIO } from "./pdf-paragraphs";
  * 3 leaves the rule that way, page 5 keeps its two wrong joins.
  *
  * AND A SECOND CONDITION, WHICH APPLIES WITH THE FIRST AND NOT INSTEAD OF IT
- * (Mikolaj, 23/09/2026): A PIECE THAT IS ONLY A NUMBER NEVER JOINS ANYTHING. A
+ * (23/09/2026): A PIECE THAT IS ONLY A NUMBER NEVER JOINS ANYTHING. A
  * single column can perfectly well hold figures, and two neighbouring numbers
  * are never one sentence cut in two. Where it comes from: the measure of 22-23/09
  * on the real school report, where « 7,00 » and « 6,00 » — the written and the
@@ -111,7 +111,7 @@ export const isNumberAlone = (text: string): boolean => NUMBER_ALONE.test(text.t
 
 /**
  * THE JOIN WOULD FABRICATE A NUMBER — and this is the gravest defect this
- * product can produce (Mikolaj, 23/09/2026).
+ * product can produce (23/09/2026).
  *
  * A line ending « 7, » followed by a line opening « 6 » does not give a badly
  * assembled sentence when joined: it gives `7,6`, A VALUE THAT IS NOWHERE IN
@@ -202,7 +202,7 @@ const setFragments = (target: { fragments?: readonly Fragment[] }, fragments: re
  *    126, removed the 11 wrong ones of 0000713 and 0000754 — and left 12 on the
  *    two school reports, whose narrow « Matières » column has padding of its
  *    own. One wrong was enough to refuse it.
- *  - 23/09/2026, REOPENED (Mikolaj): the condition « one published column »
+ *  - 23/09/2026, REOPENED: the condition « one published column »
  *    removed the very population that condemned it — a school report is a grid
  *    of several columns, so nothing joins there at all any more. The objection
  *    had no subject left.
@@ -273,7 +273,7 @@ export interface CellParagraph {
  * counter-examples above are refused by the letter-before-hyphen condition alone.
  * ABSTAINED ON, DELIBERATELY: a lower line starting with a DIGIT (« AG- » + « 002. » is a real cut word on paper). No
  * discriminant separates it from a fabricated number, so the word stays cut rather than risk the figure.
- * Found by Mikolaj's manual three-way test of 29/10/2026 (Acrobat, Chrome, us).
+ * Found by a manual three-way test of 29/10/2026 (Acrobat, Chrome, us).
  */
 /** La règle elle-même vit dans `layout/cut-word.ts` depuis le 03/11/2026 : le flux de page en a besoin aussi, et une
  *  décision ne s'écrit pas deux fois. L'histoire ci-dessus est restée ici, à sa jonction. */
@@ -287,7 +287,7 @@ const continuedWith = (previous: string, line: string): string =>
 /**
  * THE LINES OF A CELL GROUPED INTO PARAGRAPHS: a real paragraph blank opens a
  * new one, an ORDINARY line spacing becomes a line break inside the current one
- * (Mikolaj, 23/09/2026, lot « 44 »).
+ * (23/09/2026, lot « 44 »).
  *
  * WHY, AND IT IS A QUESTION OF WHAT WE CLAIM. Until this lot every line of
  * every cell was published as its own `<p>`, and Confluence puts a paragraph

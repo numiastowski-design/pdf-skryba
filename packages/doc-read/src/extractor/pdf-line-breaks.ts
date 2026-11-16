@@ -284,7 +284,7 @@ const ALIGNED = SAME_LINE_PT;
  *     One line aligns with nothing; two is the least an alignment means;
  *  2. at least one line STARTS there with no label: a wrapped value.
  * Labels are NOT read: their ends, colons or alignment are ragged or absent
- * in real forms (Mikolaj). Neither count is tuned: over every fixture PDF the
+ * in real forms. Neither count is tuned: over every fixture PDF the
  * centred-pair verdicts are identical with 2 to 4 aligned values and 0 to 2
  * wrapped lines. Reading 2 still guards the case it can: a two-column page
  * reads as one line per ordinate, so its right column aligns (16-Brochure-
@@ -325,7 +325,7 @@ export const valueColumnStarts = (lines: readonly { left: number; valueStart?: n
  * c'est l'alinéa classique, dont la première ligne est RENTRÉE et les suivantes
  * reviennent à la marge, donc une ligne plus à gauche que la précédente y est
  * une continuation ordinaire. Le marqueur seul ne suffit pas non plus : un tiret
- * en incise au fil d'une phrase en porte un. C'est la règle que Mikolaj a posée
+ * en incise au fil d'une phrase en porte un. C'est la règle que le mainteneur a posée
  * pour les listes, appliquée ici — « sans retrait, ce n'est pas une puce ».
  *
  * La tolérance d'un point absorbe le bruit de coordonnées, rien de plus : l'écart

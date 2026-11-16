@@ -1,5 +1,5 @@
 /** A presentation's large picture brought down to 1 600 px on its long side
- *  and re-encoded as a JPEG, quality 80 (Mikolaj, 27/09/2026): the USA deck's
+ *  and re-encoded as a JPEG, quality 80 (27/09/2026): the USA deck's
  *  2 500-px `image6.png` weighs 5.7 MB, under 400 KB once reduced (test). Pure and deterministic: same bytes
  *  in, same bytes out, so the same sha256 and no re-upload without cause.
  *  An image at or under the cap, or one this module does not reduce, gives
@@ -22,11 +22,11 @@ import { isPng, jpegHeader } from "doc-ir/extractor/image-pixel-width";
 import { hasAlphaChannel } from "doc-ir/extractor/png-color";
 import { decodePng } from "doc-ir/extractor/png-decode";
 
-/** Longest side, in pixels, of a published presentation picture (Mikolaj,
+/** Longest side, in pixels, of a published presentation picture (
  *  27/09/2026). */
 export const MAX_LONG_SIDE_PX = 1600;
 
-/** Quality of the reduced JPEG (Mikolaj, 27/09/2026): about 300 KB for a
+/** Quality of the reduced JPEG (27/09/2026): about 300 KB for a
  *  1 600-px screenshot. */
 const REDUCED_JPEG_QUALITY = 80;
 
@@ -70,7 +70,7 @@ export const isOnePixel = (bytes: Uint8Array): boolean => {
  *  Alpha is resampled like the colours (the callers give opaque pixels).
  *  Bilinear reads four neighbours only: past a factor of 2 (a 3 200-px
  *  picture or more) some source pixels count for nothing and fine lines
- *  can alias. Chosen for the decision's simplicity (Mikolaj, 27/09/2026). */
+ *  can alias. Chosen for the decision's simplicity (27/09/2026). */
 export const resampleBilinear = (src: Uint8Array, w: number, h: number, outW: number, outH: number): Uint8Array => {
   const out = new Uint8Array(outW * outH * 4);
   const sx = w / outW;
@@ -101,7 +101,7 @@ export const resampleBilinear = (src: Uint8Array, w: number, h: number, outW: nu
 };
 
 /** A decoded PNG as opaque RGBA. Transparency is laid on WHITE: chosen bias
- *  (Mikolaj, 27/09/2026), a JPEG has no alpha and a Confluence page is white;
+ *  (27/09/2026), a JPEG has no alpha and a Confluence page is white;
  *  on a dark theme the picture shows a white box where it was transparent. */
 const opaqueRgba = (pixels: Uint8Array, count: number, channels: 1 | 2 | 3 | 4): Uint8Array => {
   const out = new Uint8Array(count * 4);

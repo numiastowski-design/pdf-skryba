@@ -5,7 +5,7 @@
 
 
 /**
- * WHY TWO READINGS (design validated by Mikolaj, 21/09/2026).
+ * WHY TWO READINGS (design validated by 21/09/2026).
  *
  * The WORD reading tiles the source words against the page words, order
  * ignored, then explains what is left by re-spacing: a page token that is
@@ -24,7 +24,7 @@
  * ⚠️ CLIENT TEXT. `respacings` and `lostPassages` carry the document's own
  * words, because a repair needs them. They live in memory only: never stored
  * in an entity. What may travel into a RECORD is the counts and the page
- * numbers. The ONE exception (lot C addendum, Mikolaj 29/09/2026): `lostWords`
+ * numbers. The ONE exception (lot C addendum, 29/09/2026): `lostWords`
  * below, which `pipeline/publish-conservation.ts` hands on to the
  * DEVELOPMENT-only log line of `adapters/conservation-log.ts` — never
  * production, never a page, never an entity.
@@ -289,7 +289,7 @@ export interface PublishedPage {
 }
 
 /**
- * ONE REPAIR THE LIBRARY DECIDED, FOR THE CALLER TO APPLY TO ITS OWN PAGE (Mikolaj, 09/11/2026: « on le fait auj' »).
+ * ONE REPAIR THE LIBRARY DECIDED, FOR THE CALLER TO APPLY TO ITS OWN PAGE (09/11/2026: « on le fait auj' »).
  *
  * The check proves what is wrong and WHERE, in the coordinates of the page it was given — a block index, and a
  * character index inside that block's text. It never writes the page: composing markup is the caller's job, because

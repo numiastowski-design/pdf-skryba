@@ -36,7 +36,7 @@ export interface VisionResult {
 }
 
 /** 🔴 `analyzeImage` A ÉTÉ RETIRÉ DE CE PORT LE 17/09/2026 (décision de
- *  Mikolaj) : **aucune image de document ne part chez un tiers.** Ce n'est pas
+ *  le mainteneur) : **aucune image de document ne part chez un tiers.** Ce n'est pas
  *  une option de configuration ni un interrupteur — la capacité n'existe plus,
  *  donc aucun appelant ne peut la retrouver par distraction.
  *

@@ -3,7 +3,7 @@
  *  Called by: `pipeline/publish-conservation.ts`, once per checked PDF render, after the other two repairs. */
 
 /**
- * THE RULE (Mikolaj, 22/09/2026, lot 35 — remedy B of the mid-sentence cuts
+ * THE RULE (22/09/2026, lot 35 — remedy B of the mid-sentence cuts
  * diagnosis). Two `<p>` children of the SAME element, with nothing between
  * them, become one ONLY when two independent readings agree:
  *  - THE SHAPE, in our render: the first does not end with `. : ; ! ? » " … )`
@@ -23,7 +23,7 @@
  *
  * WHERE IT WORKS: the page's own `<p>` only.
  *
- * ⚠️ MEASURED IN A CELL, THEN REFUSED (Mikolaj's condition, 22/09/2026: not
+ * ⚠️ MEASURED IN A CELL, THEN REFUSED (condition, 22/09/2026: not
  * one wrong join in a cell). Joining the `<p>` of ONE cell — a cell's lines
  * are each a paragraph (`extractor/pdf-table-render.ts`) — gives 65 joins on
  * the 39 French and English PDFs, 64 of them right, including the two cuts
@@ -48,7 +48,7 @@
  * list is drawn « x » in the text layer, so it reads as a lowercase word, and
  * the PDF does read it right after the line before. `markerOf` does not catch
  * it — nothing in the extraction reads a symbol font's glyph as a bullet.
- * DECIDED (Mikolaj, 22/09/2026): a paragraph opening on a token of ONE
+ * DECIDED (22/09/2026): a paragraph opening on a token of ONE
  * letter is never a continuation. It costs none of the 17 right joins.
  *  - THE LIMIT IT BRINGS, written and accepted: a real continuation opening
  *    on « il », « y », « à », « a » is refused too — « …tout ce qu'il ‖ y a
@@ -94,7 +94,7 @@ const TERMINAL = /[.:;!?»"…)]$/u;
 const startsLowercaseWord = (text: string): boolean => /^\p{Ll}+(?![\p{L}\p{N}])/u.test(text);
 
 /** A paragraph opening on a token of ONE letter: a marker drawn with a symbol
- *  font, not a word carried over (Mikolaj, 22/09/2026 — see the module note). */
+ *  font, not a word carried over (22/09/2026 — see the module note). */
 const startsOnALoneLetter = (text: string): boolean => conservationKey(text.split(/\s+/)[0] ?? "").length <= 1;
 
 /** The text of one UNIT, as this rule reads it: the texts of the blocks it holds, joined by a space — a line break

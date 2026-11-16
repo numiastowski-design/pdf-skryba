@@ -6,7 +6,7 @@
  *  (§8.9.5.2). Rows are padded to the byte, which `unpackSamples` undoes. The colour comes from the PAGE's graphics
  *  state at the moment of the painting, read by the boundary (`pdf-source.ts`), because a stencil has no colour of its
  *  own — the same stencil painted twice in two colours is two different pictures.
- *  🔴 WHY IT EXISTS (Mikolaj, 03/11/2026). Until that day a stencil left the page in SILENCE: no decoder read one, and
+ *  🔴 WHY IT EXISTS (03/11/2026). Until that day a stencil left the page in SILENCE: no decoder read one, and
  *  no path even looked at `paintImageMaskXObject`, so the stamp was neither published nor counted. pdf.js did not
  *  publish them either — it named the operator, which is how we know the case exists, but our box recording never took
  *  it (verified in the history: the condition has excluded it since the first day). MEASURED FIRST: ZERO stencil over

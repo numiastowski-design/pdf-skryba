@@ -122,7 +122,7 @@ const planBatches = async (bytes: Uint8Array, pageIndices: number[]): Promise<{ 
  *  whole-document outcome (the failure queue, a single diagnosis), matching
  *  the granularity DocState already models (no partial-document state).
  *
- *  NO FALLBACK, AND NO EXCEPTION (Mikolaj, 02/10/2026). A failed reading never falls back on an invisible OCR layer: since
+ *  NO FALLBACK, AND NO EXCEPTION (02/10/2026). A failed reading never falls back on an invisible OCR layer: since
  *  05/10/2026 a page carrying one belongs to a scan, whose whole document is read here, and the layer is never published. */
 export const ocrScannedPages = async (
   bytes: Uint8Array,
@@ -203,7 +203,7 @@ export const extractPdfWithVision = async (
   );
   const language = opts?.pageLanguage ?? "en";
   const pageCount = pages.length;
-  // 🔴 A SCAN (Mikolaj, 05/10/2026): a PDF whose EVERY page has no text (one page included: a diagram exported as a picture
+  // 🔴 A SCAN (05/10/2026): a PDF whose EVERY page has no text (one page included: a diagram exported as a picture
   // reads the same), or that carries an invisible OCR layer on ANY page. A PDF has no « scan » marker, and the scanner's own
   // OCR is often wrong (« 12 OOO EUROS »): that layer is never published. A document with text and a few pages with none
   // (a cover, a diagram) is NOT a scan: its pages without text are read when the AI is on, else published as they are.
@@ -240,8 +240,8 @@ export const extractPdfWithVision = async (
   if (toRead.length === 0) return result(pdfPageTabs(pages, language, opts?.labels), { images, notices });
   const scanned = scannedPages > 0 ? { scannedPages } : {};
 
-  // 🔴 OCR IS ON REQUEST (Mikolaj, 01/10/2026): the sync passes `ocr: false` and publishes what the file gives, except a scan,
-  // which is refused until the AI reads it (Mikolaj, 03/10 then 05/10/2026). One page limit serves every PDF
+  // 🔴 OCR IS ON REQUEST (01/10/2026): the sync passes `ocr: false` and publishes what the file gives, except a scan,
+  // which is refused until the AI reads it (03/10 then 05/10/2026). One page limit serves every PDF
   // (`DOCUMENT_PAGE_LIMIT`, in `extractPdf`): a scan has none of its own.
   if (opts?.ocr === false && isScan && opts.scanAsImages !== true) {
     throw new ReaderError("SCANNED_PDF_NEEDS_AI_OCR", `${scannedPages} scanned pages, AI OCR is off`, { pageCount, scannedPageCount: scannedPages });

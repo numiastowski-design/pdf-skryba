@@ -457,7 +457,7 @@ const assembleResult = (doc: DocumentRead, laid: LaidOutPages, readItems: readon
     }),
   );
   // Les passes de titraille hors-taille (séries, plan du PDF, profondeur de numérotation) sont retirées le
-  // 05/11/2026 — Mikolaj : « on se base sur la taille des textes », quitte à inventer des titres.
+  // 05/11/2026: « on se base sur la taille des textes », quitte à inventer des titres.
   // Tabs cut a table at the page, as printed: nothing is joined, nothing is dropped between pages.
   // The hyphens of words the paper cut, resolved against the whole document's vocabulary and the hyphenation
   // table of the DOCUMENT's language (`layout/cut-word.ts`, 05/11/2026; the document's language since 10/11/2026).
@@ -503,7 +503,7 @@ const assembleResult = (doc: DocumentRead, laid: LaidOutPages, readItems: readon
 
 // `pageLanguage` picks the hyphenation table only when the document's own language cannot be told
 // (`layout/cut-word.ts#hyphenationLanguageOf`, 10/11/2026);
-// it once labelled the link of a decoded QR code, and QR codes are no longer decoded (Mikolaj, 06/10/2026).
+// it once labelled the link of a decoded QR code, and QR codes are no longer decoded (06/10/2026).
 export const extractPdf = async (
   bytes: Uint8Array,
   pageLanguage: PageLanguage = "en",

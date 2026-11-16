@@ -3,7 +3,7 @@
  *  Decides: nothing about geometry — no matrix, no position, no order. It only gives the THREE fields that
  *  `glyph-positions.ts` reads from each glyph: its text (`unicode`), its advance in thousandths of an em (`width`) and
  *  whether it carries the word space (`isSpace`). It decides one thing: a font that does not know what a code paints
- *  returns `undefined` rather than an invented character (Mikolaj, 31/10/2026: "we abstain").
+ *  returns `undefined` rather than an invented character (31/10/2026: "we abstain").
  *  §9.3.3: `Tw` applies only to code 32 of a ONE-byte font — never to a composite font, even if its
  *  code is 32. That was pdf.js's rule, kept and held by measurement.
  *  🔴 ONE PAGE AT A TIME, ON DEMAND (security review of 31/10/2026): the first version returned the glyphs of
@@ -35,7 +35,7 @@ export interface OurGlyph {
   readonly isSpace: boolean;
   /** WHO read this glyph, and that distinction decides what we publish.
    *  - `"ours"`: read with the font the page declares. A missing `unicode` is then an INFORMED ABSTENTION —
-   *    we have the font and its encoding, and nothing says what this code paints. We publish nothing (Mikolaj,
+   *    we have the font and its encoding, and nothing says what this code paints. We publish nothing (
    *    31/10/2026: "we abstain"), because pdf.js re-read the glyph NUMBER there as a code point (HISTORICAL).
    *  - `"default-font"`: the page declares NO font under the name used, and we read with the default one,
    *    the same as pdf.js's (`FALLBACK_FONT`). That is a reading, not an abstention.
@@ -80,7 +80,7 @@ export interface TextState {
   read: OurGlyph["read"];
 }
 
-/** 🔴 THE DEFAULT FONT, AND IT IS EXACTLY THE ONE pdf.js USED (Mikolaj, 31/10/2026: "of course we need a default
+/** 🔴 THE DEFAULT FONT, AND IT IS EXACTLY THE ONE pdf.js USED (31/10/2026: "of course we need a default
  *  font, do as pdf.js").
  *  WHY IT EXISTS: a stream may paint with a name that the page resources do not declare —
  *  `/Helvetica 10 Tf` with no entry in `/Font`. That is outside §9.6, but real producers do it, and
@@ -215,7 +215,7 @@ const isHighSurrogate = (text: string | undefined): boolean => text?.length === 
 const isLowSurrogate = (text: string | undefined): boolean => text?.length === 1 && text.charCodeAt(0) >= 0xdc00 && text.charCodeAt(0) <= 0xdfff;
 
 /** The glyphs of a painted string, cut according to the font's code width.
- *  🔴 THE PAIRING OF HALF-PAIRS IS DONE HERE (Mikolaj, 31/10/2026: "we have to do it ourselves", for
+ *  🔴 THE PAIRING OF HALF-PAIRS IS DONE HERE (31/10/2026: "we have to do it ourselves", for
  *  emojis), because this is the only place that sees the SEQUENCE of painted codes. A producer may write the
  *  UTF-16 units as CIDs — FreeMono and DejaVuSans by LibreOffice do —, so an emoji takes two
  *  neighbouring codes whose CMap each declares one half. `pdf-fonts/to-unicode.ts` refuses them one by one, rightly,

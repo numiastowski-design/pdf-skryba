@@ -4,7 +4,7 @@
  *  NOT here: how a part is read or inflated (`zip/zip-package.ts`, `extractor/ooxml/package.ts` in the app), nor any
  *  format knowledge.
  *  Called by: `attachment-safety.ts`, `extractor/ooxml/package.ts`, which re-exports both for its own readers.
- *  They live here since 12/11/2026 (Mikolaj: « il reste a decouper ir et lib d'entrée hostile ») because the gate
+ *  They live here since 12/11/2026 (« il reste a decouper ir et lib d'entrée hostile ») because the gate
  *  must know them WITHOUT importing a reader: a ceiling is the first thing read about a hostile file. */
 
 /** Inflated bytes one part may reach. Starting value to calibrate (review of

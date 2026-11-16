@@ -31,7 +31,7 @@ export interface RgbaImage {
  *
  * TRIED AND SET ASIDE (06/10/2026, mozjpeg's ideas, measured on the 72 fixture JPEGs at quality 80, 4:2:0, optimised
  * tables; mozjpeg through @jsquash/jpeg, WASM): progressive writing, the only real gain (4.7 % fewer bytes at equal
- * PSNR, 36.99 against 36.93 dB; written here too, 4.2 %), set aside by Mikolaj for its cost: 2.1× the encoding time on
+ * PSNR, 36.99 against 36.93 dB; written here too, 4.2 %), set aside for its cost: 2.1× the encoding time on
  * a node22 bundle, seconds more on a 12 MP crop; mozjpeg's quantisation tables (quant_table 3): 5.8 % smaller but PSNR
  * 36.29 against 36.93 dB, a lower quality rather than a gain; trellis quantisation (multipass, opt zero, opt table):
  * no gain (4 310 022 against 4 309 219 bytes) for 2.7× the time.

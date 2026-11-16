@@ -34,23 +34,23 @@
  *  Called by: `pptx-reader/index.ts`, `docx-reader/index.ts`. */
 
 import { collapseBlanks } from "doc-ir/lib/blanks";
-import { internalTarget, orDamaged, type DocxPackage, type Relationship } from "./ooxml/package";
-import { attr, child, children, descendants, kids, tagOf, textOf, type XNode } from "./ooxml/xml";
+import { findInternalTarget, readUnlessDamaged, type OpcPackage, type Relationship } from "./ooxml/package";
+import { attributeOf, findChild, findChildren, findDescendants, childNodesOf, qualifiedNameOf, textContentOf, type XNode } from "./ooxml/xml";
 
 /** One text body (`dgm:t` or `dsp:txBody`) as one line: its paragraphs'
  *  runs (`a:t`, a field's included), a line break (`a:br`) as a space,
  *  paragraphs joined by a space. Ends trimmed, nothing else touched. */
 const lineOf = (body: XNode): string => {
   const paragraph = (p: XNode): string =>
-    kids(p)
+    childNodesOf(p)
       .map((k) => {
-        const tag = tagOf(k);
+        const tag = qualifiedNameOf(k);
         if (tag === "a:br") return " ";
-        if (tag === "a:r" || tag === "a:fld") return descendants(k, "a:t").map(textOf).join("");
+        if (tag === "a:r" || tag === "a:fld") return findDescendants(k, "a:t").map(textContentOf).join("");
         return "";
       })
       .join("");
-  return collapseBlanks(children(body, "a:p").map(paragraph).join(" "));
+  return collapseBlanks(findChildren(body, "a:p").map(paragraph).join(" "));
 };
 
 /** Starting value to calibrate: the most points, and the most connections,
@@ -76,9 +76,9 @@ export interface Piece {
 
 /** The pieces of text of a data model, in the order described above. */
 export const dataModelPieces = (root: XNode): Piece[] => {
-  const points: Point[] = children(child(root, "dgm:ptLst") ?? {}, "dgm:pt").map((pt) => ({
-    id: attr(pt, "modelId"),
-    text: lineOf(child(pt, "dgm:t") ?? {}),
+  const points: Point[] = findChildren(findChild(root, "dgm:ptLst") ?? {}, "dgm:pt").map((pt) => ({
+    id: attributeOf(pt, "modelId"),
+    text: lineOf(findChild(pt, "dgm:t") ?? {}),
   }));
   const inDocumentOrder = (): Piece[] => points.filter((p) => p.text !== "").map((p) => ({ text: p.text, level: 0 }));
 
@@ -86,9 +86,9 @@ export const dataModelPieces = (root: XNode): Piece[] => {
   points.forEach((p, i) => {
     if (p.id !== undefined) byId.set(p.id, i);
   });
-  const edges = children(child(root, "dgm:cxnLst") ?? {}, "dgm:cxn")
-    .filter((c) => (attr(c, "type") ?? "parOf") === "parOf")
-    .map((c, order) => ({ from: byId.get(attr(c, "srcId") ?? ""), to: byId.get(attr(c, "destId") ?? ""), srcOrd: Number(attr(c, "srcOrd") ?? "0"), order }));
+  const edges = findChildren(findChild(root, "dgm:cxnLst") ?? {}, "dgm:cxn")
+    .filter((c) => (attributeOf(c, "type") ?? "parOf") === "parOf")
+    .map((c, order) => ({ from: byId.get(attributeOf(c, "srcId") ?? ""), to: byId.get(attributeOf(c, "destId") ?? ""), srcOrd: Number(attributeOf(c, "srcOrd") ?? "0"), order }));
   if (edges.length === 0 || points.length > MAX_SMARTART_POINTS || edges.length > MAX_SMARTART_POINTS) return inDocumentOrder();
   // A tree: every end is a point, a point has at most one parent.
   const parentOf = new Map<number, number>();
@@ -103,7 +103,7 @@ export const dataModelPieces = (root: XNode): Piece[] => {
     else same.push(e);
   }
   for (const list of kidsOf.values()) list.sort((a, b) => a.srcOrd - b.srcOrd || a.order - b.order);
-  const doc = children(child(root, "dgm:ptLst") ?? {}, "dgm:pt").findIndex((pt) => attr(pt, "type") === "doc");
+  const doc = findChildren(findChild(root, "dgm:ptLst") ?? {}, "dgm:pt").findIndex((pt) => attributeOf(pt, "type") === "doc");
   const roots = doc >= 0 ? [doc] : points.map((_, i) => i).filter((i) => !parentOf.has(i));
   const seen = new Set<number>();
   const out: Piece[] = [];
@@ -146,13 +146,13 @@ export const dataModelPieces = (root: XNode): Piece[] => {
 /** The drawing cache's pieces: one per shape (`dsp:sp`) with text, in
  *  document order. */
 export const drawingPieces = (root: XNode): string[] =>
-  descendants(root, "dsp:sp")
-    .map((sp) => lineOf(child(sp, "dsp:txBody") ?? {}))
+  findDescendants(root, "dsp:sp")
+    .map((sp) => lineOf(findChild(sp, "dsp:txBody") ?? {}))
     .filter((t) => t !== "");
 
 /** The data-model part a `dgm:relIds` element names (`r:dm`), when internal. */
 export const smartArtDataPart = (rels: ReadonlyMap<string, Relationship>, relIds: XNode): string | undefined => {
-  return internalTarget(rels, attr(relIds, "r:dm"));
+  return findInternalTarget(rels, attributeOf(relIds, "r:dm"));
 };
 
 export interface SmartArtRead {
@@ -171,12 +171,12 @@ export interface SmartArtRead {
  *  model's own extension names the drawing cache. `undefined`: no data-model
  *  part (the caller may look for a cache nobody claimed,
  *  `cachesWithoutModel`). */
-export const readSmartArt = async (pkg: DocxPackage, rels: ReadonlyMap<string, Relationship>, dataPart: string | undefined): Promise<SmartArtRead | undefined> => {
+export const readSmartArt = async (pkg: OpcPackage, rels: ReadonlyMap<string, Relationship>, dataPart: string | undefined): Promise<SmartArtRead | undefined> => {
   const data = dataPart === undefined ? undefined : await pkg.readXml(dataPart);
   if (!data) return undefined;
-  const ext = descendants(data, "dsp:dataModelExt")[0];
-  const relId = ext ? attr(ext, "relId") : undefined;
-  const cachePart = internalTarget(rels, relId);
+  const ext = findDescendants(data, "dsp:dataModelExt")[0];
+  const relId = ext ? attributeOf(ext, "relId") : undefined;
+  const cachePart = findInternalTarget(rels, relId);
   const fromModel = dataModelPieces(data);
   if (fromModel.length > 0 || cachePart === undefined)
     return { words: fromModel.map((p) => p.text), levels: fromModel.map((p) => p.level), ...(cachePart === undefined ? {} : { claimed: cachePart }) };
@@ -200,7 +200,7 @@ export const partNumberOf = (path: string): number => Number(/(\d{1,15})\.xml$/.
  *  extra place is better than a lost word, never a word that is not the
  *  file's own). */
 export const cachesWithoutModel = async (
-  pkg: DocxPackage,
+  pkg: OpcPackage,
   rels: ReadonlyMap<string, Relationship>,
   claimed: ReadonlySet<string>,
   frames: number,
@@ -213,7 +213,7 @@ export const cachesWithoutModel = async (
   const read: string[][] = [];
   for (const target of targets) {
     // A cache whose XML cannot be read gives no words; a ceiling refusal or any other error still propagates.
-    const root = await orDamaged(() => pkg.readXml(target));
+    const root = await readUnlessDamaged(() => pkg.readXml(target));
     read.push(root ? drawingPieces(root) : []);
   }
   if (read.length === frames) return read;

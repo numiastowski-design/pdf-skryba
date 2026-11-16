@@ -154,7 +154,7 @@ export interface PageRegion {
   /**
    * L'ORDONNÉE OÙ LE TEXTE BASCULE : au-dessus il passe avant la région, en
    * dessous il passe après. Pour un tableau, c'est son bord haut. Pour une
-   * IMAGE, c'est sa **ligne médiane** (décision de Mikolaj, 16/09/2026).
+   * IMAGE, c'est sa **ligne médiane** (décision de 16/09/2026).
    *
    * Absent, `top` fait office — le comportement d'avant.
    */

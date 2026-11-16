@@ -1,5 +1,5 @@
 /** A .pptx turned into an IR document: ONE tabs block, one tab per VISIBLE
- *  slide (Mikolaj 25/09/2026, a slide is a native Confluence tab). A tab is
+ *  slide (25/09/2026, a slide is a native Confluence tab). A tab is
  *  labelled "N. <declared title>", or "Slide N" when the slide declares none;
  *  it opens with the declared title as a heading, unless the previous slide
  *  had the same one, then the slide's body in the form its boxes give: a
@@ -157,7 +157,7 @@ const tableBlock = (table: PptxTable): Extract<IRBlock, { kind: "table" }> => {
   }));
   const widths = table.columnWidths;
   // WRITTEN BIAS: unlike Excel, PowerPoint does NOT visually overflow a row whose only text is in its first cell; the full-width cell is a
-  // chosen embellishment, not a fidelity (Mikolaj, 27/10/2026: « et quoi que ce soit »). Header cells are marked above.
+  // chosen embellishment, not a fidelity (27/10/2026: « et quoi que ce soit »). Header cells are marked above.
   return spanSingleFirstRows({
     kind: "table",
     rows,
@@ -250,7 +250,7 @@ const oneLine = (paragraphs: readonly PptxParagraph[]): Inline[] =>
  *  label or value. A picture gives nothing: drawn, it is inside the drawing,
  *  never repeated below it (decision (5 ter)); left out, it is a
  *  `picture-not-drawn` notice pushed where `slideBody` reads
- *  `picturesNotDrawn`, never inside this collapsed text (Mikolaj,
+ *  `picturesNotDrawn`, never inside this collapsed text (
  *  25/09/2026). A frame we cannot convert contributes nothing here either —
  *  an `unsupported-element` notice instead of its former marker (lot A of
  *  docs/CONCEPTION-CARTE-ET-REMARQUES.md, 29/09/2026). */
@@ -292,7 +292,7 @@ const diagramPieces = (shape: PptxShape, slideNumber: number, notices: DocumentN
  *  layered landscapes of real decks) are published too, one line per target
  *  with its sources, by the shapes' NAMES (`relationName`): the order stays
  *  today's, every word is already in the paragraphs, only a name is repeated
- *  (Mikolaj, 02/10/2026). */
+ *  (02/10/2026). */
 const diagramText = (slide: PptxSlide, items: readonly PptxShape[], slideNumber: number, notices: DocumentNotice[], undrawn: readonly string[] = []): IRBlock[] => {
   // Each element read ONCE, in today's order: a notice is pushed per frame it cannot convert.
   const pieces = items.map((s) => diagramPieces(s, slideNumber, notices));
@@ -513,7 +513,7 @@ const slideBody = (
   }
 };
 
-/** "At most 21 tabs, the following slides not published" (Mikolaj: 27 on the
+/** "At most 21 tabs, the following slides not published" (27 on the
  *  evening of 25/09/2026, 21 on 27/09/2026). A display cap: the slides past
  *  `cap` are dropped BEFORE layout — they pay no image decoding and no
  *  Google call — and a `tab-cap` `DocumentNotice` names them, a DECIDED,
@@ -589,7 +589,7 @@ export const extractPptx = async (
     size === undefined || slide.elementCount > (limits?.slideElements ?? NO_CAP) ? undefined : layoutSlide(slideLayoutInput(slide, size)),
   );
   const googleImages = await googleDiagramImages({ ...deck, slides: shown }, layouts, google);
-  // A7 of docs/CONCEPTION-CARTE-ET-REMARQUES.md (Mikolaj, 29/09/2026): a
+  // A7 of docs/CONCEPTION-CARTE-ET-REMARQUES.md (29/09/2026): a
   // slide over the element cap carries NO TAB AT ALL — the other slides
   // keep their real numbers (`slide.number`, never a re-rank), the dashboard
   // says why (`slide-withheld` notice). A plain loop, not `shown.map`: a
@@ -598,7 +598,7 @@ export const extractPptx = async (
   const tabsSlides: PptxSlide[] = [];
   const tabForms: (SlideLayout<PptxShape>["form"] | undefined)[] = [];
   shown.forEach((slide, i) => {
-    // 7a of the arbitrages (28/09/2026, revised the same day by Mikolaj:
+    // 7a of the arbitrages (28/09/2026, revised the same day:
     // « il ne faut pas la publier du tout ») — the spreadsheet design of
     // decision (a): a slide over the cap is withheld WHOLE, the document
     // still publishes. Nothing of the slide is read past the cap, and
@@ -616,7 +616,7 @@ export const extractPptx = async (
     const blocks = [...heading, ...slideBody(slide, deck, layouts[i], images, googleImages.get(slide.number), notices), ...footer];
     tabs.push({
       // The label is the slide's rank only; its declared title is the
-      // heading inside the tab (Mikolaj, 25/09/2026).
+      // heading inside the tab (25/09/2026).
       title: resolveLabels(language, labels).slideTabTitle(slide.number),
       slideNumber: slide.number,
       // A tab with nothing to show still holds an empty paragraph, as the
@@ -624,7 +624,7 @@ export const extractPptx = async (
       blocks: blocks.length > 0 ? blocks : emptyTabBlocks(),
     });
   });
-  // The text of the diagram slides is gathered AFTER the tabs: ONE block for the whole deck (Mikolaj, 29/09/2026), a section per
+  // The text of the diagram slides is gathered AFTER the tabs: ONE block for the whole deck (29/09/2026), a section per
   // diagram slide labelled with its tab's « Slide N ». The renderer publishes none of it since 19/10/2026 (no collapsed block); the
   // conservation control reads it from the IR. Gathered from the CAPPED, SURVIVING tabs, so a slide
   // the 21-tab cap or the element cap dropped never leaves its text behind.

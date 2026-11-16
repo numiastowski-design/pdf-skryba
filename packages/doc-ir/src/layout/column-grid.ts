@@ -8,7 +8,7 @@ import { maxOf, minOf } from "doc-ir/lib/extent";
 import type { GutterItem } from "./gutter";
 
 /**
- * LA GRILLE DE COLONNES — l'idée de Mikolaj du 04/11/2026 : « on peut pas trouver les blocs de même largeur ? en
+ * LA GRILLE DE COLONNES — l'idée de du 04/11/2026 : « on peut pas trouver les blocs de même largeur ? en
  * fait on voit pas qu'ils sont côte à côte ? ».
  *
  * POURQUOI UN SECOND SIGNAL. La gouttière est un blanc que PERSONNE ne traverse, donc **un seul fragment égaré la
@@ -55,7 +55,7 @@ const MAX_WIDTH_RATIO = 1.2;
  *  🔴 LES DEUX POPULATIONS SE CHEVAUCHENT, et c'est écrit plutôt que caché : vraies colonnes 1,05 à **2,70**
  *  (une page de titres à trois colonnes, `sd-5832532` p1 : 1281 / 474 / 609 caractères), une seule colonne **4,63**
  *  (livret 26 p2). Entre 2,70 et 4,63 il n'y a aucune mesure. Ce signal n'est donc PAS un discriminant au sens du
- *  dépôt, et il n'est ici que pour être comparé à l'œil (A/B/C demandé par Mikolaj le 04/11/2026). */
+ *  dépôt, et il n'est ici que pour être comparé à l'œil (A/B/C demandé par le 04/11/2026). */
 const MAX_CHARS_RATIO = 3;
 
 /** Ce que la grille sait d'une colonne : où elle commence, où elle finit (bord droit MÉDIAN), ce qu'elle porte. */

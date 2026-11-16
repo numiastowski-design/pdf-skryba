@@ -1,7 +1,7 @@
 /** What `styles.xml` declares that the page keeps: which paragraph styles are
  *  headings (and at what level), and the run marks a paragraph style, a
  *  character style and direct formatting combine into.
- *  COLOURS AND HIGHLIGHT ARE PUBLISHED SINCE LE 10/11/2026 (Mikolaj : « du coup ne les jetons plus »), after his own
+ *  COLOURS AND HIGHLIGHT ARE PUBLISHED SINCE LE 10/11/2026 (« du coup ne les jetons plus »), after his own
  *  Rovo trial of that day: asked which rules of a page were red or highlighted, Rovo returned all four, told text
  *  colour from background, and even named the shade. The paper « Silent Cue Loss » (arXiv:2610.30026) measures
  *  +0.302 of accuracy for highlighting and +0.262 for colour, bold/italic/strike ≈ 0. See `colours` below.
@@ -12,7 +12,7 @@
 
 import type { InlineMark } from "doc-ir/lib/ir";
 import { isOnOff as isOnOffValue } from "../../lib/ooxml-bool";
-import { attr, child, children, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, type XNode } from "../ooxml/xml";
 
 interface StyleDef {
   id: string;
@@ -52,7 +52,7 @@ export interface Styles {
  * explicit "not bold", never a bold.
  */
 export const onOff = (el: XNode): boolean => {
-  return isOnOffValue(attr(el, "w:val"), true);
+  return isOnOffValue(attributeOf(el, "w:val"), true);
 };
 
 /** Built-in style names (w:name) the page reads. The NAME identifies
@@ -98,35 +98,35 @@ const MARK_ORDER: InlineMark[] = ["strong", "em", "underline", "strike", "sup", 
  *    test du lecteur (`05-Essai-Annotations.docx`), et `07-moj-data-sharing-guidance` en portait sur tout son corps.
  *  CE QUE CE REFUS NE VOIT PAS, pour que personne n'en attende trop : un gris très clair ou très sombre passe
  *  encore. Aucun seuil de luminance n'est posé — ce serait une règle inventée, et aucune population ne l'a mesurée.
- *  Mikolaj, 15/09/2026 : « un texte illisible est un problème pour tout le monde ». */
+ *  15/09/2026 : « un texte illisible est un problème pour tout le monde ». */
 const INVISIBLE_OR_DEFAULT = new Set(["#ffffff", "#000000"]);
 
 export const readStyles = (root: XNode | undefined): Styles => {
   const byId = new Map<string, StyleDef>();
   let defaultParagraph: string | undefined;
   let defaultCharacter: string | undefined;
-  for (const s of root ? children(root, "w:style") : []) {
-    const id = attr(s, "w:styleId");
+  for (const s of root ? findChildren(root, "w:style") : []) {
+    const id = attributeOf(s, "w:styleId");
     if (id === undefined) continue;
-    const type = attr(s, "w:type") ?? "paragraph";
-    const nameEl = child(s, "w:name");
-    const basedOnEl = child(s, "w:basedOn");
+    const type = attributeOf(s, "w:type") ?? "paragraph";
+    const nameEl = findChild(s, "w:name");
+    const basedOnEl = findChild(s, "w:basedOn");
     byId.set(id, {
       id,
       type,
-      name: nameEl ? attr(nameEl, "w:val") : undefined,
-      basedOn: basedOnEl ? attr(basedOnEl, "w:val") : undefined,
-      pPr: child(s, "w:pPr"),
-      rPr: child(s, "w:rPr"),
+      name: nameEl ? attributeOf(nameEl, "w:val") : undefined,
+      basedOn: basedOnEl ? attributeOf(basedOnEl, "w:val") : undefined,
+      pPr: findChild(s, "w:pPr"),
+      rPr: findChild(s, "w:rPr"),
     });
-    if (isOnOffValue(attr(s, "w:default"), false)) {
+    if (isOnOffValue(attributeOf(s, "w:default"), false)) {
       if (type === "paragraph") defaultParagraph ??= id;
       if (type === "character") defaultCharacter ??= id;
     }
   }
-  const docDefaults = root ? child(root, "w:docDefaults") : undefined;
-  const rPrDefaultHolder = docDefaults ? child(docDefaults, "w:rPrDefault") : undefined;
-  const rPrDefault = rPrDefaultHolder ? child(rPrDefaultHolder, "w:rPr") : undefined;
+  const docDefaults = root ? findChild(root, "w:docDefaults") : undefined;
+  const rPrDefaultHolder = docDefaults ? findChild(docDefaults, "w:rPrDefault") : undefined;
+  const rPrDefault = rPrDefaultHolder ? findChild(rPrDefaultHolder, "w:rPr") : undefined;
 
   /** The style and its ancestors, nearest first; a basedOn cycle stops. */
   const chain = (id: string | undefined): StyleDef[] => {
@@ -147,7 +147,7 @@ export const readStyles = (root: XNode | undefined): Styles => {
    *  chain: inside ONE style hierarchy a derived style overrides its base. */
   const nearestRunProperty = (id: string | undefined, tag: string): XNode | undefined => {
     for (const def of chain(id)) {
-      const found = def.rPr ? child(def.rPr, tag) : undefined;
+      const found = def.rPr ? findChild(def.rPr, tag) : undefined;
       if (found) return found;
     }
     return undefined;
@@ -164,13 +164,13 @@ export const readStyles = (root: XNode | undefined): Styles => {
 
   /** A toggle property's value for a run (§17.7.3). */
   const toggle = (tag: string, pStyle: string | undefined, cStyle: string | undefined, rPr: XNode | undefined): boolean => {
-    const direct = rPr ? child(rPr, tag) : undefined;
+    const direct = rPr ? findChild(rPr, tag) : undefined;
     // Direct formatting sets the absolute value (§17.7.3).
     if (direct) return onOff(direct);
     // In the style hierarchy a toggle set to true INVERTS the value of the
     // level below and false leaves it (§17.7.3): bold from the paragraph
     // style plus bold from the character style is not bold.
-    const base = rPrDefault ? child(rPrDefault, tag) : undefined;
+    const base = rPrDefault ? findChild(rPrDefault, tag) : undefined;
     const fromParagraph = nearestRunProperty(pStyle, tag);
     const fromCharacter = nearestRunProperty(cStyle, tag);
     const on = (base ? onOff(base) : false) !== (fromParagraph ? onOff(fromParagraph) : false);
@@ -178,8 +178,8 @@ export const readStyles = (root: XNode | undefined): Styles => {
   };
 
   const characterStyleOf = (rPr: XNode | undefined): string | undefined => {
-    const rStyleEl = rPr ? child(rPr, "w:rStyle") : undefined;
-    return (rStyleEl ? attr(rStyleEl, "w:val") : undefined) ?? defaultCharacter;
+    const rStyleEl = rPr ? findChild(rPr, "w:rStyle") : undefined;
+    return (rStyleEl ? attributeOf(rStyleEl, "w:val") : undefined) ?? defaultCharacter;
   };
 
   const hidden = (paragraphStyleId: string | undefined, rPr: XNode | undefined): boolean =>
@@ -189,10 +189,10 @@ export const readStyles = (root: XNode | undefined): Styles => {
    *  paragraph style, then the document defaults. ONE hierarchy, named once: `marks` and `colours` both read it, and
    *  writing it twice would let the two drift apart. */
   const nearestOf = (pStyle: string | undefined, cStyle: string | undefined, rPr: XNode | undefined) => (tag: string): XNode | undefined =>
-    (rPr ? child(rPr, tag) : undefined) ??
+    (rPr ? findChild(rPr, tag) : undefined) ??
     nearestRunProperty(cStyle, tag) ??
     nearestRunProperty(pStyle, tag) ??
-    (rPrDefault ? child(rPrDefault, tag) : undefined);
+    (rPrDefault ? findChild(rPrDefault, tag) : undefined);
 
   const marks = (paragraphStyleId: string | undefined, rPr: XNode | undefined): InlineMark[] => {
     const pStyle = paragraphStyleId ?? defaultParagraph;
@@ -207,12 +207,12 @@ export const readStyles = (root: XNode | undefined): Styles => {
 
     // ST_Underline: `none` is the only value without a line.
     const u = nearest("w:u");
-    const uVal = u ? attr(u, "w:val") : undefined;
+    const uVal = u ? attributeOf(u, "w:val") : undefined;
     if (u && uVal !== undefined && uVal !== "none") out.add("underline");
 
     // ST_VerticalAlignRun: superscript, subscript, baseline.
     const va = nearest("w:vertAlign");
-    const vaVal = va ? attr(va, "w:val") : undefined;
+    const vaVal = va ? attributeOf(va, "w:val") : undefined;
     if (vaVal === "superscript") out.add("sup");
     if (vaVal === "subscript") out.add("sub");
 
@@ -220,16 +220,16 @@ export const readStyles = (root: XNode | undefined): Styles => {
   };
 
   /**
-   * THE COLOURS A RUN CARRIES, AND ONLY THOSE THE FILE STATES (Mikolaj, 10/11/2026 : « du coup ne les jetons plus »,
+   * THE COLOURS A RUN CARRIES, AND ONLY THOSE THE FILE STATES (10/11/2026 : « du coup ne les jetons plus »,
    * après son propre essai Rovo du même jour — Rovo rend les quatre règles colorées d'une page, et distingue la
    * couleur du texte de celle du fond).
    *
    * 🔴 LEFT OUT FOR NOW, AND IT IS A LIMIT, NOT A PRINCIPLE. A `w:themeColor` / `w:themeFill` names a slot of the
    * document's theme (« accent1 »), not a colour, so nothing is published for it yet.
-   * THE REASON FIRST WRITTEN HERE WAS WRONG, and Mikolaj caught it the same day: « et on pourrait le faire sur chaque
+   * THE REASON FIRST WRITTEN HERE WAS WRONG, and the maintainer caught it the same day: « et on pourrait le faire sur chaque
    * doc à chaque fois ? ». Yes. Resolving it means opening `theme1.xml`, which is INSIDE the .docx, and reading
    * `<a:accent1><a:srgbClr val="…"/></a:accent1>` — the FILE stating its colour, like it states its text. That is not
-   * the correspondence table Mikolaj refused on 14/09/2026 (« je veux pas de table de correspondance pour les
+   * the correspondence table the maintainer refused on 14/09/2026 (« je veux pas de table de correspondance pour les
    * couleurs »): a table is a dictionary WE would write and maintain. Even `w:themeTint`/`w:themeShade` is arithmetic
    * the standard defines (ECMA-376 Part 1), not a choice of ours.
    * So this is a SCOPE limit of the first lot, to be lifted by reading the theme part — not a decision against it.
@@ -243,12 +243,12 @@ export const readStyles = (root: XNode | undefined): Styles => {
 
     /** A hex the file states, or nothing: `auto` is « let the reader decide », and a theme slot is not a colour. */
     const statedHex = (node: XNode | undefined, valueAttr: string, themeAttr: string): string | undefined => {
-      if (node === undefined || attr(node, themeAttr) !== undefined) return undefined;
-      const value = attr(node, valueAttr);
+      if (node === undefined || attributeOf(node, themeAttr) !== undefined) return undefined;
+      const value = attributeOf(node, valueAttr);
       return value !== undefined && /^[0-9A-Fa-f]{6}$/u.test(value) ? `#${value.toLowerCase()}` : undefined;
     };
 
-    // 🔴 LA COULEUR DU TEXTE NE SE PREND QUE SUR LE RUN LUI-MÊME, jamais héritée d'un style (Mikolaj, 10/11/2026 :
+    // 🔴 LA COULEUR DU TEXTE NE SE PREND QUE SUR LE RUN LUI-MÊME, jamais héritée d'un style (10/11/2026 :
     // « fais le 2 »). MESURÉ le même jour sur quatre documents réels, avant la décision : en suivant la hiérarchie
     // des styles, `01-Guide-Onboarding-Atria` sortait 15 inlines sur 43 au bleu standard du style « Titre 1 » de Word
     // (#2e74b5), `07-moj-data-sharing-guidance` 315 sur 345 dont un `#000000` explicite sur tout son corps de texte,
@@ -258,19 +258,19 @@ export const readStyles = (root: XNode | undefined): Styles => {
     // passage, et c'est elle seule que le papier « Silent Cue Loss » mesure.
     // 🔴 LE BLANC EST REFUSÉ, ET C'EST UN BIAIS CHOISI. Un auteur qui écrit en blanc le pose sur une bannière ou une
     // cellule colorée ; cette bannière, nous ne la publions pas. Publier le blanc donnerait donc du BLANC SUR BLANC :
-    // un texte présent et illisible, soit un mot perdu — la priorité numéro un de Mikolaj. Mesuré le 10/11/2026 :
+    // un texte présent et illisible, soit un mot perdu — la priorité numéro un du mainteneur. Mesuré le 10/11/2026 :
     // `01-Guide-Onboarding-Atria` en a 5 (des en-têtes de tableau), `10-lpc-invitation-to-tender` son titre entier.
     // Laid et visible plutôt que faux et invisible. CE QUE CE REFUS NE VOIT PAS, écrit pour que personne n'en attende
     // trop : un gris très clair passe encore. Aucun seuil de luminance n'est posé ici — ce serait une règle inventée,
     // et aucune population ne l'a mesurée.
-    const stated = statedHex(rPr ? child(rPr, "w:color") : undefined, "w:val", "w:themeColor");
+    const stated = statedHex(rPr ? findChild(rPr, "w:color") : undefined, "w:val", "w:themeColor");
     const color = stated !== undefined && INVISIBLE_OR_DEFAULT.has(stated) ? undefined : stated;
     // Même raison pour la trame : celle d'un style de tableau habille, elle ne signale pas.
-    const shading = statedHex(rPr ? child(rPr, "w:shd") : undefined, "w:fill", "w:themeFill");
+    const shading = statedHex(rPr ? findChild(rPr, "w:shd") : undefined, "w:fill", "w:themeFill");
     // Le SURLIGNAGE garde la hiérarchie : personne ne surligne par habillage, et un style de caractère « Surligné »
     // reste un geste d'auteur. C'est aussi le plus gros gain mesuré du papier (+0,302 contre +0,262).
     const highlight = nearest("w:highlight");
-    const highlightValue = highlight ? attr(highlight, "w:val") : undefined;
+    const highlightValue = highlight ? attributeOf(highlight, "w:val") : undefined;
     // The highlight wins over the shading when both are stated: it is the mark a reader of the document sees.
     const background = highlightValue !== undefined && highlightValue !== "none" ? highlightValue.toLowerCase() : shading;
 
@@ -279,7 +279,7 @@ export const readStyles = (root: XNode | undefined): Styles => {
 
   const paragraphProperty = (styleId: string | undefined, tag: string): XNode | undefined => {
     for (const def of chain(styleId ?? defaultParagraph)) {
-      const found = def.pPr ? child(def.pPr, tag) : undefined;
+      const found = def.pPr ? findChild(def.pPr, tag) : undefined;
       if (found) return found;
     }
     return undefined;

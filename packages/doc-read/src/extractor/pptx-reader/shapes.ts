@@ -26,7 +26,7 @@
  *  which slide is read (`pptx-reader/index.ts`).
  *  Called by: `pptx-reader/index.ts`. */
 
-import { internalTarget, type Relationship } from "../ooxml/package";
+import { findInternalTarget, type Relationship } from "../ooxml/package";
 import type { Box } from "doc-ir/layout/slide-elements";
 import { NO_CAP, type ReaderLimits } from "doc-ir/lib/reader-limits";
 import { ARROW_GEOMETRIES } from "doc-ir/layout/slide-layout";
@@ -38,7 +38,7 @@ import { imageOnlyFallback, POWERPOINT_TEXT_TAGS, POWERPOINT_UNDERSTOOD, rendere
 import { smartArtDataPart } from "../smartart";
 import { type ColorContext, type PptxFill, solidFillColor, styleFill, writtenFillOf } from "./color";
 import { isHiddenFlag } from "../../lib/ooxml-bool";
-import { attr, child, children, kids, tagOf, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, childNodesOf, qualifiedNameOf, type XNode } from "../ooxml/xml";
 import type { PptxChart } from "./chart";
 import {
   type Frame,
@@ -147,7 +147,7 @@ export interface PptxTextShape extends ShapeBase {
   growsWithText?: true;
   /** An enclosing group turns or mirrors the shape (`geometry.ts#turnsOrMirrors`
    *  of the groups' map). PowerPoint then turns its text but never mirrors
-   *  the glyphs: the slide drawing leaves it out (Mikolaj, 25/09/2026). */
+   *  the glyphs: the slide drawing leaves it out (25/09/2026). */
   groupTurned?: true;
   /** A shape of a SmartArt's saved drawing (`dsp:sp`, `extractor/smartart-drawing.ts`), not of the slide's tree; present only for those.
    *  All boxes are in EMU on the slide (the drawing's own space carried to the frame's corner, scale 1). `frame`: the shape's frame BEFORE
@@ -254,12 +254,12 @@ const readFrame = (
   rels: ReadonlyMap<string, Relationship>,
   slideNumber: number | undefined,
 ): PptxTableShape | PptxGraphicShape => {
-  const data = child(child(frame, "a:graphic") ?? {}, "a:graphicData") ?? {};
-  const tbl = child(data, "a:tbl");
+  const data = findChild(findChild(frame, "a:graphic") ?? {}, "a:graphicData") ?? {};
+  const tbl = findChild(data, "a:tbl");
   if (tbl) return { kind: "table", spTreeIndex, table: readTable(tbl, rels, slideNumber) };
-  const chart = child(data, "c:chart");
+  const chart = findChild(data, "c:chart");
   if (chart) {
-    const part = internalTarget(rels, attr(chart, "r:id"));
+    const part = findInternalTarget(rels, attributeOf(chart, "r:id"));
     return {
       kind: "graphic",
       spTreeIndex,
@@ -267,12 +267,12 @@ const readFrame = (
       ...(part !== undefined ? { part } : {}),
     };
   }
-  if (kids(data).some((k) => tagOf(k)?.startsWith("dgm:"))) {
-    const relIds = child(data, "dgm:relIds");
+  if (childNodesOf(data).some((k) => qualifiedNameOf(k)?.startsWith("dgm:"))) {
+    const relIds = findChild(data, "dgm:relIds");
     const dataPart = relIds === undefined ? undefined : smartArtDataPart(rels, relIds);
     return { kind: "graphic", spTreeIndex, graphic: "smartart", ...(dataPart === undefined ? {} : { dataPart }) };
   }
-  if (attr(data, "uri") === OLE_URI) return { kind: "graphic", spTreeIndex, graphic: "ole" };
+  if (attributeOf(data, "uri") === OLE_URI) return { kind: "graphic", spTreeIndex, graphic: "ole" };
   return { kind: "graphic", spTreeIndex, graphic: "other" };
 };
 
@@ -285,24 +285,24 @@ const GROUP_PROPERTIES = new Set(["p:nvGrpSpPr", "p:grpSpPr", "p:extLst"]);
 /** ECMA-376: `hidden="1"` (or "true", blanks and case tolerated) on `p:cNvPr` hides the shape. */
 const isHidden = (element: XNode): boolean => {
   for (const tag of NON_VISUAL) {
-    const nv = child(element, tag);
+    const nv = findChild(element, tag);
     if (!nv) continue;
-    return isHiddenFlag(attr(child(nv, "p:cNvPr") ?? {}, "hidden"));
+    return isHiddenFlag(attributeOf(findChild(nv, "p:cNvPr") ?? {}, "hidden"));
   }
   return false;
 };
 
 /** `p:style` gives the shape a fill or a line: its reference's `idx` is above 0. */
 const styleGives = (element: XNode, ref: "a:fillRef" | "a:lnRef"): boolean => {
-  const idx = Number(attr(child(child(element, "p:style") ?? {}, ref) ?? {}, "idx"));
+  const idx = Number(attributeOf(findChild(findChild(element, "p:style") ?? {}, ref) ?? {}, "idx"));
   return Number.isInteger(idx) && idx > 0;
 };
 
 /** The line `a:ln` writes shows unless its fill is `a:noFill`; when it
  *  writes no fill, the line `p:style` refers to. */
 const lineShows = (element: XNode, spPr: XNode | undefined): boolean => {
-  const fill = writtenFillOf(child(spPr ?? {}, "a:ln"));
-  return fill === undefined ? styleGives(element, "a:lnRef") : tagOf(fill) !== "a:noFill";
+  const fill = writtenFillOf(findChild(spPr ?? {}, "a:ln"));
+  return fill === undefined ? styleGives(element, "a:lnRef") : qualifiedNameOf(fill) !== "a:noFill";
 };
 
 /** The fill `p:spPr` writes, else the one `p:style` refers to. */
@@ -310,9 +310,9 @@ const fillOf = (element: XNode, spPr: XNode | undefined, context: ColorContext |
   const written = writtenFillOf(spPr);
   if (written === undefined) {
     if (!styleGives(element, "a:fillRef")) return "none";
-    return styleFill(child(child(element, "p:style") ?? {}, "a:fillRef")!, context);
+    return styleFill(findChild(findChild(element, "p:style") ?? {}, "a:fillRef")!, context);
   }
-  switch (tagOf(written)) {
+  switch (qualifiedNameOf(written)) {
     case "a:noFill":
       return "none";
     case "a:solidFill":
@@ -334,7 +334,7 @@ const runColors = (element: XNode, body: XNode, context: ColorContext | undefine
 /** ST_Coordinate32 of an inset: a whole number of EMU. A negative inset or
  *  a universal measure ("0.1in") is left unread: the default applies. */
 const insetOf = (bodyPr: XNode, name: string): number | undefined => {
-  const raw = attr(bodyPr, name);
+  const raw = attributeOf(bodyPr, name);
   return raw !== undefined && /^\d+$/.test(raw) ? Number(raw) : undefined;
 };
 
@@ -342,14 +342,14 @@ const insetOf = (bodyPr: XNode, name: string): number | undefined => {
 export const bodyOf = (
   body: XNode,
 ): Pick<PptxTextShape, "anchor" | "turnedText" | "fontScale" | "lineSpaceReduction" | "noWrap" | "insets" | "growsWithText"> => {
-  const bodyPr = child(body, "a:bodyPr") ?? {};
-  const anchor = attr(bodyPr, "anchor");
-  const vert = attr(bodyPr, "vert");
-  const rot = Number(attr(bodyPr, "rot") ?? "0");
+  const bodyPr = findChild(body, "a:bodyPr") ?? {};
+  const anchor = attributeOf(bodyPr, "anchor");
+  const vert = attributeOf(bodyPr, "vert");
+  const rot = Number(attributeOf(bodyPr, "rot") ?? "0");
   const turned = (vert !== undefined && vert !== "horz") || rot !== 0;
-  const autofit = child(bodyPr, "a:normAutofit");
-  const fontScale = fractionOf(autofit === undefined ? undefined : attr(autofit, "fontScale"));
-  const reduction = fractionOf(autofit === undefined ? undefined : attr(autofit, "lnSpcReduction"));
+  const autofit = findChild(bodyPr, "a:normAutofit");
+  const fontScale = fractionOf(autofit === undefined ? undefined : attributeOf(autofit, "fontScale"));
+  const reduction = fractionOf(autofit === undefined ? undefined : attributeOf(autofit, "lnSpcReduction"));
   const insets: NonNullable<PptxTextShape["insets"]> = {};
   for (const [side, name] of [
     ["left", "lIns"],
@@ -362,26 +362,26 @@ export const bodyOf = (
   }
   return {
     ...(Object.keys(insets).length > 0 ? { insets } : {}),
-    ...(child(bodyPr, "a:spAutoFit") ? { growsWithText: true as const } : {}),
+    ...(findChild(bodyPr, "a:spAutoFit") ? { growsWithText: true as const } : {}),
     ...(anchor === "ctr" || anchor === "b" ? { anchor } : {}),
     ...(turned ? { turnedText: true as const } : {}),
     ...(fontScale !== undefined && fontScale > 0 && fontScale < 1 ? { fontScale } : {}),
     ...(reduction !== undefined && reduction > 0 && reduction < 1 ? { lineSpaceReduction: reduction } : {}),
-    ...(attr(bodyPr, "wrap") === "none" ? { noWrap: true as const } : {}),
+    ...(attributeOf(bodyPr, "wrap") === "none" ? { noWrap: true as const } : {}),
   };
 };
 
 /** The frame element of a shape-tree element: `p:xfrm` for a graphic frame,
  *  `p:spPr/a:xfrm` for the others. */
 const xfrmOf = (element: XNode, tag: string): XNode | undefined =>
-  tag === "p:graphicFrame" ? child(element, "p:xfrm") : child(child(element, "p:spPr") ?? {}, "a:xfrm");
+  tag === "p:graphicFrame" ? findChild(element, "p:xfrm") : findChild(findChild(element, "p:spPr") ?? {}, "a:xfrm");
 
 /** The frame of a shape-tree element, whichever kind: a group writes its `a:xfrm` in `p:grpSpPr`. */
 const frameOfElement = (element: XNode, tag: string): Frame | undefined =>
-  tag === "p:grpSp" ? frameOf(child(child(element, "p:grpSpPr") ?? {}, "a:xfrm")) : frameOf(xfrmOf(element, tag));
+  tag === "p:grpSp" ? frameOf(findChild(findChild(element, "p:grpSpPr") ?? {}, "a:xfrm")) : frameOf(xfrmOf(element, tag));
 
 /** Whether a top-level element lies WHOLLY outside the slide, so that it is not shown in a slideshow, print or export
- *  (rule « Rien d'invisible », Mikolaj, 09/10/2026; the same rule as Word's `docx-reader/objects.ts#isOffPage`).
+ *  (rule « Rien d'invisible », 09/10/2026; the same rule as Word's `docx-reader/objects.ts#isOffPage`).
  *  PowerPoint shows the pasteboard around the slide only in normal view (observed behaviour, not sourced).
  *  Decided only on what is declared: a rotated element, an unknown frame (a placeholder inheriting its box from the
  *  layout) or an unknown slide size is kept. A group is judged by its own frame; the members of a group are never judged
@@ -394,8 +394,8 @@ const isOffSlide = (frame: Frame | undefined, slide: Size | undefined): boolean 
 /** `p:cNvPr id` of an element, from whichever non-visual properties it has. */
 const idOf = (element: XNode): string | undefined => {
   for (const tag of NON_VISUAL) {
-    const nv = child(element, tag);
-    if (nv) return attr(child(nv, "p:cNvPr") ?? {}, "id");
+    const nv = findChild(element, tag);
+    if (nv) return attributeOf(findChild(nv, "p:cNvPr") ?? {}, "id");
   }
   return undefined;
 };
@@ -412,8 +412,8 @@ const idOf = (element: XNode): string | undefined => {
  *  one variant early — the cap is a starting value anyway). */
 export const countElements = (tree: XNode): number => {
   let count = 0;
-  for (const element of kids(tree)) {
-    const tag = tagOf(element);
+  for (const element of childNodesOf(tree)) {
+    const tag = qualifiedNameOf(element);
     if (tag === undefined || tag === "#text" || GROUP_PROPERTIES.has(tag)) continue;
     if (tag === "mc:AlternateContent") {
       const branch = renderedBranch(element, POWERPOINT_UNDERSTOOD);
@@ -459,7 +459,7 @@ interface Scope {
 /** A `p:sp`: a text shape; a bodiless block arrow, an empty one; any other bodiless shape, nothing. */
 const readTextShape = (env: ReadEnv, element: XNode, base: ShapeBase, transform: Transform): PptxTextShape | undefined => {
   const { rels, context, sources } = env;
-  const body = child(element, "p:txBody");
+  const body = findChild(element, "p:txBody");
   // A `p:sp` with NO text body used to be dropped whole; since 7b of
   // the arbitrages (28/09/2026) a BLOCK ARROW among them survives as
   // an empty text shape carrying its geometry — the layout already
@@ -468,7 +468,7 @@ const readTextShape = (env: ReadEnv, element: XNode, base: ShapeBase, transform:
   // joined by connectors. Any other bodiless shape (a decorative
   // rectangle…) stays out, as before: no arrow, no content.
   if (!body) {
-    const spPr = child(element, "p:spPr");
+    const spPr = findChild(element, "p:spPr");
     const geometry = presetOf(spPr);
     if (geometry === undefined || !ARROW_GEOMETRIES.has(geometry)) return undefined;
     return {
@@ -484,10 +484,10 @@ const readTextShape = (env: ReadEnv, element: XNode, base: ShapeBase, transform:
   const placeholder = placeholderOf(element);
   // Built once per shape: its inherited colours are the same for every paragraph.
   const colors = { ...runColors(element, body, context, sources), ...(env.slideNumber === undefined ? {} : { slideNumber: env.slideNumber }) };
-  const spPr = child(element, "p:spPr");
+  const spPr = findChild(element, "p:spPr");
   const geometry = presetOf(spPr);
   const adj = guidesOf(spPr)["adj"];
-  const paragraphs = children(body, "a:p").map((p) => readParagraph(p, rels, colors));
+  const paragraphs = findChildren(body, "a:p").map((p) => readParagraph(p, rels, colors));
   const inheritedSizes = inheritedTextSizes(
     element,
     body,
@@ -511,10 +511,10 @@ const readTextShape = (env: ReadEnv, element: XNode, base: ShapeBase, transform:
 
 /** A `p:cxnSp`: the shapes it links by id, its arrow heads, its line. */
 const readConnector = (element: XNode, base: ShapeBase, frame: Frame | undefined, transform: Transform): PptxConnectorShape => {
-  const nv = child(child(element, "p:nvCxnSpPr") ?? {}, "p:cNvCxnSpPr") ?? {};
-  const from = attr(child(nv, "a:stCxn") ?? {}, "id");
-  const to = attr(child(nv, "a:endCxn") ?? {}, "id");
-  const spPr = child(element, "p:spPr");
+  const nv = findChild(findChild(element, "p:nvCxnSpPr") ?? {}, "p:cNvCxnSpPr") ?? {};
+  const from = attributeOf(findChild(nv, "a:stCxn") ?? {}, "id");
+  const to = attributeOf(findChild(nv, "a:endCxn") ?? {}, "id");
+  const spPr = findChild(element, "p:spPr");
   return {
     kind: "connector",
     ...base,
@@ -567,8 +567,8 @@ const walkAlternate = (env: ReadEnv, state: WalkState, element: XNode, { levels,
   const startRank = state.rank;
   const startHidden = state.hiddenShapes;
   const before = state.shapes.length;
-  if (branch) walkElements(env, state, kids(branch), levels, group);
-  // M16 (Mikolaj, 02/10/2026): a Choice PowerPoint renders but this
+  if (branch) walkElements(env, state, childNodesOf(branch), levels, group);
+  // M16 (02/10/2026): a Choice PowerPoint renders but this
   // reader cannot read leaves its Fallback to be read ONLY if that
   // carries no text — the same object, drawn as images. The variants
   // count ONCE toward `elementCount`: the Fallback's ranks replace the
@@ -578,7 +578,7 @@ const walkAlternate = (env: ReadEnv, state: WalkState, element: XNode, { levels,
   const choiceRank = state.rank;
   state.rank = startRank;
   state.hiddenShapes = startHidden;
-  walkElements(env, state, kids(fallback), levels, group);
+  walkElements(env, state, childNodesOf(fallback), levels, group);
   // Only 1×1 pixels (the documented junk, PLATFORM-STATUS §53): not content.
   const added = state.shapes.slice(before);
   const onlyPixels = added.length > 0 && added.every((s) => s.kind === "picture" && "image" in s && isOnePixel(s.image.bytes));
@@ -595,18 +595,18 @@ const walkShapeElement = (env: ReadEnv, state: WalkState, element: XNode, tag: s
   // is on the constant). A group is still walked so the told total is
   // the slide's true one.
   if (spTreeIndex >= (env.limits?.slideElements ?? NO_CAP)) {
-    if (tag === "p:grpSp") walkElements(env, state, kids(element), levels, group ?? spTreeIndex);
+    if (tag === "p:grpSp") walkElements(env, state, childNodesOf(element), levels, group ?? spTreeIndex);
     return;
   }
   if (isHidden(element)) {
     state.hiddenShapes++;
     return;
   }
-  // Rule « Rien d'invisible » (Mikolaj, 09/10/2026): top-level elements only, see `isOffSlide`.
+  // Rule « Rien d'invisible » (09/10/2026): top-level elements only, see `isOffSlide`.
   if (levels.length === 0 && isOffSlide(frameOfElement(element, tag), env.slideSize)) return;
   if (tag === "p:grpSp") {
-    const level = groupLevel(child(element, "p:grpSpPr"));
-    walkElements(env, state, kids(element), level === undefined ? levels : [...levels, level], group ?? spTreeIndex);
+    const level = groupLevel(findChild(element, "p:grpSpPr"));
+    walkElements(env, state, childNodesOf(element), level === undefined ? levels : [...levels, level], group ?? spTreeIndex);
     return;
   }
   const shape = readLeaf(env, element, tag, spTreeIndex, scope);
@@ -617,7 +617,7 @@ const walkShapeElement = (env: ReadEnv, state: WalkState, element: XNode, tag: s
 const walkElements = (env: ReadEnv, state: WalkState, elements: readonly XNode[], levels: readonly GroupLevel[], group: number | undefined): void => {
   const scope: Scope = { levels, group, transform: throughGroups(levels) };
   for (const element of elements) {
-    const tag = tagOf(element);
+    const tag = qualifiedNameOf(element);
     // Character data between elements (whitespace) is no shape.
     if (tag === undefined || tag === "#text" || GROUP_PROPERTIES.has(tag)) continue;
     if (tag === "mc:AlternateContent") walkAlternate(env, state, element, scope);
@@ -649,6 +649,6 @@ export const readShapes = (
   limits?: ReaderLimits,
 ): { shapes: PptxShape[]; elementCount: number; hiddenShapes: number } => {
   const state: WalkState = { shapes: [], rank: 0, hiddenShapes: 0 };
-  walkElements({ rels, media, context, sources, slideSize, slideNumber, limits }, state, kids(tree), [], undefined);
+  walkElements({ rels, media, context, sources, slideSize, slideNumber, limits }, state, childNodesOf(tree), [], undefined);
   return { shapes: state.shapes, elementCount: state.rank, hiddenShapes: state.hiddenShapes };
 };

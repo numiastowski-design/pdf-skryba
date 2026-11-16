@@ -139,7 +139,7 @@ const absorbedOf = (
 const readGridSheet = (sheet: GoogleSheetMeta["sheets"][number], values: readonly string[][], limits: ReaderLimits | undefined): { text: string; withheld: boolean; structure: UnitStructure } => {
   const { keptRows, keptCols, candidates } = keptCellsOf(sheet, values);
   const withheld = keptRows.size > (limits?.sheetRows ?? NO_CAP) || keptCols.size > (limits?.sheetCols ?? NO_CAP);
-  // Rule of Mikolaj, 09/10/2026: nothing invisible in the source is published NOR expected by the control
+  // Rule of 09/10/2026: nothing invisible in the source is published NOR expected by the control
   // reading. A value left in a cell a merge covers is never shown, so only anchors and uncovered cells count.
   // Merge rule (ours, written twice, same as `sheet-grid.ts#tableOfKept`): a merge counts when its first cell
   // is kept and it spans more than one kept line; first merge wins; one anchored on an anchor or a covered cell
@@ -161,7 +161,7 @@ const readGridSheet = (sheet: GoogleSheetMeta["sheets"][number], values: readonl
   // The page keeps the columns where an uncovered cell shows a text (as the workbook's); the merge covers cells of those columns only.
   const shownColumns = new Set(uncovered.filter((t) => t.text.trim() !== "").map((t) => t.c));
   const coveredInShown = [...covered.keys()].filter((key) => shownColumns.has(Number(key.split(",")[1]))).length;
-  // The page rule of 27/10/2026 (Mikolaj, FAQ_M365_Migration_CNE.xlsx): a row whose only text is in its first cell publishes as ONE cell. Mirrored
+  // The page rule of 27/10/2026 (FAQ_M365_Migration_CNE.xlsx): a row whose only text is in its first cell publishes as ONE cell. Mirrored
   // here on its own so the control keeps its two readings (the first integration shipped without this mirror and 9 real workbooks reported false
   // gaps, found by review the same evening). The header is the last frozen row (`gridProperties.frozenRowCount` - 1, in rows from 0), as a published row:
   // the last KEPT row at or above it, abstaining when a hidden row lies between (`declaredHeaderRowsOf`).
@@ -206,7 +206,7 @@ const readGsheetSource = (meta: GoogleSheetMeta, valuesByTitle: ReadonlyMap<stri
  * `properties.index` order. `deliberateRemovals` stays empty — the cap/
  * withhold/hidden/OBJECT facts become `excludedUnits` directly. A read that
  * cannot be trusted becomes a named failure instead of throwing through to
- * the caller: never a reason not to publish (Mikolaj, 21/09/2026).
+ * the caller: never a reason not to publish (21/09/2026).
  */
 export function readGoogleSheetConservationSource(
   meta: GoogleSheetMeta,

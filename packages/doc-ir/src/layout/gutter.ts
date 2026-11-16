@@ -68,7 +68,7 @@ import { bandsCarryProse, type BandFragment } from "doc-ir/layout/column-discrim
 export type GutterItem = BandFragment;
 
 /**
- * LES SEUILS, FIGÉS LE 16/09/2026 sur décision de Mikolaj — « mets ton seuil, on
+ * LES SEUILS, FIGÉS LE 16/09/2026 sur décision — « mets ton seuil, on
  * adaptera lors de la vie du produit ». **Valeurs de départ à calibrer**, et
  * chacune porte ce qui l'a fixée :
  *
@@ -294,7 +294,7 @@ export function columnCuts(items: readonly GutterItem[]): number[] {
 
 export function columnCut(items: readonly GutterItem[]): number | undefined {
   const real = items.filter((it) => it.text.trim().length > 0);
-  // 🔴 A COLUMN OF NUMBERS IS NOT A COLUMN (10/11/2026, catalogue `sd-1026348`; Mikolaj: « il faut juste un espace après
+  // 🔴 A COLUMN OF NUMBERS IS NOT A COLUMN (10/11/2026, catalogue `sd-1026348`: « il faut juste un espace après
   // les numéros de paragraphe »). The blank between a lot's number and its text made a gutter of its own, three on the
   // page, and the count below abstained. A band narrower than `MIN_COLUMN_PT` at the page's edge, or between two gutters
   // (`withoutSlivers`), is a margin of numbers: its gutter is not counted. The prose guard below still judges the cut.

@@ -15,7 +15,7 @@ import { modeOf } from "doc-ir/layout/mode";
  * than structure: a long page with no headings is unusable to a screen reader
  * and to a table of contents (WCAG 1.3.1, 2.4.6).
  *
- * THE RULE (30/09/2026, Mikolaj, after a decision tree and a small network failed to beat it and were NOT embedded): compare
+ * THE RULE (30/09/2026, after a decision tree and a small network failed to beat it and were NOT embedded): compare
  * each size to the BODY size, not to its neighbour. The body is the dominant
  * size. A size at least T times the body is a heading; its level is its rank
  * among the distinct heading sizes.
@@ -106,7 +106,7 @@ export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
  * first, capped at MAX_LEVEL. Ranks are not cut by ratios: two heading sizes
  * one point apart are two levels, as in a Word style ladder.
  *
- * COVER (Mikolaj, 13/10/2026). In a document of 2 pages or more, the heading sizes used ONLY on page 1 and LARGER than every
+ * COVER (13/10/2026). In a document of 2 pages or more, the heading sizes used ONLY on page 1 and LARGER than every
  * heading size used later are cover sizes, all level 1; if no heading size is used after page 1, every page-1-only heading
  * size is one. The other heading sizes rank from 1, largest first. WHY: on the 7 real Word exports of `fixtures/docx-reel` the
  * cover is a Title-style paragraph, and our docx reader (`extractor/docx-reader/styles.ts`) puts Title AND Heading 1 at level 1.

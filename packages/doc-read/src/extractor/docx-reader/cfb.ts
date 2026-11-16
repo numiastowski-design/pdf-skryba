@@ -7,7 +7,7 @@
  *  Called by: `ooxml/package.ts`. */
 
 /**
- * WHY STREAM NAMES, AND WHICH ONES (28/09/2026, Mikolaj: « distingue par
+ * WHY STREAM NAMES, AND WHICH ONES (28/09/2026: « distingue par
  * rapport aux très vieux fichiers »). A CFB is a directory of named streams.
  * [MS-OFFCRYPTO] stores an encrypted OOXML document as the `EncryptionInfo`
  * and `EncryptedPackage` streams — the exact discriminant of Microsoft's own

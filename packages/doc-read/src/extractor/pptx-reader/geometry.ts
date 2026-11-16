@@ -17,7 +17,7 @@ import type { Matrix2D } from "doc-ir/layout/geometry-types";
 import { applyMatrix, composeMatrix, IDENTITY_MATRIX } from "doc-ir/layout/painted-paths";
 import type { Box } from "doc-ir/layout/slide-elements";
 import { isXsdTrue } from "../../lib/ooxml-bool";
-import { attr, child, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, type XNode } from "../ooxml/xml";
 
 /** EMU per point (DrawingML: 914 400 per inch, 72 points per inch). The one
  *  copy: `pptx-reader/picture.ts` and `extractor/slide-svg.ts` import it. */
@@ -85,14 +85,14 @@ const MAX_COORDINATE_EMU = 27_273_042_329_600;
  *  not an integer, or out of ECMA's coordinate bounds — an out-of-bounds
  *  value is treated as NOT declared, no geometry is invented. */
 const integer = (node: XNode | undefined, name: string): number | undefined => {
-  const raw = node === undefined ? undefined : attr(node, name);
+  const raw = node === undefined ? undefined : attributeOf(node, name);
   if (raw === undefined || raw.trim() === "") return undefined;
   const n = Number(raw);
   return Number.isInteger(n) && Math.abs(n) <= MAX_COORDINATE_EMU ? n : undefined;
 };
 
 const flag = (node: XNode, name: string): boolean => {
-  return isXsdTrue(attr(node, name));
+  return isXsdTrue(attributeOf(node, name));
 };
 
 /** A declared frame: `a:off` and `a:ext` as written, `rot` (0 when absent). */
@@ -110,8 +110,8 @@ export interface Frame {
  *  integer `a:off` and `a:ext`. */
 export const frameOf = (xfrm: XNode | undefined): Frame | undefined => {
   if (!xfrm) return undefined;
-  const off = child(xfrm, "a:off");
-  const ext = child(xfrm, "a:ext");
+  const off = findChild(xfrm, "a:off");
+  const ext = findChild(xfrm, "a:ext");
   const x = integer(off, "x");
   const y = integer(off, "y");
   const cx = integer(ext, "cx");
@@ -144,11 +144,11 @@ const unevenScale = (sx: number, sy: number): boolean =>
  *  without a readable frame: it leaves its members where its parent puts
  *  them. */
 export const groupLevel = (grpSpPr: XNode | undefined): GroupLevel | undefined => {
-  const xfrm = child(grpSpPr ?? {}, "a:xfrm");
+  const xfrm = findChild(grpSpPr ?? {}, "a:xfrm");
   const frame = frameOf(xfrm);
   if (!xfrm || !frame) return undefined;
-  const chOff = child(xfrm, "a:chOff");
-  const chExt = child(xfrm, "a:chExt");
+  const chOff = findChild(xfrm, "a:chOff");
+  const chExt = findChild(xfrm, "a:chExt");
   const chX = integer(chOff, "x") ?? frame.x;
   const chY = integer(chOff, "y") ?? frame.y;
   const chCx = integer(chExt, "cx");

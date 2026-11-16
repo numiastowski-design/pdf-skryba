@@ -74,7 +74,7 @@ export interface PdfTextRun {
    *  `resolveRunWeights`. Absent or false: upright, or unknown. */
   italic?: boolean;
   /** Le morceau était écrit LETTRES ESPACÉES et a été recomposé depuis les glyphes (`pdf-letter-spacing.ts`).
-   *  Information gardée sans règle qui la lise (Mikolaj, 05/11/2026 : « garder l'info, voir si un jour utile »). */
+   *  Information gardée sans règle qui la lise (05/11/2026 : « garder l'info, voir si un jour utile »). */
   letterSpaced?: true;
   hasEOL: boolean;
   dir: string;
@@ -145,7 +145,7 @@ export interface PdfSourcePage {
   imageFailure: (name: string) => "slow" | "unreadable" | undefined;
   /** WHY the picture `name` is not read, in the eight words of `pdf-image-refusal.ts`, or `undefined` when it IS read
    *  (and when the page's operators were not asked for, so nothing was looked at). Beside `imageFailure`, which says
-   *  only that it failed: a count with nowhere to look is not a report (Mikolaj, 03/11/2026). */
+   *  only that it failed: a count with nowhere to look is not a report (03/11/2026). */
   imageRefusal: (name: string) => PictureRefusal | undefined;
   /** Vide quand `wantGlyphs` n'a pas retenu la page. Voir l'en-tête : c'est un
    *  choix de coût, pas une absence de données. Vide AUSSI quand la
@@ -478,7 +478,7 @@ interface ReadPdfSourceOptions {
 
 /** The most operators one page may carry. A content stream can inflate to hundreds of millions of operators, which
  *  saturates Forge's 512 MB or its 900 s, and the retry replays the same bomb; real pages are far below.
- *  🔴 ARBITRARY THRESHOLD, settled by Mikolaj on 31/10/2026: a "clear refusal" rather than a memory risk.
+ *  🔴 ARBITRARY THRESHOLD, settled by on 31/10/2026: a "clear refusal" rather than a memory risk.
  *  It is DELIBERATELY the same number as `pdf-objects/bounds.ts#MAX_CONTENT_OPS`, so that both readers
  *  refuse the same page; the two go down together or not at all. */
 export const PDF_MAX_OPS_PER_PAGE = 1_000_000;
@@ -630,7 +630,7 @@ function ourImagesOf(ctx: ReadContext, ops: readonly PdfOp[]): { decoded: Readon
   const { scopesByName, paintedByName } = paintedPicturesOf(ops);
   const decoded = new Map<string, unknown>();
   // Beside each picture we do NOT decode, the reason, read from what it declares (`pdf-image-refusal.ts`): a count
-  // with nowhere to look is not a report (Mikolaj, 03/11/2026). Two causes are only knowable here, and this is why
+  // with nowhere to look is not a report (03/11/2026). Two causes are only knowable here, and this is why
   // they live here: a name painted in two scopes, and a name the resources do not declare at all.
   const refusals = new Map<string, PictureRefusal>();
   for (const [name, painted] of paintedByName) {

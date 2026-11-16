@@ -56,7 +56,7 @@ export interface ConservationUnit {
   tokens: readonly SourceToken[];
 }
 
-/** ONE numeric or date source cell (xlsx only, lot E addendum, Mikolaj
+/** ONE numeric or date source cell (xlsx only, lot E addendum
  *  29/09/2026, MIKSUDOC « Spécification technique » T11): checked by
  *  POSITION against the published table, never by word match —
  *  `pipeline/xlsx-page-cells.ts` locates `row`/`col` in the SAME
@@ -133,7 +133,7 @@ export interface DeclaredFormatConservationSource {
 /** The second, independent reading could not be trusted — a corrupt part, a
  *  size limit crossed — so the check abstains (`check-failed`) rather than
  *  compare against a reading it cannot stand behind. Never a reason to
- *  refuse the publish (Mikolaj, 21/09/2026). */
+ *  refuse the publish (21/09/2026). */
 export interface ConservationSourceReadFailure {
   readFailed: true;
 }

@@ -5,7 +5,7 @@
  *  elements follow which, one paragraph per chain of relations, and which
  *  stay where they are. `paragraphs` flattened then `rest` is a permutation of
  *  the element indices (the property test says it): the ORDER creates, cuts
- *  and repeats nothing. Since 02/10/2026 (Mikolaj) the result also carries
+ *  and repeats nothing. Since 02/10/2026 the result also carries
  *  `links`, the arrows of the components that are not trees, as indices:
  *  what the caller publishes from them (names only) is its own business, and
  *  the order stays a permutation. Why: the layered landscapes of real decks
@@ -28,7 +28,7 @@
  *     dropped (a frame behind its content: innermost). Two touched shapes,
  *     none, a point deep inside a box: abstain. A declared id the slide does
  *     not hold, or two readings that disagree: abstain.
- *   - Direction (Mikolaj, 02/10/2026): an arrow head at the line's end only,
+ *   - Direction (02/10/2026): an arrow head at the line's end only,
  *     start to end; at its start only, end to start; both, start to end (the
  *     order of `a:stCxn` then `a:endCxn`, the line's own start and end). A
  *     connector with NO head is a plain association line: its
@@ -95,7 +95,7 @@ export interface DiagramConnector {
 }
 
 /** Starting values to calibrate (measured on 01/10/2026 over 374 pptx connectors and the Word
- *  diagrams; no label has a declared truth, only Mikolaj's eye judges it). */
+ *  diagrams; no label has a declared truth, only the maintainer's eye judges it). */
 export interface DiagramTolerances {
   /** Largest distance between a line's end and a shape's outline. */
   endTouch: number;

@@ -21,7 +21,7 @@ export interface AsideFigure {
 const inkOf = (line: readonly PdfTextRun[]): PdfTextRun[] => line.filter((it) => it.text.trim() !== "");
 
 /**
- * 🔴 LA TABLE PREND TOUT CE DONT LE TEXTE EST PLUS COURT QUE CELUI DU DESSUS ET/OU DU DESSOUS (Mikolaj,
+ * 🔴 LA TABLE PREND TOUT CE DONT LE TEXTE EST PLUS COURT QUE CELUI DU DESSUS ET/OU DU DESSOUS (
  * 13/11/2026).
  *
  * Mesuré sur la page 5 du livret 26 : l'image va de x 363,9 à 573,2, les lignes qui la longent s'arrêtent toutes à

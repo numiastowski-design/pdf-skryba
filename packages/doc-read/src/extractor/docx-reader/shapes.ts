@@ -8,7 +8,7 @@
  *  no picture — its words are already published as text by
  *  `docx-reader/objects.ts`, unaffected by this file. How many shapes are
  *  NOT in the picture is counted (`DrawnShapes#shapesNotDrawn`) but never
- *  composed onto the page (Mikolaj, 29/09/2026: nothing we write joins a
+ *  composed onto the page (29/09/2026: nothing we write joins a
  *  published page) — it travels as data, for the dashboard.
  *  What is read: a shape's box (`a:xfrm`, scaled through its group's
  *  `a:chOff`/`a:chExt` — `pptx-reader/geometry.ts`, namespace-agnostic), its
@@ -68,7 +68,7 @@ import {
   type SlideSvgOmission,
 } from "../slide-svg";
 import { connectorBody, groupTurnedOf, guidesOf, isNotLabel, arrowAt, presetOf, shapeBase } from "../pptx-reader/shape-parts";
-import { attr, child, children, drawingFrame, graphicData, kids, tagOf, textOf, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, findDrawingFrame, findGraphicData, childNodesOf, qualifiedNameOf, textContentOf, type XNode } from "../ooxml/xml";
 
 /** `p:spPr`'s fill — DIRECT only (decided in this file's header): no
  *  `wps:style` reference is read, so a shape with no `a:noFill`/`a:solidFill`
@@ -76,7 +76,7 @@ import { attr, child, children, drawingFrame, graphicData, kids, tagOf, textOf, 
 const fillOf = (spPr: XNode | undefined): PptxFill => {
   const written = writtenFillOf(spPr);
   if (written === undefined) return "none";
-  switch (tagOf(written)) {
+  switch (qualifiedNameOf(written)) {
     case "a:noFill":
       return "none";
     case "a:solidFill":
@@ -89,24 +89,24 @@ const fillOf = (spPr: XNode | undefined): PptxFill => {
 /** `a:ln`'s fill shows unless it writes `a:noFill`; no `a:ln` at all shows
  *  nothing (no style-reference fallback, this file's header). */
 const lineShownOf = (spPr: XNode | undefined): boolean => {
-  const written = writtenFillOf(child(spPr ?? {}, "a:ln"));
-  return written !== undefined && tagOf(written) !== "a:noFill";
+  const written = writtenFillOf(findChild(spPr ?? {}, "a:ln"));
+  return written !== undefined && qualifiedNameOf(written) !== "a:noFill";
 };
 
 /** A connector's line shows unless its `a:ln` writes `a:noFill`; with no
  *  written fill, when its `wps:style` references a line (`a:lnRef idx` above
  *  0) — Word's own connector is exactly that (`Doc1.docx`). */
 const connectorLineShown = (node: XNode, spPr: XNode | undefined): boolean => {
-  const written = writtenFillOf(child(spPr ?? {}, "a:ln"));
-  if (written !== undefined) return tagOf(written) !== "a:noFill";
-  const ref = child(child(node, "wps:style") ?? {}, "a:lnRef");
-  const idx = ref === undefined ? undefined : num(attr(ref, "idx"));
+  const written = writtenFillOf(findChild(spPr ?? {}, "a:ln"));
+  if (written !== undefined) return qualifiedNameOf(written) !== "a:noFill";
+  const ref = findChild(findChild(node, "wps:style") ?? {}, "a:lnRef");
+  const idx = ref === undefined ? undefined : num(attributeOf(ref, "idx"));
   return idx !== undefined && idx > 0;
 };
 
 /** ST_HpsMeasure (ECMA-376 §17.18.87): a whole number of half-points. */
 const runSizeOf = (rPr: XNode | undefined): number | undefined => {
-  const raw = rPr ? attr(child(rPr, "w:sz") ?? {}, "w:val") : undefined;
+  const raw = rPr ? attributeOf(findChild(rPr, "w:sz") ?? {}, "w:val") : undefined;
   const n = num(raw);
   return n !== undefined && n > 0 ? n / 2 : undefined;
 };
@@ -118,10 +118,10 @@ const runSizeOf = (rPr: XNode | undefined): number | undefined => {
  *  with no `w:t` (Essai 13's trailing formatting-only run) gives nothing. */
 const shapeParagraph = (p: XNode): PptxParagraph => {
   const runs: PptxRun[] = [];
-  for (const r of children(p, "w:r")) {
-    const text = children(r, "w:t").map(textOf).join("");
+  for (const r of findChildren(p, "w:r")) {
+    const text = findChildren(r, "w:t").map(textContentOf).join("");
     if (text === "") continue;
-    const size = runSizeOf(child(r, "w:rPr"));
+    const size = runSizeOf(findChild(r, "w:rPr"));
     runs.push({ text, ...(size === undefined ? {} : { size }) });
   }
   return { runs };
@@ -130,12 +130,12 @@ const shapeParagraph = (p: XNode): PptxParagraph => {
 let spTreeIndex = 0;
 
 const readShape = (node: XNode, levels: readonly GroupLevel[]): PptxShape => {
-  const spPr = child(node, "wps:spPr");
-  const frame = frameOf(child(spPr ?? {}, "a:xfrm"));
+  const spPr = findChild(node, "wps:spPr");
+  const frame = frameOf(findChild(spPr ?? {}, "a:xfrm"));
   const transform = throughGroups(levels);
   const geometry = presetOf(spPr);
   const base = shapeBase(spTreeIndex++, frame, transform);
-  if (child(node, "wps:cNvCnPr") !== undefined) {
+  if (findChild(node, "wps:cNvCnPr") !== undefined) {
     const connector: PptxConnectorShape = {
       kind: "connector",
       ...base,
@@ -143,12 +143,12 @@ const readShape = (node: XNode, levels: readonly GroupLevel[]): PptxShape => {
     };
     return connector;
   }
-  const content = child(child(node, "wps:txbx") ?? {}, "w:txbxContent");
+  const content = findChild(findChild(node, "wps:txbx") ?? {}, "w:txbxContent");
   const adj = guidesOf(spPr)["adj"];
   const shape: PptxTextShape = {
     kind: "text",
     ...base,
-    paragraphs: content ? children(content, "w:p").map(shapeParagraph) : [],
+    paragraphs: content ? findChildren(content, "w:p").map(shapeParagraph) : [],
     ...(geometry === undefined ? {} : { geometry }),
     ...(adj === undefined ? {} : { adj }),
     fill: fillOf(spPr),
@@ -184,13 +184,13 @@ interface DrawingShapes {
  * not an error — the caller then has nothing to draw.
  */
 const readDrawingShapes = (drawing: XNode): DrawingShapes | undefined => {
-  const frame = drawingFrame(drawing);
+  const frame = findDrawingFrame(drawing);
   if (!frame) return undefined;
-  const extent = child(frame, "wp:extent");
-  const cx = extent ? num(attr(extent, "cx")) : undefined;
-  const cy = extent ? num(attr(extent, "cy")) : undefined;
+  const extent = findChild(frame, "wp:extent");
+  const cx = extent ? num(attributeOf(extent, "cx")) : undefined;
+  const cy = extent ? num(attributeOf(extent, "cy")) : undefined;
   if (cx === undefined || cy === undefined || cx <= 0 || cy <= 0) return undefined;
-  const data = graphicData(frame);
+  const data = findGraphicData(frame);
   if (!data) return undefined;
   const shapes: PptxShape[] = [];
   let unwalked = 0;
@@ -202,11 +202,11 @@ const readDrawingShapes = (drawing: XNode): DrawingShapes | undefined => {
   // it adds no `GroupLevel`.
   const walk = (nodes: readonly XNode[], levels: readonly GroupLevel[], depth: number): void => {
     for (const node of nodes) {
-      switch (tagOf(node)) {
+      switch (qualifiedNameOf(node)) {
         case "wpg:wgp":
         case "wpg:grpSp": {
-          const level = groupLevel(child(node, "wpg:grpSpPr"));
-          walk(kids(node), level === undefined ? levels : [...levels, level], depth + 1);
+          const level = groupLevel(findChild(node, "wpg:grpSpPr"));
+          walk(childNodesOf(node), level === undefined ? levels : [...levels, level], depth + 1);
           break;
         }
         case "wps:wsp":
@@ -225,7 +225,7 @@ const readDrawingShapes = (drawing: XNode): DrawingShapes | undefined => {
       }
     }
   };
-  walk(kids(data), [], 0);
+  walk(childNodesOf(data), [], 0);
   return { shapes, canvas: { cx, cy }, unwalked };
 };
 
@@ -281,7 +281,7 @@ const SVG_MIME = "image/svg+xml";
  *  drawn, D2 — a drawing made only of text boxes, Essai 11, gives no
  *  picture, its words stay published as before) and how many of its
  *  declared shapes are not in it. `shapesNotDrawn` is NEVER put on the page
- *  (Mikolaj, 29/09/2026: nothing composed may join a published page) — it is display-only data for the dashboard, carried up through
+ *  (29/09/2026: nothing composed may join a published page) — it is display-only data for the dashboard, carried up through
  *  `DocxReadResult#drawingShapesNotDrawn` (`docx-reader/index.ts`) to
  *  `SyncedDocument` and `orchestrator/document-summaries.ts`. */
 export interface DrawnShapes {
@@ -329,24 +329,24 @@ export interface DrawingDiagram {
 }
 
 export const readDrawingDiagram = (drawing: XNode, limits?: ReaderLimits): DrawingDiagram | undefined => {
-  const frame = drawingFrame(drawing);
-  const data = frame ? graphicData(frame) : undefined;
+  const frame = findDrawingFrame(drawing);
+  const data = frame ? findGraphicData(frame) : undefined;
   if (!data) return undefined;
   const found: DrawingDiagram = { texts: new Map(), obstacles: [], connectors: [] };
   const walk = (nodes: readonly XNode[], levels: readonly GroupLevel[], origin: { x: number; y: number } | undefined): void => {
     for (const node of nodes) {
-      switch (tagOf(node)) {
+      switch (qualifiedNameOf(node)) {
         case "wpg:wgp":
         case "wpg:grpSp": {
-          const grpSpPr = child(node, "wpg:grpSpPr");
+          const grpSpPr = findChild(node, "wpg:grpSpPr");
           const level = groupLevel(grpSpPr);
-          const own = frameOf(child(grpSpPr ?? {}, "a:xfrm"));
-          walk(kids(node), level === undefined ? levels : [...levels, level], origin ?? (own === undefined ? undefined : { x: own.x, y: own.y }));
+          const own = frameOf(findChild(grpSpPr ?? {}, "a:xfrm"));
+          walk(childNodesOf(node), level === undefined ? levels : [...levels, level], origin ?? (own === undefined ? undefined : { x: own.x, y: own.y }));
           break;
         }
         case "wps:wsp": {
-          const spPr = child(node, "wps:spPr");
-          const own = frameOf(child(spPr ?? {}, "a:xfrm"));
+          const spPr = findChild(node, "wps:spPr");
+          const own = frameOf(findChild(spPr ?? {}, "a:xfrm"));
           if (own === undefined) break;
           const transform = throughGroups(levels);
           const at = origin ?? { x: own.x, y: own.y };
@@ -354,11 +354,11 @@ export const readDrawingDiagram = (drawing: XNode, limits?: ReaderLimits): Drawi
           const seen = visibleBox(own, transform);
           const [bx, by] = shift(seen.x, seen.y);
           const box: Box = { x: bx, y: by, cx: seen.cx, cy: seen.cy };
-          if (child(node, "wps:cNvCnPr") !== undefined) {
+          if (findChild(node, "wps:cNvCnPr") !== undefined) {
             const ends = lineEnds(own, transform);
             const [x1, y1] = shift(ends.x1, ends.y1);
             const [x2, y2] = shift(ends.x2, ends.y2);
-            const ln = child(spPr ?? {}, "a:ln");
+            const ln = findChild(spPr ?? {}, "a:ln");
             found.connectors.push({
               ends: { x1, y1, x2, y2 },
               startArrow: arrowAt(ln, "a:headEnd"),
@@ -367,7 +367,7 @@ export const readDrawingDiagram = (drawing: XNode, limits?: ReaderLimits): Drawi
             });
             break;
           }
-          const content = child(child(node, "wps:txbx") ?? {}, "w:txbxContent");
+          const content = findChild(findChild(node, "wps:txbx") ?? {}, "w:txbxContent");
           if (content === undefined) {
             found.obstacles.push(box);
             break;
@@ -382,7 +382,7 @@ export const readDrawingDiagram = (drawing: XNode, limits?: ReaderLimits): Drawi
       }
     }
   };
-  walk(kids(data), [], undefined);
+  walk(childNodesOf(data), [], undefined);
   // One drawing past the element cap gives no diagram: its text boxes stay in today's order.
   if (found.texts.size + found.obstacles.length + found.connectors.length > (limits?.slideElements ?? NO_CAP)) return undefined;
   return found;

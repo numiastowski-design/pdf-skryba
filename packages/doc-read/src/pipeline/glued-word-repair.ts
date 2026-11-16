@@ -3,7 +3,7 @@
  *  Called by: `pipeline/publish-conservation.ts`, once per checked PDF render. */
 
 /**
- * THE RULE (Mikolaj, 21/09/2026, lot 4). A page token is re-split ONLY when
+ * THE RULE (21/09/2026, lot 4). A page token is re-split ONLY when
  * its letters, as the check normalises them, are EXACTLY the concatenation of
  * the 2+ consecutive source words the word reading proved; a space goes at
  * each boundary the source gives, and nothing else changes. Anything less

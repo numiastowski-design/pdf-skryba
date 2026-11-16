@@ -13,12 +13,12 @@
  * and glued « Total - » to « 12,00 » — a NUMBER nowhere in the document, on a page that looks perfectly normal. That
  * is the gravest defect this product can produce. The letter-before-hyphen condition alone refuses the three known
  * counter-examples: « Signature ______ » + « Date », « Chapitre 1 - » + « Introduction », « Total - » + « 12,00 ».
- * MEASURED (29/10/2026, Mikolaj's three-way manual test — Acrobat, Chrome, us): the 57 cut words of 13 corpus
+ * MEASURED (29/10/2026, three-way manual test — Acrobat, Chrome, us): the 57 cut words of 13 corpus
  * documents all pass it (« sous-utilisés », « Net-Zero », « CLARENCE-ROCKLAND », « Gender-Based », « mots-clés. »).
  * ABSTAINED ON, DELIBERATELY: a lower line starting with a DIGIT (« AG- » + « 002. » is a real cut word on paper). No
  * discriminant separates it from a fabricated number, so the word stays cut rather than risk the figure.
  *
- * 🔴 05/11/2026, MIKOLAJ : « on essaye de supprimer la césure visible », puis « les règles de typographie doivent
+ * 🔴 05/11/2026: « on essaye de supprimer la césure visible », puis « les règles de typographie doivent
  * nous aider à repérer une césure, et donc la supprimer quand on n'est plus en fin de ligne ». The hyphen of a cut
  * word goes when a SECOND reading concords with the junction (`resolveCutHyphens`): the document writes the whole word
  * elsewhere, OR the cut sits on a legal hyphenation point of the page's language (`./hyphenation.ts`, the hyph-utf8
@@ -28,16 +28,16 @@
  * (« TWO-WAY », « Net-Zero », « De-identification », « V-twin », « Gender-Based » — probe of 05/11/2026 over the
  * 18 joins measured on 03/11 against PDFium), the hyphenated form written elsewhere in the document
  * (« ministry-funded » twice: the hyphen is the word's own), and a language without a table (the hyphen stays, as
- * before). THE BIAS, written (not chosen by Mikolaj, who asked for the césure to go): a NATIVE lowercase compound
+ * before). THE BIAS, written (not chosen, who asked for the césure to go): a NATIVE lowercase compound
  * written ONCE and cut at its own hyphen joins wrongly — French typesetting cuts a compound AT its existing hyphen by
  * rule (OQLF; Lexique de l'Imprimerie nationale), so the position cannot discriminate. MEASURED on the bench of
  * 05/11/2026: « ministry-funded » of 08-ontario publishes « ministryfunded », one invented word; to be looked at with
- * Mikolaj before any rule. 🔴 10/11/2026, THE FOURTH REFUSAL, MEASURED: BOTH HALVES ARE WORDS OF THE DOCUMENT. Over 155 real PDFs, 175 cut words
+ * the maintainer before any rule. 🔴 10/11/2026, THE FOURTH REFUSAL, MEASURED: BOTH HALVES ARE WORDS OF THE DOCUMENT. Over 155 real PDFs, 175 cut words
  * had no whole witness and two halves the document writes on their own; about 165 are compounds (« above-average »,
  * « elle-même », « time-consuming », « self-addressed »), which the tables find legal and joined into words nowhere
  * written. THE BIAS, written: about ten are true cut words (« every-body », « else-where », « under-took ») and keep a
  * hyphen too many — ugly and visible, and a whole witness elsewhere in the document still joins them first.
- * Before any reading, one refusal: an address is never touched (Mikolaj : « on ne coupe
+ * Before any reading, one refusal: an address is never touched (« on ne coupe
  * jamais une URL » ; « note-de- » + « methode.md » of dgf-b5189db8e606). A whole witness wins over every other refusal
  * (« Dis-plays » + « displays » joins).
  *
@@ -120,7 +120,7 @@ const CAPITAL = /^\p{Lu}/u;
  *  refusal below turned « auxquelles » into « aux-quelles » in two documents, « aux » and « quelles » being words of their
  *  own. A rule of the language, exhaustive, not a dictionary. */
 const FRENCH_CONTRACTED_RELATIVES = new Set(["auquel", "auxquels", "auxquelles", "duquel", "desquels", "desquelles", "lesquels", "lesquelles", "laquelle"]);
-/** AN ADDRESS IS NEVER TOUCHED (Mikolaj, 05/11/2026 : « on ne coupe jamais une URL ») : a scheme, a « www. », a domain
+/** AN ADDRESS IS NEVER TOUCHED (05/11/2026 : « on ne coupe jamais une URL ») : a scheme, a « www. », a domain
  *  followed by a slash, or a mail address, anywhere in the word run that holds the cut. */
 const ADDRESS = /:\/\/|^\W*www\.|@/iu;
 /** A domain followed by a slash (« fonciris.fr/donnees »): the part before the first slash ends on a dot and two letters.
@@ -168,7 +168,7 @@ const chainInlines = (chain: readonly Prose[]): ProseInline[] => {
   return gathered.map(({ inline, parts }) => (parts.length === 1 ? inline : { ...inline, text: parts.join("") }));
 };
 
-/** 🔴 A WORD THE PAPER CUT NEVER ENDS A PARAGRAPH (Mikolaj, 10/11/2026 : « corriger les coupures par espace et les
+/** 🔴 A WORD THE PAPER CUT NEVER ENDS A PARAGRAPH (10/11/2026 : « corriger les coupures par espace et les
  *  moitiés égarées »). MEASURED on 09/11 over 155 real PDFs: 393 published blocks ended on « letter- », and 300 had their
  *  continuation in the VERY NEXT block — « non- monetised », « régu- lièrement », two non-words the search cannot find.
  *  The upper block ends on a cut word (`cutAcrossLines`) and the next one starts LOWERCASE: they become one block, joined
@@ -201,7 +201,7 @@ export const joinCutParagraphs = (blocks: readonly IRBlock[]): IRBlock[] => {
   return out;
 };
 
-/** THE LANGUAGE WHOSE TABLE JUDGES THE CUT WORDS: THE DOCUMENT'S, NOT THE PAGE'S (Mikolaj, 10/11/2026). The page's
+/** THE LANGUAGE WHOSE TABLE JUDGES THE CUT WORDS: THE DOCUMENT'S, NOT THE PAGE'S (10/11/2026). The page's
  *  language is the reader's interface, not the text's: measured on 09/11 over 322 real PDFs, 137 cut words changed with
  *  it, and a French document on an English page kept 123 hyphens wrongly against 36 on a French page. The detector is
  *  the product's own (`doc-ir/pipeline/detect-language.ts`, local and deterministic). A language without a table gets

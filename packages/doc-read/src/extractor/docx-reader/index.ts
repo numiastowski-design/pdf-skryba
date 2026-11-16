@@ -30,10 +30,10 @@ import { mapImageRefs } from "./image-refs";
 import { readNumbering } from "./numbering";
 import { isOnePixel } from "../image-reduction";
 import { fallbackPictureRelIds, type ImageLookup, largestPage } from "./objects";
-import { damaged, type DocxPackage, IMAGE_MAX_TOTAL_BYTES, openPackage, OverAllowanceError, orDamaged, PartDamagedError, readOrFlag, type Relationship, relationOfKind } from "../ooxml/package";
+import { createDamagedError, type OpcPackage, IMAGE_MAX_TOTAL_BYTES, openPackage, OverAllowanceError, readUnlessDamaged, PartDamagedError, readOrFlag, type Relationship, findRelationshipOfKind } from "../ooxml/package";
 import type { DrawingImageRegistrar } from "./shapes";
 import { readStyles } from "./styles";
-import { attr, child, children, kids, someDescendant, tagOf, textOf, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, childNodesOf, hasMatchingNode, qualifiedNameOf, textContentOf, type XNode } from "../ooxml/xml";
 
 /** A picture's bytes as the reader hands them on, keyed by sha256. Same shape as the shared declaration
  *  `extractor/raw-image.ts#RawImage`, kept local to this reader. */
@@ -51,7 +51,7 @@ export interface DocxReadResult {
    *  when every drawing draws every shape it declares (or the document has
    *  none). Display-only, for the dashboard (`orchestrator/doc-processor.ts`
    *  → `SyncedDocument#drawingShapesNotDrawn`) — never on the published
-   *  page (Mikolaj, 29/09/2026). */
+   *  page (29/09/2026). */
   drawingShapesNotDrawn?: number;
   /** Charts the reader keeps out whole (a bound, a damaged part): one `chart-withheld` entry with their count,
    *  one `image-missing` entry for pictures whose part is damaged or past the image byte budget, and `hidden-dropped` entries (hidden drawings, tracked
@@ -91,7 +91,7 @@ export const assertNoPendingRef = (doc: IRDoc): void => {
 };
 
 /** The image relationship `relId` names, when it is internal and its part exists. */
-const internalImage = (pkg: DocxPackage, rels: ReadonlyMap<string, Relationship>, relId: string): Relationship | undefined => {
+const internalImage = (pkg: OpcPackage, rels: ReadonlyMap<string, Relationship>, relId: string): Relationship | undefined => {
   const rel = rels.get(relId);
   return rel && rel.kind === "image" && !rel.external && pkg.hasPart(rel.target) ? rel : undefined;
 };
@@ -106,7 +106,7 @@ const internalImage = (pkg: DocxPackage, rels: ReadonlyMap<string, Relationship>
  * relationships (or parts) is read once; identical bytes are one entry,
  * keyed by sha256, in order of first use.
  */
-const pictures = (pkg: DocxPackage, onDamaged: () => ReaderError, limits: ReaderLimits | undefined) => {
+const pictures = (pkg: OpcPackage, onDamaged: () => ReaderError, limits: ReaderLimits | undefined) => {
   const targets: string[] = [];
   const indexOf = new Map<string, number>();
   // Pictures the walk asked for whose part cannot be read at all (absent from the archive, linked externally, relationship
@@ -134,14 +134,14 @@ const pictures = (pkg: DocxPackage, onDamaged: () => ReaderError, limits: Reader
     const collector = new ImageCollector();
     let budget = totalBudget;
     for (const target of targets) {
-      // A picture past what is left of the budget is left out alone, like a damaged one (Mikolaj, 14/10/2026). Its DECLARED
+      // A picture past what is left of the budget is left out alone, like a damaged one (14/10/2026). Its DECLARED
       // size is checked first, so a skipped picture is never inflated and spends nothing of the package counter (twenty
       // 30 MB EMF pictures must not refuse the document). A header that lies low still stops at `budget`.
       const declared = pkg.declaredSize(target);
       const read =
         declared !== undefined && declared > budget
           ? undefined
-          : await orDamaged(async () => {
+          : await readUnlessDamaged(async () => {
               try {
                 const got = await pkg.readBytes(target, budget);
                 if (!got) throw onDamaged(); // hasPart said it was there
@@ -184,9 +184,9 @@ interface Story {
 }
 
 /** The styles and the numbering of the document. A damaged part is not a reason to refuse: default formatting, said in one notice (08/10/2026). */
-const readFormattingParts = async (pkg: DocxPackage, rels: ReadonlyMap<string, Relationship>): Promise<Pick<ReadContext, "styles" | "numbering"> & { stylesDefaulted: boolean }> => {
+const readFormattingParts = async (pkg: OpcPackage, rels: ReadonlyMap<string, Relationship>): Promise<Pick<ReadContext, "styles" | "numbering"> & { stylesDefaulted: boolean }> => {
   const partOfKind = async (kind: string) => {
-    const rel = relationOfKind(rels, kind);
+    const rel = findRelationshipOfKind(rels, kind);
     return rel ? pkg.readXml(rel.target) : undefined;
   };
   let stylesDefaulted = false;
@@ -198,8 +198,8 @@ const readFormattingParts = async (pkg: DocxPackage, rels: ReadonlyMap<string, R
   const styles = readStyles(await formattingPart("styles"));
   const numbering = readNumbering(await formattingPart("numbering"), (styleId) => {
     const numPr = styles.paragraphProperty(styleId, "w:numPr");
-    const numIdEl = numPr ? child(numPr, "w:numId") : undefined;
-    return numIdEl ? attr(numIdEl, "w:val") : undefined;
+    const numIdEl = numPr ? findChild(numPr, "w:numId") : undefined;
+    return numIdEl ? attributeOf(numIdEl, "w:val") : undefined;
   });
   return { styles, numbering, stylesDefaulted };
 };
@@ -236,7 +236,7 @@ const newDrawingImageStore = (limits: ReaderLimits | undefined): DrawingImageSto
   return store;
 };
 
-/** What the walk counts for the dashboard and the notices, never as text on the page (Mikolaj, 29/09/2026 and 08/10/2026): the
+/** What the walk counts for the dashboard and the notices, never as text on the page (29/09/2026 and 08/10/2026): the
  *  shapes left out of the drawings' pictures (summed across every drawing), the hidden drawings kept out whole, the empty fields. */
 interface Tally {
   shapesNotDrawn: number;
@@ -264,12 +264,12 @@ const newNoteCalls = () => {
 /** The stories whose charts and SmartArts are read ahead of the walk (`docx-reader/drawing-objects.ts`): the body, then the notes it
  *  calls. Each notes part is parsed ONCE, here, and handed to `noteBlocks` (every inflate counts against PACKAGE_MAX_BYTES: a part
  *  read twice counts twice). A body that calls no note reads none: a note is only ever called from the body, then from another note. */
-const loadNoteStories = async (pkg: DocxPackage, rels: ReadonlyMap<string, Relationship>, body: XNode): Promise<{ storyRoots: Story[]; noteStories: Map<NotePart, Story> }> => {
+const loadNoteStories = async (pkg: OpcPackage, rels: ReadonlyMap<string, Relationship>, body: XNode): Promise<{ storyRoots: Story[]; noteStories: Map<NotePart, Story> }> => {
   const storyRoots: Story[] = [{ root: body, rels }];
   const noteStories = new Map<NotePart, Story>();
   if (callsNotes(body)) {
     for (const kind of ["footnotes", "endnotes"] as const) {
-      const rel = relationOfKind(rels, kind);
+      const rel = findRelationshipOfKind(rels, kind);
       const root = rel ? await pkg.readXml(rel.target) : undefined;
       if (rel && root) {
         const story = { root, rels: await pkg.relationships(rel.target) };
@@ -286,7 +286,7 @@ const ONE_PIXEL_MAX_BYTES = 64 * 1024;
 
 /** The 1×1 pixels among the pictures the Fallbacks of the body name: junk, never published in place of an unread Choice (M16).
  *  Only the main part. */
-const findPixelFallbacks = async (pkg: DocxPackage, rels: ReadonlyMap<string, Relationship>, body: XNode): Promise<Set<string>> => {
+const findPixelFallbacks = async (pkg: OpcPackage, rels: ReadonlyMap<string, Relationship>, body: XNode): Promise<Set<string>> => {
   const pixelIds = new Set<string>();
   for (const id of new Set(fallbackPictureRelIds(body))) {
     const rel = internalImage(pkg, rels, id);
@@ -294,7 +294,7 @@ const findPixelFallbacks = async (pkg: DocxPackage, rels: ReadonlyMap<string, Re
     // A 1×1 pixel is tiny: a picture declared larger is not one, and is never inflated for the probe (it would spend the
     // package budget the real pictures need). A damaged Fallback picture is simply not a known pixel.
     if ((pkg.declaredSize(rel.target) ?? 0) > ONE_PIXEL_MAX_BYTES) continue;
-    const bytes = await orDamaged(async () => {
+    const bytes = await readUnlessDamaged(async () => {
       try {
         return await pkg.readBytes(rel.target, ONE_PIXEL_MAX_BYTES);
       } catch (e) {
@@ -372,7 +372,7 @@ const buildNotices = (found: {
  *  its own error. */
 export const readDocx = async (
   bytes: Uint8Array,
-  onDamaged: () => ReaderError = damaged,
+  onDamaged: () => ReaderError = createDamagedError,
   google?: GoogleDrawingSource,
   limits?: ReaderLimits,
   /** The caller's own labels, when it gave any: only the note call is written by this reader. */
@@ -383,7 +383,7 @@ export const readDocx = async (
   const labels = resolveLabels("en", labelOverride);
   const pkg = await openPackage(bytes, onDamaged);
   const document = await pkg.readXml(pkg.mainPart);
-  const body = document ? child(document, "w:body") : undefined;
+  const body = document ? findChild(document, "w:body") : undefined;
   if (!body) throw onDamaged();
 
   const rels = await pkg.relationships(pkg.mainPart);
@@ -463,20 +463,20 @@ export const readDocx = async (
 /** The `w:del` elements of a story that hold text (`w:delText` or `w:t`, anywhere inside): the deletions the reader drops.
  *  A paragraph-mark deletion (`w:rPr/w:del`) holds none and is not counted. */
 const countTrackedDeletions = (node: XNode): number => {
-  if (tagOf(node) === "w:del") return holdsText(node) ? 1 : 0;
-  return kids(node).reduce((sum, k) => sum + countTrackedDeletions(k), 0);
+  if (qualifiedNameOf(node) === "w:del") return holdsText(node) ? 1 : 0;
+  return childNodesOf(node).reduce((sum, k) => sum + countTrackedDeletions(k), 0);
 };
 
 const holdsText = (node: XNode): boolean =>
-  someDescendant(node, (n) => {
-    const tag = tagOf(n);
-    return (tag === "w:delText" || tag === "w:t") && textOf(n).trim().length > 0;
+  hasMatchingNode(node, (n) => {
+    const tag = qualifiedNameOf(n);
+    return (tag === "w:delText" || tag === "w:t") && textContentOf(n).trim().length > 0;
   });
 
 /** Whether the body holds a note call anywhere (a superset of the calls the walk reads). */
 const callsNotes = (node: XNode): boolean =>
-  someDescendant(node, (n) => {
-    const tag = tagOf(n);
+  hasMatchingNode(node, (n) => {
+    const tag = qualifiedNameOf(n);
     return tag === "w:footnoteReference" || tag === "w:endnoteReference";
   });
 
@@ -501,7 +501,7 @@ const noteBlocks = (
   const parts = new Map<NotePart, { notes: Map<string | undefined, XNode>; base: ReadContext } | undefined>();
   for (const [kind, { root, rels }] of stories) {
     parts.set(kind, {
-      notes: new Map(children(root, NOTE_ELEMENT[kind]).map((n) => [attr(n, "w:id"), n] as const)),
+      notes: new Map(findChildren(root, NOTE_ELEMENT[kind]).map((n) => [attributeOf(n, "w:id"), n] as const)),
       base: { ...shared, rels, image: imageLookup(rels), fields: [] },
     });
   }

@@ -8,12 +8,12 @@
  *  (`PptxTextShape#smartArt`, `extractor/smartart-drawing.ts`) are drawn the same way, plus the `hexagon` preset, outlines turned by a
  *  quarter turn and text turned by one (`transform="rotate"` on its `<text>` lines); the words they draw are returned
  *  (`smartArtText`) for the control (`undrawnWords`). Everything else is
- *  OMITTED, never approximated (Mikolaj: « ce qu'on ne sait pas dessiner
+ *  OMITTED, never approximated (« ce qu'on ne sait pas dessiner
  *  juste, on ne le dessine pas plutôt que de mettre un truc faux »), and
  *  counted by reason, so the caller can say that no text is lost: the caller
  *  publishes the text as text (for a deck, its one collapsed block after the
  *  tabs, `extractor/pptx.ts`).
- *  Colours (Mikolaj, 25/09/2026, decision 12 — MIKSUDOC « Spécification fonctionnelle » §9.3.3): a box's fill and its
+ *  Colours (25/09/2026, decision 12 — MIKSUDOC « Spécification fonctionnelle » §9.3.3): a box's fill and its
  *  text's colour are drawn only when EXACT (`pptx-reader/color.ts`), a box
  *  is filled only when the colour of all its text is known, and text of
  *  known colour without a fill of its own keeps it only on a box drawn
@@ -26,7 +26,7 @@
  *  The picture is cropped to what it draws, text past its box included
  *  (never clipped), plus a margin, inside the slide; shown at most 744 px
  *  wide and at most `MAX_ENLARGEMENT` times the whole slide's scale
- *  (Mikolaj, 29/09/2026).
+ *  (29/09/2026).
  *  Deterministic: the same shapes give the same string, byte for byte (no
  *  random id; the two arrow markers are always "s" and "e").
  *  NOT here: which slide is a diagram (`layout/slide-layout.ts`), reading the
@@ -119,7 +119,7 @@ export interface SlideSvg {
 const MAX_WIDTH_PX = 744;
 
 /** Largest enlargement of a cropped drawing over the scale of its whole
- *  slide (Mikolaj, 29/09/2026). Valeur de départ à calibrer: the drawing is
+ *  slide (29/09/2026). Valeur de départ à calibrer: the drawing is
  *  cropped to what it draws, so a drawing that fills a third of its slide
  *  could be shown three times larger; at 2× a 960 pt slide shows 12 pt text
  *  at 18.6 px instead of 9.3, and a narrow or tall drawing does not become
@@ -193,7 +193,7 @@ const advanceEm = (c: string): number => {
   return ADVANCE_EM.lower;
 };
 
-/** A SmartArt's text is laid out by Office in the theme's font before it is saved (Calibri in both Mikolaj fixtures), whose advances are
+/** A SmartArt's text is laid out by Office in the theme's font before it is saved (Calibri in both fixtures), whose advances are
  *  narrower than the Arial-based table above: a line Office keeps whole (« Process 1 », « Proce 1.1 » at 33 pt in a 133 pt wide text
  *  rectangle) must not wrap here. Valeur de départ à calibrer, deux mesures contre les PDF d'Office (20/10/2026): Calibri / table =
  *  125.6 / 144.0 = 0.87 for « Proce 1.1 » and 125.4 / 152.8 = 0.82 for « Process 1 »; 0.85 keeps both on one line and still wraps
@@ -260,7 +260,7 @@ const drawableType = (b: Uint8Array): string | undefined => {
  *  then « Apply object rotation at current object center »
  *  (`lcl_RotateAtCenter`), and « OOXML flips shapes before rotating them ».
  *  The same order as `pptx-reader/geometry.ts#turnAbout`, and PowerPoint's
- *  own render of `fixtures/pptx/04-Images-tournees.pptx` (Mikolaj,
+ *  own render of `fixtures/pptx/04-Images-tournees.pptx` (
  *  25/09/2026: 30° + mirror shows the mirrored arrow turned clockwise, up-left).
  *  An SVG transform list applies right to left: `scale` (the flip, carried
  *  back to the centre by `translate(2·cx 2·cy)`) runs first, `rotate` last. */
@@ -561,7 +561,7 @@ interface SizedParagraphs {
  *  placeholder, the one `p:defaultTextStyle` declares for the paragraph's
  *  level, or for level 1 when that level declares none; for a placeholder,
  *  the one it inherits at that level from its layout and master
- *  (`PptxTextShape.inheritedSizes`, Mikolaj 29/09/2026). A visible run
+ *  (`PptxTextShape.inheritedSizes`, 29/09/2026). A visible run
  *  left without a size leaves the whole text out (`undefined`): its size would be a guess. */
 const sizeRuns = (shape: PptxTextShape, defaultSizes: Readonly<Record<number, number>>): SizedParagraphs | undefined => {
   const fallback = (level: number): number | undefined =>
@@ -991,7 +991,7 @@ export const renderSlideSvg = (
     }
   }
 
-  // Cropped to what is drawn (Mikolaj, 29/09/2026), plus a margin, and
+  // Cropped to what is drawn (29/09/2026), plus a margin, and
   // never past the slide: what PowerPoint shows of a slide stops at its
   // edges, and the whole slide was the former viewBox, so nothing drawn
   // before is lost. Nothing drawn: the whole slide, as before.
@@ -1006,7 +1006,7 @@ export const renderSlideSvg = (
   const [vx, vy, vw, vh] = empty ? [0, 0, wPt, hPt] : [cx0, cy0, cx1 - cx0, cy1 - cy0];
   // The whole slide's scale (at most 744 px for its width, never enlarged),
   // times MAX_ENLARGEMENT at most, and never past 744 px wide.
-  // A SmartArt is shown at its frame's scale, not enlarged (Mikolaj, 20/10/2026: the 2x of a cropped drawing made its text twice the
+  // A SmartArt is shown at its frame's scale, not enlarged (20/10/2026: the 2x of a cropped drawing made its text twice the
   // size Office draws it at, against the page's other text).
   const enlargement = shapes.some((s) => s.kind === "text" && s.smartArt !== undefined) ? 1 : MAX_ENLARGEMENT;
   const scale = Math.min(MAX_WIDTH_PX / vw, (enlargement * Math.min(MAX_WIDTH_PX, wPt)) / wPt);

@@ -10,26 +10,26 @@
  *  `pptx-diagram-order.ts`. */
 
 import { ARROW_GEOMETRIES } from "doc-ir/layout/slide-layout";
-import { attr, child, children, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, type XNode } from "../ooxml/xml";
 import { bentPath, type Frame, lineEnds, turnsOrMirrors, type Transform, visibleBox } from "./geometry";
 import type { PptxConnectorShape, PptxShape } from "./shapes";
 
-export const presetOf = (spPr: XNode | undefined): string | undefined => attr(child(spPr ?? {}, "a:prstGeom") ?? {}, "prst");
+export const presetOf = (spPr: XNode | undefined): string | undefined => attributeOf(findChild(spPr ?? {}, "a:prstGeom") ?? {}, "prst");
 
 /** A line end draws an arrow head: `type` present and not "none". */
 export const arrowAt = (ln: XNode | undefined, end: "a:headEnd" | "a:tailEnd"): boolean => {
-  const type = attr(child(ln ?? {}, end) ?? {}, "type");
+  const type = attributeOf(findChild(ln ?? {}, end) ?? {}, "type");
   return type !== undefined && type !== "none";
 };
 
 /** The guides of the preset's `a:avLst` written `val N`, by name. A guide
  *  written as another formula is left out (its preset default applies). */
 export const guidesOf = (spPr: XNode | undefined): Record<string, number> => {
-  const avLst = child(child(spPr ?? {}, "a:prstGeom") ?? {}, "a:avLst");
+  const avLst = findChild(findChild(spPr ?? {}, "a:prstGeom") ?? {}, "a:avLst");
   const guides: Record<string, number> = {};
-  for (const gd of children(avLst ?? {}, "a:gd")) {
-    const name = attr(gd, "name");
-    const m = /^val (-?\d+)$/.exec(attr(gd, "fmla") ?? "");
+  for (const gd of findChildren(avLst ?? {}, "a:gd")) {
+    const name = attributeOf(gd, "name");
+    const m = /^val (-?\d+)$/.exec(attributeOf(gd, "fmla") ?? "");
     if (name !== undefined && m) guides[name] = Number(m[1]);
   }
   return guides;
@@ -57,7 +57,7 @@ export const connectorBody = (
   transform: Transform,
   visibleLine: boolean,
 ): Pick<PptxConnectorShape, "startArrow" | "endArrow" | "geometry" | "visibleLine" | "ends" | "path"> => {
-  const ln = child(spPr ?? {}, "a:ln");
+  const ln = findChild(spPr ?? {}, "a:ln");
   const geometry = presetOf(spPr);
   const path = frame === undefined || geometry === undefined ? undefined : bentPath(frame, transform, geometry, guidesOf(spPr));
   return {

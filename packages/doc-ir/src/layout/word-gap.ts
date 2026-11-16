@@ -15,7 +15,7 @@
  * to its SOURCE, Poppler's `TextOutputDev.cc` line 2773. Two granularities, two sourced values, one real duplicate.
  *
  * WHERE 0.1 COMES FROM, AND WHAT IT IS NOT. `glyph-runs.test.ts` pins it citing Poppler's `TextOutputDev.cc` line
- * 2773 — but **Poppler is no longer in the product** (Mikolaj, 03/11/2026: « poppler on a viré il y a longtemps »), so
+ * 2773 — but **Poppler is no longer in the product** (03/11/2026: « poppler on a viré il y a longtemps »), so
  * that is the value's HISTORY, not a second reading that still agrees with us today. The test builds a case around the
  * value; it does not show that 0.1 beats 0.15.
  *

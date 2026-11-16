@@ -6,7 +6,7 @@
  *  NOT here: what the document SAYS about its encryption (`./pdf-decrypt-pdflib.ts` for cantoo,
  *  `./pdf-objects/document.ts#securityOf` for our reader), finding the image streams
  *  (`extractor/pdf-embedded-images.ts`), nor decoding pixels (`extractor/pdf-images.ts`).
- *  A PDF encrypted for its permissions only ("no copy", opens with no password) IS published (Mikolaj, 05/10/2026).
+ *  A PDF encrypted for its permissions only ("no copy", opens with no password) IS published (05/10/2026).
  *  Called by: `./pdf-decrypt-pdflib.ts`, `./pdf-objects/document.ts`. */
 
 /**

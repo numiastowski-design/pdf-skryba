@@ -49,7 +49,7 @@ const on = (el: N): boolean => {
 /** Whether a run is hidden, given its `w:rPr` and its paragraph's style: `readStyleTable(...).hidden`, the walk's own rule. */
 type HiddenRun = (rPr: N | undefined, pStyle: string | undefined) => boolean;
 
-/** A drawing whose `wp:docPr` is hidden ("1" or "true", any case) is not published (Mikolaj, 08/10/2026). Written here on its own, not shared with the extractor. */
+/** A drawing whose `wp:docPr` is hidden ("1" or "true", any case) is not published (08/10/2026). Written here on its own, not shared with the extractor. */
 const drawingHidden = (drawing: N): boolean => {
   const frame = first(drawing, "wp:inline") ?? first(drawing, "wp:anchor");
   const hidden = attrOf(first(frame, "wp:docPr") ?? {}, "hidden")?.trim().toLowerCase();
@@ -101,7 +101,7 @@ const largestPageOf = (body: N): Page | undefined => {
 
 const rotated = (n: N): boolean => (tagOf(n) === "a:xfrm" && ![undefined, "0"].includes(attrOf(n, "rot"))) || kidsOf(n).some(rotated);
 
-/** A floating drawing lying ENTIRELY outside the largest page is not displayed, so not published nor expected (Mikolaj,
+/** A floating drawing lying ENTIRELY outside the largest page is not displayed, so not published nor expected (
  *  09/10/2026). Same conditions as the page, written on their own: a `wp:anchor` (never inline), not rotated, with a known
  *  `wp:extent`, positioned by `wp:simplePos` (page coordinates) or by `wp:positionH`/`wp:positionV` `relativeFrom="page"`
  *  with a `wp:posOffset` (ECMA-376 Part 1 §20.4.2.3, §20.4.2.10); one axis wholly outside is enough. */
@@ -191,7 +191,7 @@ const readTable = (tbl: N, hidden: HiddenRun, page: Page | undefined, limits: Re
       const above = open.get(column);
       if (kind === "continue" && above && above.span === cell.span) {
         // A continuation is no cell of its own: its row folds into the restart cell, as on the page, but its WORDS do not: Word
-        // does not show them (docs/PLATFORM-STATUS.md §67, Mikolaj 09/10/2026), so they neither fill the restart cell nor are expected.
+        // does not show them (docs/PLATFORM-STATUS.md §67, 09/10/2026), so they neither fill the restart cell nor are expected.
         folded.add(tc);
         above.cell.rowspan++;
         next.set(column, above);
@@ -579,11 +579,11 @@ const noteCallOf =
 // w:ruby (CT_Ruby, ECMA-376 Part 1 §17.3.3.25): a phonetic guide, its
 // own cause — the extractor now publishes it (`docx-reader/body.ts`),
 // so a future loss of it is named, not folded into plain "text"
-// (Mikolaj, « on fix », 29/09/2026). In place, like plain text: only
+// (« on fix », 29/09/2026). In place, like plain text: only
 // the cause changes, not the reading order or the text collected.
 const visitRuby: Visit = (st, c, ctx) => walkChildren(st, c, withCause(ctx, "ruby"));
 
-// A drawing whose wp:docPr is hidden ("1" or "true", any case) is not published (Mikolaj, 08/10/2026), nor one wholly
+// A drawing whose wp:docPr is hidden ("1" or "true", any case) is not published (08/10/2026), nor one wholly
 // off the page (09/10/2026): none of their words are expected (`drawingHidden`, `drawingOffPage`).
 const visitDrawing: Visit = (st, c, ctx) => {
   if (drawingHidden(c) || drawingOffPage(c, st.page)) return;
@@ -854,7 +854,7 @@ export { wordsOf };
  * single unit, so `deliberateRemovals` and `excludedUnits` are always empty.
  * A read that cannot be trusted — a corrupt part, a size limit crossed —
  * becomes a named failure instead of throwing through to the caller: never a
- * reason not to publish (Mikolaj, 21/09/2026).
+ * reason not to publish (21/09/2026).
  * `opts.limits`: the caps the page was read under, the SAME object the extraction got. Absent: NONE — `NO_CAP`,
  * nothing withheld, so `onWithheld` never fires (corrected 10/11/2026; the bench's pair reading was caught by this).
  * `opts.onWithheld` (bench only): called once, after a successful walk, with the text of the tables the page withholds

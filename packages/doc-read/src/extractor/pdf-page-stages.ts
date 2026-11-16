@@ -145,7 +145,7 @@ interface PageStage {
 }
 
 /** A page with no extractable text at all. Its index is reported, so `pdf-scanned.ts` can OCR it (a scan, or the AI on).
- *  Its PICTURES are published (07/10/2026, Mikolaj's rule of 05/10: a cover or a diagram in a document with text is no
+ *  Its PICTURES are published (07/10/2026, rule of 05/10: a cover or a diagram in a document with text is no
  *  scan and is published as it is): the same figures as on a page with text, in reading order, with no prose between
  *  them. On a scan the page has no candidate at all (its operators are not named, `pdf-open.ts`), so this stays free. */
 const scannedPage: PageStage = {
@@ -159,7 +159,7 @@ const scannedPage: PageStage = {
   },
 };
 
-// NO STAGE FOR AN INVISIBLE OCR LAYER, AND NO PUBLICATION OF IT EITHER (Mikolaj, 02/10/2026, then 05/10/2026). A page whose text
+// NO STAGE FOR AN INVISIBLE OCR LAYER, AND NO PUBLICATION OF IT EITHER (02/10/2026, then 05/10/2026). A page whose text
 // is hidden under a full-page scan has no stage of its own here, and its hidden text is no longer a fallback. Since 05/10 one such
 // page makes the WHOLE PDF a scan (`pdf.ts` `ocrLayerPageIndices`, `pdf-scanned.ts`): the layer is not published as it stands. The
 // 02/10 version of this comment said the stale layer ("12 OOO" under a scan of "42 000") was published; that is no longer true.

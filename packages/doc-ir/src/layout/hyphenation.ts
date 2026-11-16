@@ -1,5 +1,5 @@
 /** WHERE A CUT IS LEGAL INSIDE A WORD OF A LANGUAGE — the Knuth-Liang algorithm over the hyph-utf8 tables of TeX
- *  (Mikolaj, 05/11/2026 : « les règles de typographie doivent nous aider à repérer une césure, et donc la supprimer
+ *  (05/11/2026 : « les règles de typographie doivent nous aider à repérer une césure, et donc la supprimer
  *  quand on n'est plus en fin de ligne »). The tables are the de-facto international standard: Unicode UAX #14 only
  *  says where a LINE may break and leaves hyphenation to the language, and these patterns are what Firefox and
  *  LibreOffice hyphenate with. Deterministic, frozen in the repository, no service called — the embedded-model rule.

@@ -28,12 +28,12 @@ import { renderSlideSvg } from "../slide-svg";
 import type { ReaderLimits } from "doc-ir/lib/reader-limits";
 import { chartToIr, type PptxChart, readChartOrWithheld } from "../pptx-reader/chart";
 import type { ColorContext } from "../pptx-reader/color";
-import { internalTarget, orDamaged, PartDamagedError, relationOfKind, type DocxPackage, type Relationship } from "../ooxml/package";
+import { findInternalTarget, readUnlessDamaged, PartDamagedError, findRelationshipOfKind, type OpcPackage, type Relationship } from "../ooxml/package";
 import type { DrawingImageRegistrar } from "./shapes";
-import { attr, child, drawingFrame, graphicData, kids, tagOf, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findDrawingFrame, findGraphicData, childNodesOf, qualifiedNameOf, type XNode } from "../ooxml/xml";
 
 /** `true` when the SmartArt data model itself cannot be read (damaged), as opposed to its drawing cache. */
-const modelUnreadable = async (pkg: DocxPackage, rel: Relationship): Promise<boolean> => {
+const modelUnreadable = async (pkg: OpcPackage, rel: Relationship): Promise<boolean> => {
   if (rel.external) return false;
   try {
     await pkg.readXml(rel.target);
@@ -52,13 +52,13 @@ export type DrawingObject = { kind: "chart"; relId: string } | { kind: "smartart
  *  group). A text box's paragraphs (`w:txbxContent`) are not entered: the
  *  walk reads them as a story, and meets their drawings there. */
 export const drawingObjectsOf = (drawing: XNode): DrawingObject[] => {
-  const frame = drawingFrame(drawing);
-  const data = frame ? graphicData(frame) : undefined;
+  const frame = findDrawingFrame(drawing);
+  const data = frame ? findGraphicData(frame) : undefined;
   if (!data) return [];
   const found: DrawingObject[] = [];
   const walk = (node: XNode): void => {
-    for (const k of kids(node)) {
-      const tag = tagOf(k);
+    for (const k of childNodesOf(node)) {
+      const tag = qualifiedNameOf(k);
       if (tag === "w:txbxContent") continue;
       const object = objectOf(k);
       if (object) found.push(object);
@@ -71,13 +71,13 @@ export const drawingObjectsOf = (drawing: XNode): DrawingObject[] => {
 
 /** A `c:chart` or `dgm:relIds` element. */
 const objectOf = (node: XNode): DrawingObject | undefined => {
-  const tag = tagOf(node);
+  const tag = qualifiedNameOf(node);
   if (tag === "c:chart") {
-    const id = attr(node, "r:id");
+    const id = attributeOf(node, "r:id");
     return id === undefined ? undefined : { kind: "chart", relId: id };
   }
   if (tag === "dgm:relIds") {
-    const id = attr(node, "r:dm");
+    const id = attributeOf(node, "r:dm");
     return id === undefined ? undefined : { kind: "smartart", relId: id };
   }
   return undefined;
@@ -85,17 +85,17 @@ const objectOf = (node: XNode): DrawingObject | undefined => {
 
 /** The `wp:extent` of a `wp:inline` or `wp:anchor` (EMU): the canvas a SmartArt's drawing is cropped to. */
 const extentOf = (node: XNode): Size | undefined => {
-  if (tagOf(node) !== "wp:inline" && tagOf(node) !== "wp:anchor") return undefined;
-  const extent = child(node, "wp:extent");
-  const cx = extent === undefined ? undefined : num(attr(extent, "cx"));
-  const cy = extent === undefined ? undefined : num(attr(extent, "cy"));
+  if (qualifiedNameOf(node) !== "wp:inline" && qualifiedNameOf(node) !== "wp:anchor") return undefined;
+  const extent = findChild(node, "wp:extent");
+  const cx = extent === undefined ? undefined : num(attributeOf(extent, "cx"));
+  const cy = extent === undefined ? undefined : num(attributeOf(extent, "cy"));
   return cx === undefined || cy === undefined || cx <= 0 || cy <= 0 ? undefined : { cx, cy };
 };
 
 /** Every drawing object under `node`, at any depth (a text box, a group, a
  *  Fallback…), document order; a SmartArt with the extent of the drawing around it. */
 const objectsUnder = (node: XNode, out: DrawingObject[] = [], extent?: Size): DrawingObject[] => {
-  for (const k of kids(node)) {
+  for (const k of childNodesOf(node)) {
     const around = extentOf(k) ?? extent;
     const object = objectOf(k);
     if (object) out.push(object.kind === "smartart" && around !== undefined ? { ...object, extent: around } : object);
@@ -112,7 +112,7 @@ export interface DrawingObjects {
   chartsWithheld(): number;
   /** The blocks a `dgm:relIds r:dm` puts WHERE THE FRAME STANDS: its saved drawing as the picture to publish (bytes taken by
    *  `register`), then its model as the `diagramText` block the renderer turns into a nested list. Empty: no drawing (none
-   *  saved, damaged, kept out, or the picture allowance spent) AND no word. Mikolaj, 29/10/2026, seeing the lists gathered
+   *  saved, damaged, kept out, or the picture allowance spent) AND no word. 29/10/2026, seeing the lists gathered
    *  at the end of the page: « ils sont bien, mais à la fin……… » — the frame's place is exact in the file and the picture
    *  already used it. */
   smartArt(rels: ReadonlyMap<string, Relationship>, relId: string, register: DrawingImageRegistrar): IRBlock[];
@@ -134,12 +134,12 @@ interface SmartArtEntry {
 }
 
 /** The document's theme colours (`word/theme/theme1.xml`), read once and only if a SmartArt's drawing needs them. */
-const themeOf = (pkg: DocxPackage): (() => Promise<ColorContext | undefined>) => {
+const themeOf = (pkg: OpcPackage): (() => Promise<ColorContext | undefined>) => {
   let read: Promise<ColorContext | undefined> | undefined;
   return () => {
     read ??= (async () => {
-      const part = relationOfKind(await pkg.relationships(pkg.mainPart), "theme")?.target;
-      return themeColorContext(part === undefined ? undefined : await orDamaged(() => pkg.readXml(part)));
+      const part = findRelationshipOfKind(await pkg.relationships(pkg.mainPart), "theme")?.target;
+      return themeColorContext(part === undefined ? undefined : await readUnlessDamaged(() => pkg.readXml(part)));
     })();
     return read;
   };
@@ -148,13 +148,13 @@ const themeOf = (pkg: DocxPackage): (() => Promise<ColorContext | undefined>) =>
 /** A SmartArt's saved drawing (`part`, named by its data model) drawn on a canvas of `extent`, the frame's own size: the drawing's space
  *  is the frame's, scale 1 (`extractor/smartart-drawing.ts`). */
 const drawingOf = async (
-  pkg: DocxPackage,
+  pkg: OpcPackage,
   part: string | undefined,
   extent: Size | undefined,
   theme: () => Promise<ColorContext | undefined>,
   limits: ReaderLimits | undefined,
 ): Promise<SmartArtEntry["drawing"]> => {
-  const root = part === undefined ? undefined : await orDamaged(() => pkg.readXml(part));
+  const root = part === undefined ? undefined : await readUnlessDamaged(() => pkg.readXml(part));
   if (root === undefined) return undefined;
   const read = readSmartArtDrawing(root, await theme(), limits);
   if (read === "too-many") return "not-drawn";
@@ -167,7 +167,7 @@ const drawingOf = async (
 /** Reads the objects of the stories `roots` (each with the relationships of
  *  its part) ahead of the walk. */
 export const preloadObjects = async (
-  pkg: DocxPackage,
+  pkg: OpcPackage,
   roots: readonly { root: XNode; rels: ReadonlyMap<string, Relationship> }[],
   limits?: ReaderLimits,
 ): Promise<DrawingObjects> => {
@@ -183,7 +183,7 @@ export const preloadObjects = async (
     let modelless = 0;
     for (const object of objectsUnder(root)) {
       const rel = rels.get(object.relId);
-      const target = internalTarget(rels, object.relId);
+      const target = findInternalTarget(rels, object.relId);
       try {
         if (object.kind === "chart") {
           if (target !== undefined && !charts.has(target)) charts.set(target, await readChartOrWithheld(pkg, target, { picture: false, limits }));
@@ -216,9 +216,9 @@ export const preloadObjects = async (
   });
   return {
     chart: (rels, relId) => {
-      const target = internalTarget(rels, relId);
+      const target = findInternalTarget(rels, relId);
       // No picture: the document's chart is its data table.
-      // A relationship that does not resolve is a missing part: said like a damaged one (Mikolaj, 07/10/2026).
+      // A relationship that does not resolve is a missing part: said like a damaged one (07/10/2026).
       const { block, withheld: kept } = chartToIr(target !== undefined ? charts.get(target) : "withheld");
       if (kept) withheld++;
       return block;
