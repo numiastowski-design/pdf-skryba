@@ -11,7 +11,13 @@
  *  Called by: `extractor/xlsx.ts`, `extractor/google-sheet.ts`. */
 
 import { ReaderError } from "doc-ir/lib/reader-error";
-import { cutNoticeName, NO_CAP, type ReaderLimits, sheetUnreadableNotice, workbookCapNotice } from "doc-ir/lib/reader-limits";
+import {
+  cutNoticeName,
+  NO_CAP,
+  type ReaderLimits,
+  sheetUnreadableNotice,
+  workbookCapNotice,
+} from "doc-ir/lib/reader-limits";
 import type { DocumentNotice } from "doc-ir/lib/reader-types";
 import { emptyTabBlocks, type IRBlock, type IRTab } from "doc-ir/lib/ir";
 import type { KeptLines } from "./sheet-grid";
@@ -57,7 +63,11 @@ export interface SheetSource {
 
 /** The last published row at or above `frozen`, abstaining (undefined) when a hidden row lies after it, up to `frozen`:
  *  the hidden row may be the header the file means. `keptRows` ascending; only those and the hidden rows are visited. */
-const findLastKeptRowAtOrAbove = (frozen: number, keptRows: readonly number[], hiddenRows: ReadonlySet<number>): number | undefined => {
+const findLastKeptRowAtOrAbove = (
+  frozen: number,
+  keptRows: readonly number[],
+  hiddenRows: ReadonlySet<number>,
+): number | undefined => {
   let last: number | undefined;
   for (let keptIndex = keptRows.length - 1; keptIndex >= 0; keptIndex--) {
     if (keptRows[keptIndex]! <= frozen) {
@@ -73,11 +83,18 @@ const findLastKeptRowAtOrAbove = (frozen: number, keptRows: readonly number[], h
 const markHeaders = (table: Table, grid: GridBody, declared: HeaderDeclaration): void => {
   // Never walk row numbers (review 02/10/2026): the kept rows are few (<= MAX_SHEET_ROWS), the declared numbers come from
   // the file.
-  const frozenHeader = declared.frozenRow === undefined ? undefined : findLastKeptRowAtOrAbove(declared.frozenRow, grid.lines.keptRows, grid.hiddenRows);
+  const frozenHeader =
+    declared.frozenRow === undefined
+      ? undefined
+      : findLastKeptRowAtOrAbove(declared.frozenRow, grid.lines.keptRows, grid.hiddenRows);
   grid.lines.keptRows.forEach((sourceRow, publishedRowIndex) => {
-    const isHeader = sourceRow === frozenHeader || declared.tableSpans.some((span) => sourceRow >= span.start && sourceRow < span.start + span.count);
+    const isHeader =
+      sourceRow === frozenHeader ||
+      declared.tableSpans.some((span) => sourceRow >= span.start && sourceRow < span.start + span.count);
     if (!isHeader || table.rows[publishedRowIndex] === undefined) return;
-    table.rows[publishedRowIndex] = { cells: table.rows[publishedRowIndex]!.cells.map((cell) => ({ ...cell, header: true })) };
+    table.rows[publishedRowIndex] = {
+      cells: table.rows[publishedRowIndex].cells.map((cell) => ({ ...cell, header: true })),
+    };
   });
 };
 
@@ -91,13 +108,18 @@ const capsOf = (limits: ReaderLimits | undefined): { tabs: number; rows: number;
 /** What one opened sheet gives: its blocks and the format's notices, or the notice of a withheld sheet. */
 type SheetOutcome = { withheld: DocumentNotice } | { blocks: IRBlock[]; notices: DocumentNotice[] };
 
-const buildSheetOutcome = async (name: string, body: SheetBody, caps: { rows: number; cols: number }): Promise<SheetOutcome> => {
+const buildSheetOutcome = async (
+  name: string,
+  body: SheetBody,
+  caps: { rows: number; cols: number },
+): Promise<SheetOutcome> => {
   const { grid } = body;
   if (grid === undefined) return { blocks: [...(await body.extras())], notices: [] };
   // Withheld is decided on the KEPT counts alone, before a single cell is materialized.
   const rows = grid.lines.keptRows.length;
   const cols = grid.lines.keptCols.length;
-  if (rows > caps.rows || cols > caps.cols) return { withheld: { kind: "sheet-withheld", sheet: cutNoticeName(name), rows, cols } };
+  if (rows > caps.rows || cols > caps.cols)
+    return { withheld: { kind: "sheet-withheld", sheet: cutNoticeName(name), rows, cols } };
   const built = grid.table();
   markHeaders(built, grid, await grid.header());
   const notices = [...(grid.notices?.() ?? [])];
@@ -106,7 +128,10 @@ const buildSheetOutcome = async (name: string, body: SheetBody, caps: { rows: nu
 
 /** The tabs of a workbook and the notices of what did not make the page (a withheld sheet, the sheets beyond the cap).
  *  A withheld sheet still occupies one of the tab slots although it carries no tab (29/09/2026: the dashboard says why). */
-export const publishWorkbook = async (sheets: readonly SheetSource[], limits?: ReaderLimits): Promise<{ tabs: IRTab[]; notices: DocumentNotice[] }> => {
+export const publishWorkbook = async (
+  sheets: readonly SheetSource[],
+  limits?: ReaderLimits,
+): Promise<{ tabs: IRTab[]; notices: DocumentNotice[] }> => {
   const tabs: IRTab[] = [];
   const beyondCap: string[] = [];
   const unreadable: string[] = [];
@@ -138,7 +163,8 @@ export const publishWorkbook = async (sheets: readonly SheetSource[], limits?: R
   // is refused with our own code instead of being published as an empty page. An empty page was a mute document; nothing
   // is written on a page, « nothing visible » stays intact. The SAME decision as above: no second count. A workbook with
   // at least one published sheet goes out as before, numbering untouched.
-  if (tabs.length === 0 && withheldSlots > 0) throw new ReaderError("NO_PUBLISHABLE_SHEET", "the workbook has no sheet that fits the page limits");
+  if (tabs.length === 0 && withheldSlots > 0)
+    throw new ReaderError("NO_PUBLISHABLE_SHEET", "the workbook has no sheet that fits the page limits");
   if (beyondCap.length > 0) notices.push(workbookCapNotice(beyondCap));
   if (unreadable.length > 0) notices.push(sheetUnreadableNotice(unreadable));
   return { tabs, notices };

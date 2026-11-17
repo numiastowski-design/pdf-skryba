@@ -14,7 +14,7 @@
  * sizes, before inflating a byte.
  *
  * Decides: what a third party may call to read a document that declares its structure.
- * NOT here: the PDF (`lib/pdf.ts`, published as `skryba`), the reader-free half (`lib/docs-light.ts`, published as
+ * NOT here: the PDF (`lib/pdf.ts`, published as `pdf-skryba`), the reader-free half (`lib/docs-light.ts`, published as
  * `docs-scribe/light`), nor the app's own door (`lib/index.ts`, which dispatches every format for Miksumia Publisher).
  * Called by: nobody in this repository — it is a PUBLISHED door, so its callers are third parties that install
  * the package, and `tools/build-library.ts`, which builds it and holds what it may reach.

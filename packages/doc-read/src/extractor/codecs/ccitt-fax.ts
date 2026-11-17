@@ -192,7 +192,13 @@ function readWholeRun(table: readonly number[], reader: BitReader): number {
 }
 
 /** Horizontal mode: two runs, a0 to a1 then a1 to a2. Returns a2, or `undefined` when a run is unreadable. */
-function readHorizontal(reader: BitReader, dest: Uint8Array, columns: number, a0: number, a0color: boolean): number | undefined {
+function readHorizontal(
+  reader: BitReader,
+  dest: Uint8Array,
+  columns: number,
+  a0: number,
+  a0color: boolean,
+): number | undefined {
   let runLen1 = readWholeRun(a0color ? FAX_WHITE_RUN_INS : FAX_BLACK_RUN_INS, reader);
   if (a0 < 0) runLen1 += 1;
   if (runLen1 < 0) return undefined;
@@ -306,7 +312,13 @@ function skipEol(reader: BitReader): void {
 }
 
 /** Decodes one row into `line` by the coding scheme (`K`); returns the reference row for the next one. */
-function decodeRow(reader: BitReader, line: Uint8Array, ref: Uint8Array<ArrayBuffer>, columns: number, scheme: number): Uint8Array<ArrayBuffer> {
+function decodeRow(
+  reader: BitReader,
+  line: Uint8Array,
+  ref: Uint8Array<ArrayBuffer>,
+  columns: number,
+  scheme: number,
+): Uint8Array<ArrayBuffer> {
   if (scheme === 0) {
     g3Row(reader, line, columns);
     return ref;

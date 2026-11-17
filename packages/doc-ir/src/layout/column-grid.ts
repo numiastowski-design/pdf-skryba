@@ -90,7 +90,12 @@ export function columnStarts(items: readonly GutterItem[]): GridColumn[] {
     // Ce qui appartient à la colonne : ce qui COMMENCE entre ce départ et le suivant. Un fragment transverse n'est
     // donc pas écarté — il est noyé par la médiane, ce qui est tout l'intérêt.
     const own = real.filter((it) => it.x >= at - 2 && it.x < to - 2);
-    return { at, count: own.length, right: median(own.map((it) => it.x + it.width)), chars: own.reduce((n, it) => n + it.text.trim().length, 0) };
+    return {
+      at,
+      count: own.length,
+      right: median(own.map((it) => it.x + it.width)),
+      chars: own.reduce((n, it) => n + it.text.trim().length, 0),
+    };
   });
 }
 
@@ -137,7 +142,9 @@ function placeCut(items: readonly GutterItem[], from: number, to: number): numbe
   const middle = (from + to) / 2;
   const crossing = items.filter((it) => it.x < to && it.x + it.width > from);
   if (crossing.length === 0) return middle;
-  const edges = [...new Set([from, to, ...crossing.flatMap((it) => [it.x, it.x + it.width]).filter((x) => x > from && x < to)])].sort((a, b) => a - b);
+  const edges = [
+    ...new Set([from, to, ...crossing.flatMap((it) => [it.x, it.x + it.width]).filter((x) => x > from && x < to)]),
+  ].sort((a, b) => a - b);
   const cost = (x: number): number => crossing.filter((it) => it.x < x && it.x + it.width > x).length;
   const pieces = edges.slice(0, -1).map((a, i) => ({ at: (a + edges[i + 1]!) / 2, width: edges[i + 1]! - a }));
   return pieces.reduce((best, piece) => {

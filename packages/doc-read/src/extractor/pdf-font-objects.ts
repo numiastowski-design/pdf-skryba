@@ -54,7 +54,9 @@ function descriptorOf(doc: PdfObjectsDocument, font: PdfDict): PdfDict | undefin
 function matrixOf(doc: PdfObjectsDocument, font: PdfDict): readonly number[] | undefined {
   const matrix = doc.resolve(font.get("FontMatrix"));
   if (matrix?.kind !== "array") return undefined;
-  const numbers = matrix.items.map((item) => doc.resolve(item)).map((item) => (item?.kind === "number" ? item.value : Number.NaN));
+  const numbers = matrix.items
+    .map((item) => doc.resolve(item))
+    .map((item) => (item?.kind === "number" ? item.value : Number.NaN));
   return numbers.length === 6 && numbers.every((value) => Number.isFinite(value)) ? numbers : undefined;
 }
 
@@ -77,7 +79,11 @@ export function ourWeightOf(weightValue: number | undefined, name: string | unde
  *  the descriptor's `/Flags` bit 7 (value 64, ISO 32000-1 Table 123 « Italic »), its `/ItalicAngle` when not zero
  *  (Table 122), then the `/BaseFont` name (Italic, Oblique). A base font of the standard (Table 9) with none of these is
  *  upright: a fact. Any other mute name stays `undefined`, never « upright ». */
-export function ourItalicOf(flags: number | undefined, italicAngle: number | undefined, name: string | undefined): boolean | undefined {
+export function ourItalicOf(
+  flags: number | undefined,
+  italicAngle: number | undefined,
+  name: string | undefined,
+): boolean | undefined {
   if (flags !== undefined && Number.isFinite(flags) && (flags & 64) !== 0) return true;
   if (italicAngle !== undefined && Number.isFinite(italicAngle) && italicAngle !== 0) return true;
   if (name === undefined) return undefined;
@@ -90,7 +96,8 @@ export function ourFontObject(doc: PdfObjectsDocument, font: PdfDict): OurFontOb
   const base = nameOf(doc.resolve(font.get("BaseFont")));
   const type3 = nameOf(doc.resolve(font.get("Subtype"))) === "Type3";
   const descriptor = descriptorOf(doc, font);
-  const embedded = descriptor !== undefined && FONT_FILE_KEYS.some((key) => doc.resolve(descriptor.get(key)) !== undefined);
+  const embedded =
+    descriptor !== undefined && FONT_FILE_KEYS.some((key) => doc.resolve(descriptor.get(key)) !== undefined);
   const weightValue = doc.resolve(descriptor?.get("FontWeight"));
   const numberOf = (key: string): number | undefined => {
     const value = doc.resolve(descriptor?.get(key));

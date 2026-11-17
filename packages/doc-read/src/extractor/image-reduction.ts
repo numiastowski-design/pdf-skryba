@@ -123,7 +123,9 @@ const opaqueRgba = (pixels: Uint8Array, count: number, channels: 1 | 2 | 3 | 4):
 };
 
 /** The pixels of a JPEG under the decode guards, or `undefined` when it is damaged or over a guard. */
-export const decodeJpegGuarded = (bytes: Uint8Array): { width: number; height: number; data: Uint8Array } | undefined => {
+export const decodeJpegGuarded = (
+  bytes: Uint8Array,
+): { width: number; height: number; data: Uint8Array } | undefined => {
   try {
     // A damaged file throws (never grey blocks), and stays as it is. Every refusal of the JPEG reader (its guards included) ends here, so none
     // reaches a row: they keep `EXTRACT_FAILED` and are not `FILE_UNSAFE` (25/10/2026).
@@ -134,7 +136,8 @@ export const decodeJpegGuarded = (bytes: Uint8Array): { width: number; height: n
 };
 
 /** A JPEG's EXIF orientation turns the picture (a value other than 1): re-encoding drops the EXIF segment, so such a picture is kept whole. */
-export const isTurnedByExif = (orientation: number | undefined): boolean => orientation !== undefined && orientation !== 1;
+export const isTurnedByExif = (orientation: number | undefined): boolean =>
+  orientation !== undefined && orientation !== 1;
 
 /** The pixels of a PNG or JPEG as opaque RGBA, or `undefined` when this
  *  code does not decode it (a PNG `decodePng` refuses: palette, 16 bits,
@@ -142,7 +145,13 @@ export const isTurnedByExif = (orientation: number | undefined): boolean => orie
 const decodeOpaque = (bytes: Uint8Array): { width: number; height: number; data: Uint8Array } | undefined => {
   if (isPng(bytes)) {
     const png = decodePng(bytes, MAX_DECODED_MP * 1_000_000);
-    return png && { width: png.width, height: png.height, data: opaqueRgba(png.pixels, png.width * png.height, png.channels) };
+    return (
+      png && {
+        width: png.width,
+        height: png.height,
+        data: opaqueRgba(png.pixels, png.width * png.height, png.channels),
+      }
+    );
   }
   return decodeJpegGuarded(bytes);
 };

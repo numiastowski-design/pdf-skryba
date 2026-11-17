@@ -13,7 +13,15 @@
 import { ReaderError } from "doc-ir/lib/reader-error";
 import type { Size } from "doc-ir/layout/slide-elements";
 import { NO_CAP, type ReaderLimits } from "doc-ir/lib/reader-limits";
-import { type OpcPackage, IMAGE_MAX_TOTAL_BYTES, openPackage, readUnlessDamaged, PartDamagedError, type Relationship, findRelationshipOfKind } from "../ooxml/package";
+import {
+  type OpcPackage,
+  IMAGE_MAX_TOTAL_BYTES,
+  openPackage,
+  readUnlessDamaged,
+  PartDamagedError,
+  type Relationship,
+  findRelationshipOfKind,
+} from "../ooxml/package";
 import { isXsdFalse } from "../../lib/ooxml-bool";
 import { attributeOf, findChild, findChildren, qualifiedNameOf, type XNode } from "../ooxml/xml";
 import { cachesWithoutModel, readSmartArt } from "../smartart";
@@ -170,7 +178,11 @@ const readSmartArtFrame = async (
   const read = await readUnlessDamaged(() => readSmartArt(pkg, slideRels, shape.dataPart));
   const drawing = read === undefined ? undefined : await drawingOf(pkg, shape, read.claimed, context, budget);
   const words = read !== undefined && read.words.length > 0 ? { words: read.words } : {};
-  return { shape: { ...shape, ...words, ...(drawing === undefined ? {} : { drawing }) }, claimed: read?.claimed, modelless: read === undefined };
+  return {
+    shape: { ...shape, ...words, ...(drawing === undefined ? {} : { drawing }) },
+    claimed: read?.claimed,
+    modelless: read === undefined,
+  };
 };
 
 /** Each chart frame with its part's data (`pptx-reader/chart.ts`), each SmartArt frame with its words and its saved drawing. */
@@ -258,10 +270,11 @@ const colorContextOf = async (
   };
   const layoutPath = targetOf(slideRels, "slideLayout");
   const layout = await read(layoutPath);
-  const masterPath = layoutPath === undefined ? undefined : targetOf(await pkg.relationships(layoutPath), "slideMaster");
+  const masterPath =
+    layoutPath === undefined ? undefined : targetOf(await pkg.relationships(layoutPath), "slideMaster");
   const master = await read(masterPath);
   const themePath = masterPath === undefined ? undefined : targetOf(await pkg.relationships(masterPath), "theme");
-  const theme = findChild(await readTheme(themePath) ?? {}, "a:themeElements");
+  const theme = findChild((await readTheme(themePath)) ?? {}, "a:themeElements");
   const override = await readTheme(targetOf(slideRels, "themeOverride"));
   const masterMap = findChild(master ?? {}, "p:clrMap");
   const parents = { ...(layout === undefined ? {} : { layout }), ...(master === undefined ? {} : { master }) };
@@ -322,7 +335,11 @@ interface DeckReading {
 }
 
 /** The slide part a `p:sldId` names, parsed; a slide the list names but the package lacks (or that is no `p:sld`) is damage. */
-const openSlidePart = async (pkg: OpcPackage, rels: ReadonlyMap<string, Relationship>, sldId: XNode): Promise<{ target: string; slide: XNode }> => {
+const openSlidePart = async (
+  pkg: OpcPackage,
+  rels: ReadonlyMap<string, Relationship>,
+  sldId: XNode,
+): Promise<{ target: string; slide: XNode }> => {
   const relId = attributeOf(sldId, "r:id");
   const rel = relId === undefined ? undefined : rels.get(relId);
   if (!rel || rel.external || rel.kind !== "slide") throw damaged();
@@ -332,7 +349,12 @@ const openSlidePart = async (pkg: OpcPackage, rels: ReadonlyMap<string, Relation
 };
 
 /** A slide counted but not read: no shapes, no title. */
-const unreadSlide = (slides: readonly PptxSlide[], listIndex: number, partPath: string, elementCount: number): PptxSlide => ({
+const unreadSlide = (
+  slides: readonly PptxSlide[],
+  listIndex: number,
+  partPath: string,
+  elementCount: number,
+): PptxSlide => ({
   number: slides.length + 1,
   listIndex,
   partPath,
@@ -350,14 +372,25 @@ const readSlideShapes = async (
   slideNumber: number,
 ): Promise<{ read: { shapes: PptxShape[]; elementCount: number; hiddenShapes: number }; all: PptxShape[] }> => {
   const { pkg, defaultTextStyle } = deck;
-  const { context, layout, master } = tree ? await colorContextOf(pkg, slide, slideRels, deck.xmlParts, deck.themeDamaged) : {};
+  const { context, layout, master } = tree
+    ? await colorContextOf(pkg, slide, slideRels, deck.xmlParts, deck.themeDamaged)
+    : {};
   const sources: TextStyleSources = {
     ...(layout === undefined ? {} : { layout }),
     ...(master === undefined ? {} : { master }),
     ...(defaultTextStyle === undefined ? {} : { defaultTextStyle }),
   };
   const read = tree
-    ? readShapes(tree, slideRels, await mediaOf(pkg, slideRels, deck.parts, deck.mediaBudget), context, sources, deck.slideSize, slideNumber, deck.limits)
+    ? readShapes(
+        tree,
+        slideRels,
+        await mediaOf(pkg, slideRels, deck.parts, deck.mediaBudget),
+        context,
+        sources,
+        deck.slideSize,
+        slideNumber,
+        deck.limits,
+      )
     : { shapes: [], elementCount: 0, hiddenShapes: 0 };
   const all = await withCharts(pkg, read.shapes, slideRels, context, deck.limits);
   return { read, all };
@@ -390,7 +423,8 @@ const readSlide = async (
   // bias, written — the slide is not published, its declared title is
   // not read).
   const structuralCount = tree ? countElements(tree) : 0;
-  if (structuralCount > (deck.limits?.slideElements ?? NO_CAP)) return unreadSlide(slides, listIndex, target, structuralCount);
+  if (structuralCount > (deck.limits?.slideElements ?? NO_CAP))
+    return unreadSlide(slides, listIndex, target, structuralCount);
   const slideRels = await pkg.relationships(target);
   const { read, all } = await readSlideShapes(deck, slide, tree, slideRels, deck.firstSlideNum + listIndex);
   const titleShape = all.find(isTitleShape);
@@ -404,6 +438,7 @@ const readSlide = async (
     ...(read.hiddenShapes > 0 ? { hiddenShapes: read.hiddenShapes } : {}),
     ...(title === undefined ? {} : { title }),
     titleRepeated: title !== undefined && title === previous,
+    // eslint-disable-next-line sonarjs/different-types-comparison -- identity against the title shape found in this same array (a `PptxTextShape` is a `PptxShape`).
     shapes: all.filter((s) => s !== titleShape),
   };
 };

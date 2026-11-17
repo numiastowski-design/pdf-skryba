@@ -38,11 +38,11 @@ import { placeholderOf, type PptxPlaceholder } from "./placeholder";
 /** The parts a slide's text inherits from. */
 export interface TextStyleSources {
   /** The slide's `p:sldLayout`. */
-  layout?: XNode;
+  readonly layout?: XNode;
   /** Its `p:sldMaster`. */
-  master?: XNode;
+  readonly master?: XNode;
   /** `presentation.xml`'s `p:defaultTextStyle`. */
-  defaultTextStyle?: XNode;
+  readonly defaultTextStyle?: XNode;
 }
 
 /** One step's answer: an exact colour, "unknown" (a fill written that is
@@ -50,8 +50,8 @@ export interface TextStyleSources {
 type Step = Hex | "unknown" | undefined;
 
 /** The colour a properties element (`a:rPr`, `a:defRPr`) writes. */
-export const writtenTextColor = (props: XNode | undefined, context: ColorContext | undefined): Step => {
-  const fill = writtenFillOf(props);
+export const writtenTextColor = (properties: XNode | undefined, context: ColorContext | undefined): Step => {
+  const fill = writtenFillOf(properties);
   if (fill === undefined) return undefined;
   return (qualifiedNameOf(fill) === "a:solidFill" ? solidFillColor(fill, context) : undefined) ?? "unknown";
 };
@@ -87,21 +87,25 @@ const masterType = (type: string | undefined): string => {
 
 const txStyleOf = (type: string | undefined): string => {
   const kind = masterType(type);
-  return kind === "title" ? "p:titleStyle" : kind === "body" ? "p:bodyStyle" : "p:otherStyle";
+  if (kind === "title") return "p:titleStyle";
+  return kind === "body" ? "p:bodyStyle" : "p:otherStyle";
 };
 
-const lstStyleOf = (sp: XNode | undefined): XNode | undefined => findChild(findChild(sp ?? {}, "p:txBody") ?? {}, "a:lstStyle");
+const lstStyleOf = (sp: XNode | undefined): XNode | undefined =>
+  findChild(findChild(sp ?? {}, "p:txBody") ?? {}, "a:lstStyle");
 
 /** The list styles a placeholder inherits, nearest first (the chain's step
  *  2, above). Shared with the inherited SIZE (`pptx-reader/text-size.ts`). */
 export const placeholderStyles = (ph: Placeholder, sources: TextStyleSources): (XNode | undefined)[] => {
-  const layoutPhs = placeholdersOf(sources.layout);
+  const layoutPlaceholders = placeholdersOf(sources.layout);
   const type = ph.type ?? "obj";
   const onLayout =
-    (ph.idx === undefined ? undefined : layoutPhs.find((p) => p.ph.idx === ph.idx)) ??
-    layoutPhs.find((p) => (p.ph.type ?? "obj") === type);
+    (ph.idx === undefined ? undefined : layoutPlaceholders.find((candidate) => candidate.ph.idx === ph.idx)) ??
+    layoutPlaceholders.find((candidate) => (candidate.ph.type ?? "obj") === type);
   const kind = onLayout?.ph.type ?? ph.type;
-  const onMaster = placeholdersOf(sources.master).find((p) => masterType(p.ph.type) === masterType(kind));
+  const onMaster = placeholdersOf(sources.master).find(
+    (candidate) => masterType(candidate.ph.type) === masterType(kind),
+  );
   const txStyles = findChild(sources.master ?? {}, "p:txStyles");
   return [lstStyleOf(onLayout?.sp), lstStyleOf(onMaster?.sp), findChild(txStyles ?? {}, txStyleOf(kind))];
 };

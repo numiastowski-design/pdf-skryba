@@ -48,13 +48,13 @@ export interface ComponentCoefficients {
 
 /** Natural-order index of the k-th coefficient in zigzag order (T.81 figure A.6). */
 export const ZIGZAG = new Uint8Array([
-  0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21, 28, 35, 42, 49, 56, 57, 50, 43,
-  36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47, 55, 62, 63,
+  0, 1, 8, 16, 9, 2, 3, 10, 17, 24, 32, 25, 18, 11, 4, 5, 12, 19, 26, 33, 40, 48, 41, 34, 27, 20, 13, 6, 7, 14, 21, 28,
+  35, 42, 49, 56, 57, 50, 43, 36, 29, 22, 15, 23, 30, 37, 44, 51, 58, 59, 52, 45, 38, 31, 39, 46, 53, 60, 61, 54, 47,
+  55, 62, 63,
 ]);
 
 export const MAX_DC_CATEGORY = 11;
 export const MAX_AC_SIZE = 10;
-
 
 export const allocateCoefficients = (frame: JpegFrame, budget: MemoryBudget): ComponentCoefficients[] => {
   const grids = frame.components.map((c) => {
@@ -72,7 +72,15 @@ export const allocateCoefficients = (frame: JpegFrame, budget: MemoryBudget): Co
   });
 };
 
-const decodeBlock = (reader: BitReader, dc: HuffmanTable, ac: HuffmanTable, out: Int32Array, at: number, prediction: Int32Array, ci: number): void => {
+const decodeBlock = (
+  reader: BitReader,
+  dc: HuffmanTable,
+  ac: HuffmanTable,
+  out: Int32Array,
+  at: number,
+  prediction: Int32Array,
+  ci: number,
+): void => {
   const t = reader.decode(dc);
   if (t > MAX_DC_CATEGORY) throw refuse("bad dc category");
   const dcValue = prediction[ci]! + reader.receiveExtend(t);
@@ -97,7 +105,11 @@ const decodeBlock = (reader: BitReader, dc: HuffmanTable, ac: HuffmanTable, out:
 };
 
 /** Decodes one sequential scan into `coefficients` (from `allocateCoefficients`). */
-export const decodeSequentialScan = (frame: JpegFrame, scan: JpegScan, coefficients: readonly ComponentCoefficients[]): void => {
+export const decodeSequentialScan = (
+  frame: JpegFrame,
+  scan: JpegScan,
+  coefficients: readonly ComponentCoefficients[],
+): void => {
   const reader = new BitReader(scan.data);
   const parts = scan.components.map((sc) => ({
     ci: sc.componentIndex,
@@ -109,7 +121,9 @@ export const decodeSequentialScan = (frame: JpegFrame, scan: JpegScan, coefficie
   }));
   const prediction = new Int32Array(frame.components.length);
   const single = parts.length === 1 ? parts[0]! : undefined;
-  const mcuCount = single ? single.grid.blocksPerLine * single.grid.blocksPerColumn : frame.mcusPerLine * frame.mcusPerColumn;
+  const mcuCount = single
+    ? single.grid.blocksPerLine * single.grid.blocksPerColumn
+    : frame.mcusPerLine * frame.mcusPerColumn;
   let restarts = 0;
   for (let mcu = 0; mcu < mcuCount; mcu++) {
     if (scan.restartInterval > 0 && mcu > 0 && mcu % scan.restartInterval === 0) {

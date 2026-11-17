@@ -29,7 +29,12 @@ export function align(a: Uint32Array, b: Uint32Array, maxEdits: number, keepMin:
  *  its deleted and inserted counts, summed), taken BEFORE the fold of short equalities (the fold lengthens the edits with equal letters, which
  *  are not out of order: a swap of two 11-letter passages folds into 22 deleted letters, Myers deleted 11). A letter only deleted (lost) or only
  *  inserted (invented) is not counted. O(letters). */
-export function alignWithRaw(a: Uint32Array, b: Uint32Array, maxEdits: number, keepMin: number): { alignment: Alignment; rawOutOfOrderLetters: number } | undefined {
+export function alignWithRaw(
+  a: Uint32Array,
+  b: Uint32Array,
+  maxEdits: number,
+  keepMin: number,
+): { alignment: Alignment; rawOutOfOrderLetters: number } | undefined {
   let lo = 0;
   while (lo < a.length && lo < b.length && a[lo] === b[lo]) lo++;
   let hiA = a.length;
@@ -45,11 +50,19 @@ export function alignWithRaw(a: Uint32Array, b: Uint32Array, maxEdits: number, k
   const trace = frontiers({ a, b, lo, n, m, limit });
   if (trace === undefined) return undefined;
   const { deleted, inserted } = backtrack(lo, trace, n, m);
-  return { alignment: foldShortEqualities(segmentsOf(a.length, b.length, deleted, inserted), keepMin, a, b), rawOutOfOrderLetters: sharedLetters(a, b, deleted, inserted) };
+  return {
+    alignment: foldShortEqualities(segmentsOf(a.length, b.length, deleted, inserted), keepMin, a, b),
+    rawOutOfOrderLetters: sharedLetters(a, b, deleted, inserted),
+  };
 }
 
 /** Sum, over each letter, of the smaller of its count among the deleted positions of `a` and among the inserted positions of `b`. */
-function sharedLetters(a: Uint32Array, b: Uint32Array, deleted: readonly number[], inserted: readonly number[]): number {
+function sharedLetters(
+  a: Uint32Array,
+  b: Uint32Array,
+  deleted: readonly number[],
+  inserted: readonly number[],
+): number {
   const pending = new Map<number, number>();
   for (const i of deleted) pending.set(a[i]!, (pending.get(a[i]!) ?? 0) + 1);
   let shared = 0;
@@ -64,7 +77,21 @@ function sharedLetters(a: Uint32Array, b: Uint32Array, deleted: readonly number[
 }
 
 /** The furthest x reached on each diagonal k = x - y, for every edit count d up to the first that reaches the corner. `trace[d][k + d]`. */
-function frontiers({ a, b, lo, n, m, limit }: { a: Uint32Array; b: Uint32Array; lo: number; n: number; m: number; limit: number }): Int32Array[] | undefined {
+function frontiers({
+  a,
+  b,
+  lo,
+  n,
+  m,
+  limit,
+}: {
+  a: Uint32Array;
+  b: Uint32Array;
+  lo: number;
+  n: number;
+  m: number;
+  limit: number;
+}): Int32Array[] | undefined {
   const offset = limit + 1;
   const v = new Int32Array(2 * limit + 3);
   const trace: Int32Array[] = [];
@@ -107,7 +134,7 @@ function backtrack(lo: number, trace: Int32Array[], n: number, m: number): { del
     x = prevX;
     y = prevY;
   }
-  return { deleted: deleted.reverse(), inserted: inserted.reverse() };
+  return { deleted: [...deleted].reverse(), inserted: [...inserted].reverse() };
 }
 
 /** A stretch of the two sequences: kept as is (`equal`), or edited (`a0..a1` deleted, `b0..b1` inserted in its place). Both ranges are
@@ -121,7 +148,12 @@ interface Segment {
 }
 
 /** The two sequences cut into equal stretches and edit groups, from the single-letter edits Myers found. */
-function segmentsOf(aLength: number, bLength: number, deleted: readonly number[], inserted: readonly number[]): Segment[] {
+function segmentsOf(
+  aLength: number,
+  bLength: number,
+  deleted: readonly number[],
+  inserted: readonly number[],
+): Segment[] {
   const segments: Segment[] = [];
   let i = 0;
   let j = 0;
@@ -168,7 +200,13 @@ function foldShortEqualities(segments: readonly Segment[], keepMin: number, a: U
     const before = segments[at - 1];
     const after = segments[at + 1];
     const length = lettersIn(a, seg.a0, seg.a1);
-    const folds = seg.equal && before !== undefined && after !== undefined && length < keepMin && length <= size(before) && length <= size(after);
+    const folds =
+      seg.equal &&
+      before !== undefined &&
+      after !== undefined &&
+      length < keepMin &&
+      length <= size(before) &&
+      length <= size(after);
     const last = list[list.length - 1];
     if ((folds || !seg.equal) && last !== undefined && !last.equal) {
       last.a1 = seg.a1;
@@ -194,7 +232,8 @@ function lettersIn(units: Uint32Array, from: number, to: number): number {
 
 /** The smallest passage `movedPassages` pairs: at least one letter, a whole number. A minimum of 0 would pick empty stretches forever; a
  *  minimum that is not a finite number (NaN, Infinity) is read as 1 too. */
-export const effectiveMinLetters = (minLetters: number): number => (Number.isFinite(minLetters) && minLetters >= 1 ? Math.floor(minLetters) : 1);
+export const effectiveMinLetters = (minLetters: number): number =>
+  Number.isFinite(minLetters) && minLetters >= 1 ? Math.floor(minLetters) : 1;
 
 export interface MovedPassages {
   passages: number;
@@ -222,7 +261,8 @@ function longestCommon(del: Candidate, ins: Candidate): CommonSegment {
     for (let j = 1; j <= ins.letters.length; j++) {
       const same = del.letters[i - 1] === ins.letters[j - 1] && del.taken[i - 1] === 0 && ins.taken[j - 1] === 0;
       current[j] = same ? previous[j - 1]! + 1 : 0;
-      if (current[j]! > best.length) best = { length: current[j]!, inDeleted: i - current[j]!, inInserted: j - current[j]! };
+      if (current[j]! > best.length)
+        best = { length: current[j]!, inDeleted: i - current[j]!, inInserted: j - current[j]! };
     }
     [previous, current] = [current, previous];
   }
@@ -242,7 +282,12 @@ const candidatesOf = (runs: readonly EditRun[], text: string, minLetters: number
  *  Cost: every pair of runs costs deleted x inserted steps, so a sweep costs the product of the deletion and insertion lengths (folded stretches
  *  lengthen the runs, so no fixed figure is claimed); after a pairing only the row and the column of its two runs are searched
  *  again. `deleted` and `inserted` are the two sequences as strings, the ones the runs index. */
-export function movedPassages(alignment: Alignment, deleted: string, inserted: string, requestedMin: number): MovedPassages {
+export function movedPassages(
+  alignment: Alignment,
+  deleted: string,
+  inserted: string,
+  requestedMin: number,
+): MovedPassages {
   const minLetters = effectiveMinLetters(requestedMin);
   const dels = candidatesOf(alignment.deletions, deleted, minLetters);
   const inss = candidatesOf(alignment.insertions, inserted, minLetters);
@@ -261,7 +306,7 @@ export function movedPassages(alignment: Alignment, deleted: string, inserted: s
       }),
     );
     if (pick === undefined) return { passages, letters };
-    const { d, i } = pick as { d: number; i: number };
+    const { d, i } = pick;
     const segment = best[d]![i]!;
     dels[d]!.taken.fill(1, segment.inDeleted, segment.inDeleted + segment.length);
     inss[i]!.taken.fill(1, segment.inInserted, segment.inInserted + segment.length);

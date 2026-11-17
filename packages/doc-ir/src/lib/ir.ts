@@ -69,6 +69,9 @@ export type ChartDrawingType = "bar" | "stackBar" | "hBar" | "hStackBar" | "line
 export interface ChartDrawing {
   type: ChartDrawingType;
   values: (number | null)[][];
+  /** The category axis runs from its last category to its first (`c:orientation val="maxMin"`, ECMA-376 Part 1 §21.2.2.130): the DRAWING lists
+   *  the table's rows last first. `values` and the table keep the document's order. Absent: first to last. */
+  categoriesReversed?: true;
 }
 
 /** Tabular data extracted from a native chart or a sheet. */
@@ -77,7 +80,6 @@ export interface TableData {
   headers?: string[];
   rows: string[][];
 }
-
 
 /** `sup` / `sub`: superscript and subscript (24/09/2026, Google Doc lot) —
  *  kept by Confluence as `<sup>` / `<sub>` (docs/PLATFORM-STATUS.md §43).
@@ -100,9 +102,11 @@ export const emptyTabBlocks = (): IRBlock[] => [{ kind: "paragraph", inlines: []
 /** A diagram-text section as its paragraphs: cut where `breaks` says (only the indices strictly inside the inlines count,
  *  each once, in order, whatever the order written); no break, one paragraph. Nothing is dropped. */
 export const diagramParagraphs = (section: DiagramTextSection): Inline[][] => {
-  const cuts = [...new Set((section.breaks ?? []).filter((b) => b > 0 && b < section.inlines.length))].sort((a, b) => a - b);
+  const cuts = [...new Set((section.breaks ?? []).filter((b) => b > 0 && b < section.inlines.length))].sort(
+    (a, b) => a - b,
+  );
   const edges = [0, ...cuts, section.inlines.length];
-  return edges.slice(1).map((end, k) => section.inlines.slice(edges[k], end));
+  return edges.slice(1).map((end, k) => section.inlines.slice(edges[k] ?? 0, end));
 };
 
 /** Between two elements of a diagram's text (decision (5 ter), 25/09/2026): pptx, and the SmartArt of a docx. */
@@ -209,8 +213,18 @@ export type IRBlock =
   /** `alt` is the source document's own alt text, published with the picture. (A `vision` text, read by AI from the picture and
    *  published in a collapsed block, was removed on 19/10/2026: no producer since 17/09/2026, collapsed blocks dropped everywhere.) */
   | { kind: "image"; ref: ImageRef; alt?: string }
-  | { kind: "chart"; image?: ImageRef; data: TableData; title?: string; /** Set by the chart reader when the macro can draw this chart (`core/chart-macro.ts`). */ drawing?: ChartDrawing; /** Axis titles NOT carried by the table's top-left cell, in document order: each is published as a labelled line under the table
-   *  (`page-messages.ts#chartAxisLine`); `x` the category axis (or a scatter's horizontal value axis), `y` a value axis, `z` a series (depth) axis. */ axisTitles?: { axis: ChartAxis; text: string }[] }
+  | {
+      kind: "chart";
+      image?: ImageRef;
+      data: TableData;
+      title?: string;
+      /** Set by the chart reader when the macro can draw this chart (`core/chart-macro.ts`). */ drawing?: ChartDrawing;
+      /** Axis titles NOT carried by the table's top-left cell, in document order: each is published as a labelled line under the table
+       *  (`page-messages.ts#chartAxisLine`); `x` the category axis (or a scatter's horizontal value axis), `y` a value axis, `z` a series (depth) axis. */ axisTitles?: {
+        axis: ChartAxis;
+        text: string;
+      }[];
+    }
   | { kind: "footnote"; id: string; blocks: IRBlock[] }
   /**
    * TWO OR THREE BLOCKS SIDE BY SIDE, and nothing more.

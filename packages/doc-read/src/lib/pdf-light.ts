@@ -1,5 +1,5 @@
 /**
- * THE READER-FREE HALF OF THE PDF PACKAGE (`skryba/light`): the conservation check of a PDF and the shapes it speaks
+ * THE READER-FREE HALF OF THE PDF PACKAGE (`pdf-skryba/light`): the conservation check of a PDF and the shapes it speaks
  * in, with no reader behind them — importing this loads no PDF, no zip, no XML.
  *
  * WHY IT IS NOT `lib/light.ts`. That one is the APP's light door, and the app publishes every format: it carries the
@@ -37,7 +37,7 @@ export type { LostTextAbstention, LostTextInsertion } from "../pipeline/lost-tex
 
 /** The document the reader hands back, and what it could not publish. */
 export type { IRBlock, IRDoc, IRTab, ImageRef, Inline, InlineMark, TableData } from "doc-ir/lib/ir";
-export type { DocumentNotice, PageLanguage, PictureRefusal } from "doc-ir/lib/reader-types";
+export type { DocumentNotice, PageLanguage, PdfTextUnreadReason, PictureRefusal } from "doc-ir/lib/reader-types";
 export { ReaderError } from "doc-ir/lib/reader-error";
 export type { ReaderCountDetail } from "doc-ir/lib/reader-error";
 export type { ReaderLimits } from "doc-ir/lib/reader-limits";

@@ -88,10 +88,16 @@ export const COLUMN_GUTTER_MAX_SPAN = 20_000;
  * `detectAlignedColumns` pour cet usage — 05a p0 déclenche celui-ci
  * (`[62.69, 83.95]`, deux bords 21 pt l'un de l'autre) et n'a aucune gouttière.
  */
-export function detectColumnGutter(fragmentsByLine: readonly Fragment[][]): { cut: number; start: number; end: number } | undefined {
+export function detectColumnGutter(
+  fragmentsByLine: readonly Fragment[][],
+): { cut: number; start: number; end: number } | undefined {
   // Non-finite geometry carries no position: such a fragment is ignored.
   const lines = fragmentsByLine
-    .map((line) => line.filter((f) => f.text.trim().length > 0 && Number.isFinite(f.x) && Number.isFinite(f.y) && Number.isFinite(f.width)))
+    .map((line) =>
+      line.filter(
+        (f) => f.text.trim().length > 0 && Number.isFinite(f.x) && Number.isFinite(f.y) && Number.isFinite(f.width),
+      ),
+    )
     .filter((line) => line.length > 0);
   if (lines.length === 0) return undefined;
   const all = lines.flat();
@@ -160,8 +166,13 @@ export interface VerticalRhythm {
  * que garantit `groupFragmentsIntoVisualLines` depuis le 08/09/2026.
  */
 export function verticalRhythm(fragmentsByLine: readonly Fragment[][]): VerticalRhythm | undefined {
-  const ys = fragmentsByLine.map((line) => line.find((f) => f.text.trim().length > 0)?.y).filter((y): y is number => y !== undefined);
-  const gaps = ys.slice(0, -1).map((y, i) => Math.round(y - ys[i + 1]!)).filter((g) => g > 0);
+  const ys = fragmentsByLine
+    .map((line) => line.find((f) => f.text.trim().length > 0)?.y)
+    .filter((y): y is number => y !== undefined);
+  const gaps = ys
+    .slice(0, -1)
+    .map((y, i) => Math.round(y - ys[i + 1]!))
+    .filter((g) => g > 0);
   if (gaps.length === 0) return undefined;
   const histogram = new Map<number, number>();
   for (const g of gaps) histogram.set(g, (histogram.get(g) ?? 0) + 1);
@@ -225,7 +236,11 @@ const MIN_COLUMN_LINES = 10;
  *  **Valeur de départ à calibrer.** */
 const MIN_WORDS_PER_FRAGMENT = 4;
 
-const wordCount = (text: string): number => text.trim().split(/\s+/).filter((w) => w.length > 0).length;
+const wordCount = (text: string): number =>
+  text
+    .trim()
+    .split(/\s+/)
+    .filter((w) => w.length > 0).length;
 
 /** Ce qu'il faut savoir d'un fragment pour dire s'il porte de la prose : son
  *  texte et son emprise horizontale. Ni ordonnée ni hauteur — c'est ce qui
@@ -384,7 +399,9 @@ const STARTS_LOWERCASE = /^\s*["«(\[]?\p{Ll}/u;
  * tout court.
  */
 export function looksLikeTextColumns(fragmentsByLine: readonly Fragment[][], cut: number): boolean {
-  const lines = fragmentsByLine.map((line) => line.filter((f) => f.text.trim().length > 0)).filter((line) => line.length > 0);
+  const lines = fragmentsByLine
+    .map((line) => line.filter((f) => f.text.trim().length > 0))
+    .filter((line) => line.length > 0);
   if (lines.length < MIN_COLUMN_LINES) return false;
   if (!bandsCarryProse(lines.flat(), cut)) return false;
   for (const side of [(f: Fragment) => f.x + f.width / 2 < cut, (f: Fragment) => f.x + f.width / 2 >= cut]) {
@@ -399,7 +416,8 @@ export function looksLikeTextColumns(fragmentsByLine: readonly Fragment[][], cut
     const text = fragments.map((f) => f.text).join("");
     const casedFraction = (text.match(CASED_CHAR) ?? []).length / Math.max(1, text.length);
     if (casedFraction < MIN_CASED_CHAR_FRACTION) continue;
-    const lowercaseStarts = linesOnSide.filter((line) => STARTS_LOWERCASE.test(line[0]!.text)).length / linesOnSide.length;
+    const lowercaseStarts =
+      linesOnSide.filter((line) => STARTS_LOWERCASE.test(line[0]!.text)).length / linesOnSide.length;
     if (lowercaseStarts < MIN_LOWERCASE_LINE_STARTS) return false;
   }
   return true;

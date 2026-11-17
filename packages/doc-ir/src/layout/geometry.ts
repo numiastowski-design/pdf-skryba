@@ -62,12 +62,41 @@
  * `prev.y - line.y`.
  */
 
-export type { CellRect, ClassifiedLine, Fragment, LineSegment, MergedCell, MergeMap, Matrix2D, PdfTableDetection, PdfTableOrigin, TableGrid } from "./geometry-types";
+export type {
+  CellRect,
+  ClassifiedLine,
+  Fragment,
+  LineSegment,
+  MergedCell,
+  MergeMap,
+  Matrix2D,
+  PdfTableDetection,
+  PdfTableOrigin,
+  TableGrid,
+} from "./geometry-types";
 export { clusterPositions } from "./position-clusters";
-export { applyMatrix, classifyLineSegment, composeMatrix, IDENTITY_MATRIX, positionKey, subpathsToSegments, translateMatrix } from "./painted-paths";
+export {
+  applyMatrix,
+  classifyLineSegment,
+  composeMatrix,
+  IDENTITY_MATRIX,
+  positionKey,
+  subpathsToSegments,
+  translateMatrix,
+} from "./painted-paths";
 export { buildGridFromVectorLines, buildGridsFromVectorLines, withoutImageFrames } from "./vector-grid";
 export { findCellsByIntersection, isBoxesInVoidsRegion } from "./intersection-cells";
-export { buildGridFromAlignedRows, detectAlignedColumns, hasWeakTabularitySignal, identifyAlignedTableLines } from "./aligned-grid";
+export {
+  buildGridFromAlignedRows,
+  detectAlignedColumns,
+  hasWeakTabularitySignal,
+  identifyAlignedTableLines,
+} from "./aligned-grid";
 export { assignFragmentsToCells, groupFragmentsIntoRowBands, groupFragmentsIntoVisualLines } from "./fragment-cells";
 export { dominantTextSize } from "./text-size";
-export { detectColumnGutter, hasRepeatedSecondRhythm, looksLikeTextColumns, verticalRhythm } from "./column-discriminant";
+export {
+  detectColumnGutter,
+  hasRepeatedSecondRhythm,
+  looksLikeTextColumns,
+  verticalRhythm,
+} from "./column-discriminant";

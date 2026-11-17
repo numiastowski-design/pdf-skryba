@@ -58,11 +58,15 @@ const isValidDepth = (value: unknown): value is number => Number.isInteger(value
 /** Throws unless every key is one the callers write, with the value they write, and no fixed key is missing. */
 const assertSupportedOptions = (options: Readonly<Record<string, unknown>>): void => {
   for (const [key, value] of Object.entries(options)) {
-    if (!Object.hasOwn(FIXED_OPTION_VALUES, key) && !OPTIONAL_OPTION_KEYS.has(key)) throw createMisuseError(`unsupported option ${key}`);
-    if (Object.hasOwn(FIXED_OPTION_VALUES, key) && value !== FIXED_OPTION_VALUES[key]) throw createMisuseError(`unsupported value for ${key}`);
+    if (!Object.hasOwn(FIXED_OPTION_VALUES, key) && !OPTIONAL_OPTION_KEYS.has(key))
+      throw createMisuseError(`unsupported option ${key}`);
+    if (Object.hasOwn(FIXED_OPTION_VALUES, key) && value !== FIXED_OPTION_VALUES[key])
+      throw createMisuseError(`unsupported value for ${key}`);
   }
-  for (const key of Object.keys(FIXED_OPTION_VALUES)) if (!Object.hasOwn(options, key)) throw createMisuseError(`missing option ${key}`);
-  if (options.parseAttributeValue !== undefined && options.parseAttributeValue !== false) throw createMisuseError("unsupported value for parseAttributeValue");
+  for (const key of Object.keys(FIXED_OPTION_VALUES))
+    if (!Object.hasOwn(options, key)) throw createMisuseError(`missing option ${key}`);
+  if (options.parseAttributeValue !== undefined && options.parseAttributeValue !== false)
+    throw createMisuseError("unsupported value for parseAttributeValue");
 };
 
 /** The depth the options ask for (`fallback` when they name none), after checking the options are supported. */
@@ -73,7 +77,8 @@ const resolveMaxDepth = (options: Readonly<Record<string, unknown>>, fallback: n
   return maxDepth;
 };
 
-const readTree = (source: string, mode: XmlMode, maxDepth: number, encoding = "UTF-8"): XNode[] => buildTree(source, mode, encoding, MAX_XML_NODES, maxDepth);
+const readTree = (source: string, mode: XmlMode, maxDepth: number, encoding = "UTF-8"): XNode[] =>
+  buildTree(source, mode, encoding, MAX_XML_NODES, maxDepth);
 
 const readPartBytes = (bytes: Uint8Array, maxDepth: number): XNode[] => {
   const { text, encoding } = decodeXmlPart(bytes);
@@ -96,7 +101,8 @@ const findDeclaredEncoding = (text: string): string | undefined => {
   }
 };
 
-const readTextAsBytes = (text: string, maxDepth: number): XNode[] => readPartBytes(new TextEncoder().encode(text), maxDepth);
+const readTextAsBytes = (text: string, maxDepth: number): XNode[] =>
+  readPartBytes(new TextEncoder().encode(text), maxDepth);
 
 /** The retry after the tokenizer's agreement check refused `text`: see `readTextOfUnknownEncoding`. `refusal` is what to throw when it stays refused. */
 const retryUnderDeclaration = (text: string, maxDepth: number, refusal: unknown): XNode[] => {
@@ -157,7 +163,8 @@ export class XmlParser {
   private readonly maxDepth: number;
 
   constructor(options: PartParserOptions) {
-    if ((options as { maxNestedTags?: unknown }).maxNestedTags === undefined) throw createMisuseError("maxNestedTags is required for an Office part");
+    if ((options as { maxNestedTags?: unknown }).maxNestedTags === undefined)
+      throw createMisuseError("maxNestedTags is required for an Office part");
     this.maxDepth = resolveMaxDepth(options as unknown as Record<string, unknown>, 0);
   }
 
@@ -166,7 +173,9 @@ export class XmlParser {
   parse(input: string | Uint8Array): XNode[];
   parse(input: string | Uint8Array, encoding?: XmlSourceEncoding): XNode[] {
     if (typeof input !== "string") return readPartBytes(input, this.maxDepth);
-    return encoding === undefined ? readTextOfUnknownEncoding(input, this.maxDepth) : readTree(input, "document", this.maxDepth, encoding);
+    return encoding === undefined
+      ? readTextOfUnknownEncoding(input, this.maxDepth)
+      : readTree(input, "document", this.maxDepth, encoding);
   }
 }
 

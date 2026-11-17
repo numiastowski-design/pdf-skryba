@@ -12,7 +12,15 @@
  *  (`./to-unicode.ts`), the widths, the font programs — and nothing of pdf.js.
  *  Called by: `./font-text.ts`, and `names.test.ts`. */
 
-import { GLYPH_LIST, STANDARD_METRICS, MACROMAN_ENCODING, STANDARD_ENCODING, SYMBOL_ENCODING, WINANSI_ENCODING, ZAPF_ENCODING } from "./glyph-data";
+import {
+  GLYPH_LIST,
+  STANDARD_METRICS,
+  MACROMAN_ENCODING,
+  STANDARD_ENCODING,
+  SYMBOL_ENCODING,
+  WINANSI_ENCODING,
+  ZAPF_ENCODING,
+} from "./glyph-data";
 
 /** The largest code point Unicode defines (U+10FFFF): beyond it a `uXXXXXX` name means nothing. */
 const MAX_CODE_POINT = 0x10ffff;
@@ -124,7 +132,7 @@ const STANDARD_ALIASES: Readonly<Record<string, string>> = {
   "Arial-BoldItalic": "Helvetica-BoldOblique",
   "Arial-Italic": "Helvetica-Oblique",
   ArialMT: "Helvetica",
-  "ArialNarrow": "Helvetica",
+  ArialNarrow: "Helvetica",
   "Arial-BoldMT": "Helvetica-Bold",
   "Arial-ItalicMT": "Helvetica-Oblique",
   "Arial-BoldItalicMT": "Helvetica-BoldOblique",

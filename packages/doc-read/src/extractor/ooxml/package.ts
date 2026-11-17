@@ -45,11 +45,17 @@ export interface OpcPackage {
 }
 
 /** The first internal relationship of `kind` among a part's relationships. */
-export const findRelationshipOfKind = (relationships: ReadonlyMap<string, Relationship>, kind: string): Relationship | undefined =>
+export const findRelationshipOfKind = (
+  relationships: ReadonlyMap<string, Relationship>,
+  kind: string,
+): Relationship | undefined =>
   [...relationships.values()].find((relationship) => relationship.kind === kind && !relationship.external);
 
 /** The part an INTERNAL relationship names, by id; `undefined` for an absent id, an unknown id or an external relationship. */
-export const findInternalTarget = (relationships: ReadonlyMap<string, Relationship>, id: string | undefined): string | undefined => {
+export const findInternalTarget = (
+  relationships: ReadonlyMap<string, Relationship>,
+  id: string | undefined,
+): string | undefined => {
   const relationship = id === undefined ? undefined : relationships.get(id);
   return relationship && !relationship.external ? relationship.target : undefined;
 };
@@ -162,7 +168,8 @@ interface ZipArchive {
   names: readonly string[];
   has(path: string): boolean;
   sizeOf(path: string): number | undefined;
-  readBytes(path: string, maxBytes?: number): Promise<Uint8Array | undefined>;
+  // A function property, not a method: `openPackage` hands it on unbound, and the implementation reads no `this`.
+  readBytes: (path: string, maxBytes?: number) => Promise<Uint8Array | undefined>;
 }
 
 /** `undefined` when the bytes are no archive we read. Refusals mapped to this
@@ -170,7 +177,11 @@ interface ZipArchive {
  *  soften, an entry's own damage is `PartDamagedError`. Anything that is not
  *  our `ReaderError` propagates on purpose: a bug of ours must not read as « the
  *  file is damaged » (review of 27/09/2026 evening, finding 4). */
-const openZipArchive = (bytes: Uint8Array, onDamaged: () => ReaderError, limits: PackageLimits): ZipArchive | undefined => {
+const openZipArchive = (
+  bytes: Uint8Array,
+  onDamaged: () => ReaderError,
+  limits: PackageLimits,
+): ZipArchive | undefined => {
   let zip: ReturnType<typeof openZip>;
   try {
     zip = openZip(bytes, limits);
@@ -193,11 +204,18 @@ const openZipArchive = (bytes: Uint8Array, onDamaged: () => ReaderError, limits:
 };
 
 /** The error to throw for what an archive entry's read threw: this layer's own class for an entry refusal, the error itself otherwise. */
-const createPackageError = (error: unknown, maxBytes: number | undefined, onDamaged: () => ReaderError, limits: PackageLimits): unknown => {
+const createPackageError = (
+  error: unknown,
+  maxBytes: number | undefined,
+  onDamaged: () => ReaderError,
+  limits: PackageLimits,
+): unknown => {
   if (!(error instanceof ZipEntryRefusal)) return error;
   if (error.kind !== "ceiling") return new PartDamagedError(onDamaged());
   const isCallerAllowance = error.reason === "read" && maxBytes !== undefined && maxBytes < limits.partMaxBytes;
-  return isCallerAllowance ? new OverAllowanceError(onDamaged()) : new ReaderError("FILE_UNSAFE", "the file inflates past its size ceiling");
+  return isCallerAllowance
+    ? new OverAllowanceError(onDamaged())
+    : new ReaderError("FILE_UNSAFE", "the file inflates past its size ceiling");
 };
 
 /** Throws the refusal for bytes that are not a zip archive.
@@ -206,8 +224,13 @@ const createPackageError = (error: unknown, maxBytes: number | undefined, onDama
  *  reader of this layer, so they bypass `onDamaged` on purpose. */
 function refuseNonZip(bytes: Uint8Array, onDamaged: () => ReaderError): never {
   const cfbKind = classifyCfb(bytes);
-  if (cfbKind === "encrypted") throw new ReaderError("DOCUMENT_PASSWORD_PROTECTED", "this document is protected by a password");
-  if (cfbKind === "legacy-binary") throw new ReaderError("UNSUPPORTED_TYPE", "this is a legacy binary Office file (.doc, .xls or .ppt), not supported");
+  if (cfbKind === "encrypted")
+    throw new ReaderError("DOCUMENT_PASSWORD_PROTECTED", "this document is protected by a password");
+  if (cfbKind === "legacy-binary")
+    throw new ReaderError(
+      "UNSUPPORTED_TYPE",
+      "this is a legacy binary Office file (.doc, .xls or .ppt), not supported",
+    );
   throw onDamaged();
 }
 
@@ -221,7 +244,11 @@ const parseRelationships = (root: XNode | undefined, sourcePart: string): Map<st
     const target = attributeOf(relationshipElement, "Target");
     if (id === undefined || relationshipType === undefined || target === undefined) continue;
     const external = attributeOf(relationshipElement, "TargetMode") === "External";
-    relationshipsById.set(id, { kind: extractLastSegment(relationshipType), target: external ? target : resolveTarget(sourcePart, target), external: external });
+    relationshipsById.set(id, {
+      kind: extractLastSegment(relationshipType),
+      target: external ? target : resolveTarget(sourcePart, target),
+      external: external,
+    });
   }
   return relationshipsById;
 };
@@ -245,8 +272,12 @@ const readContentTypeEntries = (
 
 /** OPC: a part's content type is its Override, else the Default for its extension (compared case-insensitively). */
 const createContentTypeResolver = (contentTypesRoot: XNode | undefined): ((path: string) => string | undefined) => {
-  const defaultTypesByExtension = readContentTypeEntries(contentTypesRoot, "ct:Default", "Extension", (extension) => extension.toLowerCase());
-  const overrideTypesByPartName = readContentTypeEntries(contentTypesRoot, "ct:Override", "PartName", (name) => name.replace(/^\//, "").toLowerCase());
+  const defaultTypesByExtension = readContentTypeEntries(contentTypesRoot, "ct:Default", "Extension", (extension) =>
+    extension.toLowerCase(),
+  );
+  const overrideTypesByPartName = readContentTypeEntries(contentTypesRoot, "ct:Override", "PartName", (name) =>
+    name.replace(/^\//, "").toLowerCase(),
+  );
   return (path) => {
     const override = overrideTypesByPartName.get(path.toLowerCase());
     if (override) return override;

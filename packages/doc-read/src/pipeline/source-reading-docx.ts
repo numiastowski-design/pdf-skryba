@@ -36,8 +36,24 @@ import { wordsOf } from "../lib/words";
 import { resolveTarget } from "../extractor/ooxml/package";
 import { chartReadOf, type ChartRead } from "./source-reading-chart";
 import { smartArtPieces, smartArtRelIds } from "./source-reading-smartart";
-import { attrOf, first, kidsOf, openSourceParts, pushAll, structureOnly, stylesOrAbsent, tagOf, textOf, type N } from "./source-reading-package";
-import { guardedSourceAsync, type ConservationSourceReadFailure, type DeclaredFormatConservationSource, type UnitStructure } from "./conservation-source";
+import {
+  attrOf,
+  first,
+  kidsOf,
+  openSourceParts,
+  pushAll,
+  structureOnly,
+  stylesOrAbsent,
+  tagOf,
+  textOf,
+  type N,
+} from "./source-reading-package";
+import {
+  guardedSourceAsync,
+  type ConservationSourceReadFailure,
+  type DeclaredFormatConservationSource,
+  type UnitStructure,
+} from "./conservation-source";
 import { createListRule, DocxStructureTally, headingLevelOfId, headingLevelOfName } from "./source-structure-docx";
 import { placeRowCells, tableWithheld, type CoveredRange, type GridRow } from "./source-reading-table";
 
@@ -52,7 +68,9 @@ type HiddenRun = (rPr: N | undefined, pStyle: string | undefined) => boolean;
 /** A drawing whose `wp:docPr` is hidden ("1" or "true", any case) is not published (08/10/2026). Written here on its own, not shared with the extractor. */
 const drawingHidden = (drawing: N): boolean => {
   const frame = first(drawing, "wp:inline") ?? first(drawing, "wp:anchor");
-  const hidden = attrOf(first(frame, "wp:docPr") ?? {}, "hidden")?.trim().toLowerCase();
+  const hidden = attrOf(first(frame, "wp:docPr") ?? {}, "hidden")
+    ?.trim()
+    .toLowerCase();
   return hidden === "1" || hidden === "true";
 };
 
@@ -99,7 +117,8 @@ const largestPageOf = (body: N): Page | undefined => {
   return sections === 0 || unreadable ? undefined : { widthEmu: width * 635, heightEmu: height * 635 };
 };
 
-const rotated = (n: N): boolean => (tagOf(n) === "a:xfrm" && ![undefined, "0"].includes(attrOf(n, "rot"))) || kidsOf(n).some(rotated);
+const rotated = (n: N): boolean =>
+  (tagOf(n) === "a:xfrm" && ![undefined, "0"].includes(attrOf(n, "rot"))) || kidsOf(n).some(rotated);
 
 /** A floating drawing lying ENTIRELY outside the largest page is not displayed, so not published nor expected (
  *  09/10/2026). Same conditions as the page, written on their own: a `wp:anchor` (never inline), not rotated, with a known
@@ -112,11 +131,13 @@ const drawingOffPage = (drawing: N, page: Page | undefined): boolean => {
   const cx = extent ? numberOf(attrOf(extent, "cx")) : undefined;
   const cy = extent ? numberOf(attrOf(extent, "cy")) : undefined;
   if (cx === undefined || cy === undefined) return false;
-  const outside = (start: number | undefined, size: number, limit: number): boolean => start !== undefined && (start >= limit || start + size < 0 || (size > 0 && start + size <= 0));
+  const outside = (start: number | undefined, size: number, limit: number): boolean =>
+    start !== undefined && (start >= limit || start + size < 0 || (size > 0 && start + size <= 0));
   if (["1", "true", "on"].includes(attrOf(frame, "simplePos") ?? "")) {
     const pos = first(frame, "wp:simplePos");
     return (
-      outside(pos ? numberOf(attrOf(pos, "x")) : undefined, cx, page.widthEmu) || outside(pos ? numberOf(attrOf(pos, "y")) : undefined, cy, page.heightEmu)
+      outside(pos ? numberOf(attrOf(pos, "x")) : undefined, cx, page.widthEmu) ||
+      outside(pos ? numberOf(attrOf(pos, "y")) : undefined, cy, page.heightEmu)
     );
   }
   const offsetOnPage = (tag: string): number | undefined => {
@@ -125,7 +146,10 @@ const drawingOffPage = (drawing: N, page: Page | undefined): boolean => {
     const offset = first(el, "wp:posOffset");
     return offset ? numberOf(textOf(offset).trim()) : undefined;
   };
-  return outside(offsetOnPage("wp:positionH"), cx, page.widthEmu) || outside(offsetOnPage("wp:positionV"), cy, page.heightEmu);
+  return (
+    outside(offsetOnPage("wp:positionH"), cx, page.widthEmu) ||
+    outside(offsetOnPage("wp:positionV"), cy, page.heightEmu)
+  );
 };
 
 /** True when the subtree holds a visible word (a `w:t`/`m:t` beyond blanks; deletions, field codes, fallbacks, hidden runs, hidden and off-page drawings apart). */
@@ -137,7 +161,7 @@ const holdsWord = (n: N, hidden: HiddenRun, page: Page | undefined, pStyle?: str
     if (tag === "w:r" && hidden(first(c, "w:rPr"), pStyle)) return false;
     if (tag === "w:drawing" && (drawingHidden(c) || drawingOffPage(c, page))) return false;
     if (tag === "w:p") return holdsWord(c, hidden, page, attrOf(first(first(c, "w:pPr"), "w:pStyle") ?? {}, "w:val"));
-    if (tag === "w:txbxContent") return holdsWord(c, hidden, page, undefined);
+    if (tag === "w:txbxContent") return holdsWord(c, hidden, page);
     return holdsWord(c, hidden, page, pStyle);
   });
 
@@ -158,7 +182,12 @@ const unwrapped = (parent: N, tag: "w:tr" | "w:tc"): N[] =>
  *  when that restart sits in the SAME grid column (`w:gridBefore` included) with the same span in the row just before, as the
  *  extractor's table walk folds them; a restart nothing continues, or a continuation with nothing above, is an ordinary cell.
  *  `folded` lists its vMerge continuation cells (their words are not shown). Linear in the cells. */
-const readTable = (tbl: N, hidden: HiddenRun, page: Page | undefined, limits: ReaderLimits | undefined): { withheld: boolean; folded: Set<N> } => {
+const readTable = (
+  tbl: N,
+  hidden: HiddenRun,
+  page: Page | undefined,
+  limits: ReaderLimits | undefined,
+): { withheld: boolean; folded: Set<N> } => {
   const folded = new Set<N>();
   interface ReadCell {
     span: number;
@@ -184,7 +213,11 @@ const readTable = (tbl: N, hidden: HiddenRun, page: Page | undefined, limits: Re
       // As the extractor: only "restart" opens a merge and only an absent value or "continue" continues one; any other value is an ordinary cell.
       const kind = value === "restart" || value === "continue" ? value : undefined;
       const cell: ReadCell = {
-        span: Math.min(63, gridColumns === 0 ? 63 : Math.max(1, gridColumns - column), Math.max(1, Number.isInteger(span) ? span : 1)),
+        span: Math.min(
+          63,
+          gridColumns === 0 ? 63 : Math.max(1, gridColumns - column),
+          Math.max(1, Number.isInteger(span) ? span : 1),
+        ),
         filled: holdsWord(tc, hidden, page),
         rowspan: 1,
       };
@@ -261,7 +294,10 @@ const readStyleTable = (styles: N | undefined) => {
     return undefined;
   };
   // The basedOn walk depends on the style id alone, never on the run: memoised.
-  const memo = { vanish: new Map<string | undefined, boolean | undefined>(), numbered: new Map<string | undefined, boolean | undefined>() };
+  const memo = {
+    vanish: new Map<string | undefined, boolean | undefined>(),
+    numbered: new Map<string | undefined, boolean | undefined>(),
+  };
   const nearestOf = (id: string | undefined, key: "vanish" | "numbered"): boolean | undefined => {
     const m = memo[key];
     if (!m.has(id)) m.set(id, nearest(id, key));
@@ -292,9 +328,13 @@ const readStyleTable = (styles: N | undefined) => {
       const direct = first(rPr, "w:vanish");
       if (direct) return on(direct);
       const cStyle = attrOf(first(rPr, "w:rStyle") ?? {}, "w:val") ?? defaultCharacter;
-      return (baseVanish !== (nearestOf(pStyle ?? defaultParagraph, "vanish") ?? false)) !== (nearestOf(cStyle, "vanish") ?? false);
+      return (
+        (baseVanish !== (nearestOf(pStyle ?? defaultParagraph, "vanish") ?? false)) !==
+        (nearestOf(cStyle, "vanish") ?? false)
+      );
     },
-    numberedByStyle: (pStyle: string | undefined): boolean => nearestOf(pStyle ?? defaultParagraph, "numbered") ?? false,
+    numberedByStyle: (pStyle: string | undefined): boolean =>
+      nearestOf(pStyle ?? defaultParagraph, "numbered") ?? false,
   };
 };
 
@@ -369,13 +409,18 @@ const causesOf = (chunks: readonly Chunk[]): MissingWordCause[] => {
  * `pipeline/no-word-lost.test.ts` for the full rule-by-rule rationale (moved
  * here unchanged, this file's header).
  */
-export const readSource = async (bytes: Uint8Array, onWithheld?: (text: string) => void, limits?: ReaderLimits): Promise<SourceReading> => (await readWalk(bytes, false, onWithheld, limits)).reading;
+export const readSource = async (
+  bytes: Uint8Array,
+  onWithheld?: (text: string) => void,
+  limits?: ReaderLimits,
+): Promise<SourceReading> => (await readWalk(bytes, false, onWithheld, limits)).reading;
 
 /** Paragraphs that carry a numbering, with their own text: a heading's
  *  computed number is expected only in front of one of these. Read by
  *  `no-word-lost.test.ts`'s extras check only — the production conservation
  *  source never asks for it, so `readSource` does not collect it. */
-export const readNumberedParagraphs = async (bytes: Uint8Array): Promise<string[]> => (await readWalk(bytes, true)).numberedParagraphs;
+export const readNumberedParagraphs = async (bytes: Uint8Array): Promise<string[]> =>
+  (await readWalk(bytes, true)).numberedParagraphs;
 
 /** The number Word computes in front of a numbered paragraph (its `lvlText`, literal words included: « Section 1 », « 1.1 - »),
  *  when `text` is that number followed by the text of one of `numberedParagraphs`: at most 40 characters, ENDING with a label
@@ -486,7 +531,12 @@ const pushText = (st: WalkState, ctx: WalkCtx, s: string): void => {
 };
 
 /** The same sink, the same text boxes, the same style, another cause. */
-const withCause = (ctx: WalkCtx, cause: MissingWordCause): WalkCtx => ({ sink: ctx.sink, deferred: ctx.deferred, pStyle: ctx.pStyle, cause });
+const withCause = (ctx: WalkCtx, cause: MissingWordCause): WalkCtx => ({
+  sink: ctx.sink,
+  deferred: ctx.deferred,
+  pStyle: ctx.pStyle,
+  cause,
+});
 
 /** Children read for their fields and note calls only: their words go to sinks that are thrown away. */
 const discarded = (ctx: WalkCtx): WalkCtx => ({ sink: [], deferred: [], pStyle: ctx.pStyle, cause: ctx.cause });
@@ -536,7 +586,11 @@ const visitContentControl: Visit = (st, c, ctx) => {
 const visitRun: Visit = (st, c, ctx) => {
   if (st.styles.hidden(first(c, "w:rPr"), ctx.pStyle)) {
     // Hidden text: only its field characters count (they open and close fields).
-    walkChildren(st, { "w:r": kidsOf(c).filter((k) => ["w:fldChar", "w:instrText"].includes(tagOf(k))) }, discarded(ctx));
+    walkChildren(
+      st,
+      { "w:r": kidsOf(c).filter((k) => ["w:fldChar", "w:instrText"].includes(tagOf(k))) },
+      discarded(ctx),
+    );
     return;
   }
   walkChildren(st, c, ctx);
@@ -625,13 +679,22 @@ const chartIdsOf = (n: N, out: string[] = []): string[] => {
 
 /** The words and the table of every chart part the document body relates to (`chart` relationships of `word/document.xml`), by relationship
  *  id. A missing or damaged chart part expects nothing (its absence is the extractor's notice, not a refusal of the document). */
-const chartReadsOf = async (xmlOf: (path: string) => Promise<N | undefined>, limits: ReaderLimits | undefined): Promise<Map<string, ChartRead>> => {
+const chartReadsOf = async (
+  xmlOf: (path: string) => Promise<N | undefined>,
+  limits: ReaderLimits | undefined,
+): Promise<Map<string, ChartRead>> => {
   const out = new Map<string, ChartRead>();
   const rels = await stylesOrAbsent(() => xmlOf("word/_rels/document.xml.rels"));
   for (const rel of rels ? kidsOf(rels) : []) {
     const id = attrOf(rel, "Id");
     const target = attrOf(rel, "Target");
-    if (id === undefined || target === undefined || attrOf(rel, "TargetMode") === "External" || !(attrOf(rel, "Type") ?? "").endsWith("/chart")) continue;
+    if (
+      id === undefined ||
+      target === undefined ||
+      attrOf(rel, "TargetMode") === "External" ||
+      !(attrOf(rel, "Type") ?? "").endsWith("/chart")
+    )
+      continue;
     const chart = await stylesOrAbsent(() => xmlOf(resolveTarget("word/document.xml", target)));
     if (chart) out.set(id, chartReadOf(chart, limits));
   }
@@ -640,7 +703,11 @@ const chartReadsOf = async (xmlOf: (path: string) => Promise<N | undefined>, lim
 
 /** The words of every SmartArt a story (`word/document.xml` or a notes part, parsed as `root`) names, by `r:dm` relationship id: the
  *  model part each id resolves to inside the package (`source-reading-smartart.ts`). Only the ids the story names are read. */
-const smartArtTextsOf = async (xmlOf: (path: string) => Promise<N | undefined>, story: string, root: N | undefined): Promise<Map<string, readonly string[]>> => {
+const smartArtTextsOf = async (
+  xmlOf: (path: string) => Promise<N | undefined>,
+  story: string,
+  root: N | undefined,
+): Promise<Map<string, readonly string[]>> => {
   const out = new Map<string, readonly string[]>();
   if (!root) return out;
   const wanted = new Set(smartArtRelIds(root));
@@ -651,7 +718,8 @@ const smartArtTextsOf = async (xmlOf: (path: string) => Promise<N | undefined>, 
   for (const rel of rels ? kidsOf(rels) : []) {
     const id = attrOf(rel, "Id");
     const target = attrOf(rel, "Target");
-    if (id !== undefined && target !== undefined && attrOf(rel, "TargetMode") !== "External") parts.set(id, resolveTarget(story, target));
+    if (id !== undefined && target !== undefined && attrOf(rel, "TargetMode") !== "External")
+      parts.set(id, resolveTarget(story, target));
   }
   const partOf = (id: string | undefined): string | undefined => (id === undefined ? undefined : parts.get(id));
   for (const id of wanted) out.set(id, await smartArtPieces(xmlOf, partOf(id), partOf));
@@ -675,7 +743,11 @@ const visitParagraph: Visit = (st, c, ctx) => {
   const own: Chunk[] = [];
   walkChildren(st, c, { sink: own, deferred: ctx.deferred, pStyle: style, cause: ctx.cause });
   if (numbered && st.collectNumbered) st.numberedParagraphs.push(own.map((k) => k.text).join(""));
-  st.tally.paragraph(st.styles.headingLevelOf(style), st.listed(pPr), own.some((k) => k.text.trim() !== ""));
+  st.tally.paragraph(
+    st.styles.headingLevelOf(style),
+    st.listed(pPr),
+    own.some((k) => k.text.trim() !== ""),
+  );
   ctx.sink.push({ text: "\n", cause: ctx.cause });
   pushAll(ctx.sink, own);
   ctx.sink.push({ text: "\n", cause: ctx.cause });
@@ -734,7 +806,9 @@ const VISITS = new Map<string, Visit>([
 
 /** The footnotes and endnotes of the document by key (`footnote:3`); of several notes with one id the LAST is the one, as on the page
  *  (`docx-reader/index.ts#noteBlocks`). */
-const indexNotes = (parts: readonly (readonly ["footnote" | "endnote", N | undefined])[]): Map<string, { kind: "footnote" | "endnote"; note: N }> => {
+const indexNotes = (
+  parts: readonly (readonly ["footnote" | "endnote", N | undefined])[],
+): Map<string, { kind: "footnote" | "endnote"; note: N }> => {
   const noteIndex = new Map<string, { kind: "footnote" | "endnote"; note: N }>();
   for (const [kind, part] of parts) {
     for (const note of part ? kidsOf(part) : []) {
@@ -747,7 +821,11 @@ const indexNotes = (parts: readonly (readonly ["footnote" | "endnote", N | undef
 /** Notes: only those called from the published text, and those called from a called note, whatever their order in the part.
  *  Worklist: the notes are indexed once by key; the notes the body calls are read first, in part order, then a first-in
  *  first-out queue reads those called from a note read, each key once. Cost O(notes), whatever the nesting order. */
-const appendCalledNotes = (st: WalkState, noteIndex: ReadonlyMap<string, { kind: "footnote" | "endnote"; note: N }>, out: Chunk[]): void => {
+const appendCalledNotes = (
+  st: WalkState,
+  noteIndex: ReadonlyMap<string, { kind: "footnote" | "endnote"; note: N }>,
+  out: Chunk[],
+): void => {
   const queue: string[] = [];
   const queued = new Set<string>();
   const enqueue = (key: string): void => {
@@ -778,7 +856,11 @@ const numberingPartOf = async (xmlOf: (path: string) => Promise<N | undefined>):
   const rels = await xmlOf("word/_rels/document.xml.rels");
   for (const rel of rels ? kidsOf(rels) : []) {
     const target = attrOf(rel, "Target");
-    if (target !== undefined && attrOf(rel, "TargetMode") !== "External" && (attrOf(rel, "Type") ?? "").endsWith("/numbering")) {
+    if (
+      target !== undefined &&
+      attrOf(rel, "TargetMode") !== "External" &&
+      (attrOf(rel, "Type") ?? "").endsWith("/numbering")
+    ) {
       return xmlOf(resolveTarget("word/document.xml", target));
     }
   }
@@ -795,7 +877,12 @@ const listRuleOf = async (
   return "unreadable" in read ? { listed: () => false, unreadable: true } : { listed: read.value, unreadable: false };
 };
 
-const readWalk = async (bytes: Uint8Array, collectNumbered: boolean, onWithheld?: (text: string) => void, limits?: ReaderLimits): Promise<{ reading: SourceReading; numberedParagraphs: string[] }> => {
+const readWalk = async (
+  bytes: Uint8Array,
+  collectNumbered: boolean,
+  onWithheld?: (text: string) => void,
+  limits?: ReaderLimits,
+): Promise<{ reading: SourceReading; numberedParagraphs: string[] }> => {
   const { xmlOf } = await openSourceParts(bytes);
   const stylesRoot = await stylesOrAbsent(() => xmlOf("word/styles.xml"));
   const styles = readStyleTable(stylesRoot);
@@ -837,8 +924,14 @@ const readWalk = async (bytes: Uint8Array, collectNumbered: boolean, onWithheld?
   const text = out.map((k) => k.text).join("");
   if (onWithheld && st.withheld && st.withheld.length > 0) onWithheld(st.withheld.map((k) => k.text).join(""));
   return {
-    reading: { text, structure: st.tally.unit, wordCauses: causesOf(out), ...(lists.unreadable ? { structureUnreadable: true as const } : {}) },
-    numberedParagraphs: st.numberedParagraphs };
+    reading: {
+      text,
+      structure: st.tally.unit,
+      wordCauses: causesOf(out),
+      ...(lists.unreadable ? { structureUnreadable: true as const } : {}),
+    },
+    numberedParagraphs: st.numberedParagraphs,
+  };
 };
 
 /** A word: a maximal run of letters/digits, NFKC lower case — the rule the
@@ -865,13 +958,29 @@ export async function readDocxConservationSource(
   opts?: { onWithheld?: (text: string) => void; limits?: ReaderLimits },
 ): Promise<DeclaredFormatConservationSource | ConservationSourceReadFailure> {
   return guardedSourceAsync(async () => {
-    const { text, wordCauses, structure, structureUnreadable } = await readSource(bytes, opts?.onWithheld, opts?.limits);
+    const { text, wordCauses, structure, structureUnreadable } = await readSource(
+      bytes,
+      opts?.onWithheld,
+      opts?.limits,
+    );
     const words = wordsOf(text);
     return {
-      units: [{ label: "", tokens: words.map((word, i): { text: string; cause: MissingWordCause } => ({ text: word, cause: wordCauses[i] ?? "text" })) }],
+      units: [
+        {
+          label: "",
+          tokens: words.map((word, i): { text: string; cause: MissingWordCause } => ({
+            text: word,
+            cause: wordCauses[i] ?? "text",
+          })),
+        },
+      ],
       deliberateRemovals: [],
       excludedUnits: new Set(),
-      structure: { units: [structure], format: "docx", ...(structureUnreadable === true ? { unreadable: true as const } : {}) },
+      structure: {
+        units: [structure],
+        format: "docx",
+        ...(structureUnreadable === true ? { unreadable: true as const } : {}),
+      },
     };
   });
 }

@@ -110,7 +110,10 @@ export interface PagePlanReader {
   bands: (items: readonly PdfTextRun[]) => ReadSegment<PdfTextRun>[];
   declared: (items: readonly PdfTextRun[], rankOf: (item: PdfTextRun) => number | undefined) => PdfTextRun[][][];
   /** The whole page read again, in the declared order (see `PageSlice.wholePage`). */
-  declaredWholePage: (items: readonly PdfTextRun[], rankOf: (item: PdfTextRun) => number | undefined) => PdfTextRun[][][];
+  declaredWholePage: (
+    items: readonly PdfTextRun[],
+    rankOf: (item: PdfTextRun) => number | undefined,
+  ) => PdfTextRun[][][];
 }
 
 /**
@@ -155,19 +158,30 @@ const isCapOfColumn = (cap: PdfTextRun, line: readonly PdfTextRun[], inks: reado
  * plan voit ces lignes, la lettrine a déjà été déménagée, et le « L » d'Alouette chevauche la ligne de « Vaud »,
  * qui est AU-DESSUS de sa cible. Les lignes vont de haut en bas, donc la première qui mord est la plus haute.
  */
-const capTarget = (cap: PdfTextRun, line: readonly PdfTextRun[], lineIndex: number, inks: readonly (LineInk | undefined)[]): number | undefined => {
-  const seated = line.some((it) => it !== cap && it.text.trim() !== "" && it.fontSize * MIN_DROP_CAP_RATIO <= cap.fontSize);
+const capTarget = (
+  cap: PdfTextRun,
+  line: readonly PdfTextRun[],
+  lineIndex: number,
+  inks: readonly (LineInk | undefined)[],
+): number | undefined => {
+  const seated = line.some(
+    (it) => it !== cap && it.text.trim() !== "" && it.fontSize * MIN_DROP_CAP_RATIO <= cap.fontSize,
+  );
   if (seated) return lineIndex;
   const found = inks.findIndex((ink) => isOverhungBy(cap, ink));
   return found < 0 ? undefined : found;
 };
 
 /** The drop caps of ONE segment, decided on the lines as they stand — moving as we go would shift the indices. */
-const capsOfColumn = (lines: readonly (readonly PdfTextRun[])[], inks: readonly (LineInk | undefined)[]): CapInColumn[] => {
+const capsOfColumn = (
+  lines: readonly (readonly PdfTextRun[])[],
+  inks: readonly (LineInk | undefined)[],
+): CapInColumn[] => {
   const found: CapInColumn[] = [];
   for (const [lineIndex, line] of lines.entries()) {
     for (const cap of line) {
-      if (isCapOfColumn(cap, line, inks)) found.push({ cap, from: lineIndex, to: capTarget(cap, line, lineIndex, inks) });
+      if (isCapOfColumn(cap, line, inks))
+        found.push({ cap, from: lineIndex, to: capTarget(cap, line, lineIndex, inks) });
     }
   }
   return found;
@@ -190,7 +204,10 @@ const capsOfColumn = (lines: readonly (readonly PdfTextRun[])[], inks: readonly 
  * A line emptied by a move disappears, exactly as `liftDropCaps` drops it: a paragraph of one letter is what we
  * are removing. The reported `opensLine` is the line's index AFTER that removal.
  */
-const seatDropCaps = (segments: readonly (readonly PdfTextRun[][])[], slice: number): { segments: PdfTextRun[][][]; dropCaps: DropCapPlace[] } => {
+const seatDropCaps = (
+  segments: readonly (readonly PdfTextRun[][])[],
+  slice: number,
+): { segments: PdfTextRun[][][]; dropCaps: DropCapPlace[] } => {
   const dropCaps: DropCapPlace[] = [];
   const out: PdfTextRun[][][] = [];
   segments.forEach((original, segment) => {
@@ -266,16 +283,28 @@ export const pagePlanReader = (cut: ColumnCut | undefined): PagePlanReader => {
   /** The band an x range stands in: `undefined` on a page without cuts, and as soon as a cut falls INSIDE the
    *  range — the same test `pdf-image-anchors.ts#placementOf` uses to call a picture « within » one column. */
   const bandOf = (xMin: number, xMax: number): number | undefined =>
-    cuts.length === 0 || cuts.some((cut) => xMin < cut && xMax > cut) ? undefined : cuts.filter((cut) => cut <= xMin).length;
+    cuts.length === 0 || cuts.some((cut) => xMin < cut && xMax > cut)
+      ? undefined
+      : cuts.filter((cut) => cut <= xMin).length;
   /** Seats this slice's drop caps, remembers them, and gives back the segments the reader must publish. */
   const seat = (segments: readonly (readonly PdfTextRun[][])[]): PdfTextRun[][][] => {
     const seated = seatDropCaps(segments, slices.length);
     dropCaps.push(...seated.dropCaps);
     return seated.segments;
   };
-  const inDeclaredOrder = (items: readonly PdfTextRun[], rankOf: (item: PdfTextRun) => number | undefined, whole: boolean): PdfTextRun[][][] => {
+  const inDeclaredOrder = (
+    items: readonly PdfTextRun[],
+    rankOf: (item: PdfTextRun) => number | undefined,
+    whole: boolean,
+  ): PdfTextRun[][][] => {
     const read = seat(segmentsInDeclaredOrder(readingSegments(items, cuts, bound), rankOf));
-    slices.push({ items, ...extentOf(items), declared: read, extents: read.map(segmentExtent), ...(whole ? { wholePage: true } : {}) });
+    slices.push({
+      items,
+      ...extentOf(items),
+      declared: read,
+      extents: read.map(segmentExtent),
+      ...(whole ? { wholePage: true } : {}),
+    });
     return read;
   };
   return {

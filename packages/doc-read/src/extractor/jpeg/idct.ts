@@ -65,7 +65,15 @@ const dequantise = (coefficients: Int32Array, at: number, quant: Int32Array): vo
 const inverseRows = (): void => {
   let v0: number, v1: number, v2: number, v3: number, v4: number, v5: number, v6: number, v7: number, t: number;
   for (let row = 0; row < 64; row += 8) {
-    if (p[1 + row] === 0 && p[2 + row] === 0 && p[3 + row] === 0 && p[4 + row] === 0 && p[5 + row] === 0 && p[6 + row] === 0 && p[7 + row] === 0) {
+    if (
+      p[1 + row] === 0 &&
+      p[2 + row] === 0 &&
+      p[3 + row] === 0 &&
+      p[4 + row] === 0 &&
+      p[5 + row] === 0 &&
+      p[6 + row] === 0 &&
+      p[7 + row] === 0
+    ) {
       t = (SQRT2 * p[row]! + 512) >> 10;
       p.fill(t, row, row + 8);
       continue;
@@ -121,7 +129,15 @@ const inverseRows = (): void => {
 const inverseColumns = (): void => {
   let v0: number, v1: number, v2: number, v3: number, v4: number, v5: number, v6: number, v7: number, t: number;
   for (let col = 0; col < 8; col++) {
-    if (p[8 + col] === 0 && p[16 + col] === 0 && p[24 + col] === 0 && p[32 + col] === 0 && p[40 + col] === 0 && p[48 + col] === 0 && p[56 + col] === 0) {
+    if (
+      p[8 + col] === 0 &&
+      p[16 + col] === 0 &&
+      p[24 + col] === 0 &&
+      p[32 + col] === 0 &&
+      p[40 + col] === 0 &&
+      p[48 + col] === 0 &&
+      p[56 + col] === 0
+    ) {
       t = (SQRT2 * p[col]! + 8192) >> 14;
       for (let r = 0; r < 64; r += 8) p[r + col] = t;
       continue;
@@ -186,7 +202,13 @@ const storeSamples = (out: Uint8Array, outAt: number, stride: number): void => {
 /** Dequantises the 64 coefficients at `at` with `quant` (natural order),
  *  inverts the DCT and writes the 8 × 8 samples at `outAt` of `plane.data`, `plane.width` bytes a row.
  *  The plane is one object per component, built by the caller before its block loop: no allocation per block. */
-export const inverseDctBlock = (coefficients: Int32Array, at: number, quant: Int32Array, plane: Pick<SamplePlane, "data" | "width">, outAt: number): void => {
+export const inverseDctBlock = (
+  coefficients: Int32Array,
+  at: number,
+  quant: Int32Array,
+  plane: Pick<SamplePlane, "data" | "width">,
+  outAt: number,
+): void => {
   dequantise(coefficients, at, quant);
   inverseRows();
   inverseColumns();
@@ -194,7 +216,11 @@ export const inverseDctBlock = (coefficients: Int32Array, at: number, quant: Int
 };
 
 /** Every component's sample plane, in frame order. */
-export const componentPlanes = (structure: JpegStructure, coefficients: readonly ComponentCoefficients[], budget: MemoryBudget): SamplePlane[] =>
+export const componentPlanes = (
+  structure: JpegStructure,
+  coefficients: readonly ComponentCoefficients[],
+  budget: MemoryBudget,
+): SamplePlane[] =>
   structure.frame.components.map((component, ci) => {
     const table = structure.quantTables[component.tq];
     // A component no scan named was never checked by `parseJpeg`.

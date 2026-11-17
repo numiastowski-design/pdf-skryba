@@ -21,9 +21,19 @@
  *  Called by: `extractor/dispatch.ts` — a Google Slides deck too, exported
  *  as .pptx by the caller. */
 
-
 import { collapseBlanks } from "doc-ir/lib/blanks";
-import { DIAGRAM_TEXT_SEPARATOR, diagramParagraphs, emptyTabBlocks, joinedInlines, type DiagramRelation, type DiagramTextSection, type Inline, type IRBlock, type IRDoc, type IRTab } from "doc-ir/lib/ir";
+import {
+  DIAGRAM_TEXT_SEPARATOR,
+  diagramParagraphs,
+  emptyTabBlocks,
+  joinedInlines,
+  type DiagramRelation,
+  type DiagramTextSection,
+  type Inline,
+  type IRBlock,
+  type IRDoc,
+  type IRTab,
+} from "doc-ir/lib/ir";
 import { mapBlockChildren } from "doc-ir/lib/ir-walk";
 import { withholdOversizedTables } from "doc-ir/lib/table-width-cap";
 import type { DocumentNotice } from "doc-ir/lib/reader-types";
@@ -137,7 +147,15 @@ const paragraphBlocks = (paragraphs: readonly PptxParagraph[]): IRBlock[] =>
   nestLists(
     paragraphs.map((p) => ({
       blocks: visible(p) ? [{ kind: "paragraph" as const, inlines: inlinesOf(p) }] : [],
-      ...(p.list ? { list: { level: p.list.level, ordered: p.list.ordered, ...(p.list.start === undefined ? {} : { start: p.list.start }) } } : {}),
+      ...(p.list
+        ? {
+            list: {
+              level: p.list.level,
+              ordered: p.list.ordered,
+              ...(p.list.start === undefined ? {} : { start: p.list.start }),
+            },
+          }
+        : {}),
     })),
     // An empty paragraph is skipped and does not end a list (not verified against an official PowerPoint source).
     { emptyItem: "skip" },
@@ -171,7 +189,13 @@ const tableBlock = (table: PptxTable): Extract<IRBlock, { kind: "table" }> => {
 /** One element of a slide as blocks. A picture's width is the one it has on
  *  the slide (the page caps it: `renderer/storage.ts#publishedImageWidthPx`);
  *  it has no alt text, ever (decision (10) of 25/09/2026). */
-const shapeBlocks = (shape: PptxShape, images: ImageCollector, slideNumber: number, notices: DocumentNotice[], deck?: PptxReadResult): IRBlock[] => {
+const shapeBlocks = (
+  shape: PptxShape,
+  images: ImageCollector,
+  slideNumber: number,
+  notices: DocumentNotice[],
+  deck?: PptxReadResult,
+): IRBlock[] => {
   switch (shape.kind) {
     case "text":
       return paragraphBlocks(shape.paragraphs);
@@ -179,7 +203,13 @@ const shapeBlocks = (shape: PptxShape, images: ImageCollector, slideNumber: numb
       return [tableBlock(shape.table)];
     case "picture": {
       if (!("image" in shape)) {
-        notices.push({ kind: "unsupported-element", slide: slideNumber, what: shape.notPublished, outcome: "published", count: 1 });
+        notices.push({
+          kind: "unsupported-element",
+          slide: slideNumber,
+          what: shape.notPublished,
+          outcome: "published",
+          count: 1,
+        });
         return [];
       }
       const ref = images.collect(shape.image.bytes, shape.image.contentType);
@@ -198,14 +228,22 @@ const shapeBlocks = (shape: PptxShape, images: ImageCollector, slideNumber: numb
     }
     case "graphic": {
       // The chart keeps its own picture as a fallback.
-      const { block, withheld } = chartToIr(shape.chart, { collectImage: (image) => images.collect(image.bytes, image.contentType) });
+      const { block, withheld } = chartToIr(shape.chart, {
+        collectImage: (image) => images.collect(image.bytes, image.contentType),
+      });
       if (!block) {
         // A chart kept out says so (one `chart-withheld` notice, folded); one with no series says nothing, like docx and xlsx.
         if (shape.graphic === "chart") {
           if (withheld) notices.push({ kind: "chart-withheld", count: 1 });
           return [];
         }
-        notices.push({ kind: "unsupported-element", slide: slideNumber, what: shape.graphic, outcome: "converted", count: 1 });
+        notices.push({
+          kind: "unsupported-element",
+          slide: slideNumber,
+          what: shape.graphic,
+          outcome: "converted",
+          count: 1,
+        });
         return smartArtBlocks(shape, images, deck);
       }
       return [block];
@@ -214,7 +252,6 @@ const shapeBlocks = (shape: PptxShape, images: ImageCollector, slideNumber: numb
       return [];
   }
 };
-
 
 /** The shapes of a slide with each SmartArt's saved drawing (`PptxGraphicShape#drawing`) added right after its frame, so the slide's
  *  ONE picture paints them where the frame stands. They are not in `slide.shapes`: they take no part in the layout and are no element of
@@ -225,15 +262,25 @@ const withDrawings = (shapes: readonly PptxShape[]): PptxShape[] =>
 /** A SmartArt frame of a flow or table slide: its saved drawing as a picture of its own then its
  *  words in the diagram text the control reads (not published), with the ones the picture does not carry (`undrawn`). Without a
  *  drawing to draw, only the words (no picture is invented). */
-const smartArtBlocks = (shape: PptxGraphicShape, images: ImageCollector, deck: PptxReadResult | undefined): IRBlock[] => {
-  const drawn = typeof shape.drawing === "object" && deck?.slideSize !== undefined ? renderSlideSvg(shape.drawing.shapes, deck.slideSize, deck.defaultTextSizes ?? {}) : undefined;
+const smartArtBlocks = (
+  shape: PptxGraphicShape,
+  images: ImageCollector,
+  deck: PptxReadResult | undefined,
+): IRBlock[] => {
+  const drawn =
+    typeof shape.drawing === "object" && deck?.slideSize !== undefined
+      ? renderSlideSvg(shape.drawing.shapes, deck.slideSize, deck.defaultTextSizes ?? {})
+      : undefined;
   const picture: IRBlock[] = [];
   if (drawn !== undefined) {
     picture.push({ kind: "image", ref: images.collect(new TextEncoder().encode(drawn.svg), SVG_MIME, true) });
   }
   if (shape.words === undefined) return picture;
   const undrawn = undrawnWords(shape.words, drawn?.smartArtText ?? []);
-  const inlines = joinedInlines(shape.words.map((w) => [{ text: w }]), DIAGRAM_TEXT_SEPARATOR);
+  const inlines = joinedInlines(
+    shape.words.map((w) => [{ text: w }]),
+    DIAGRAM_TEXT_SEPARATOR,
+  );
   return [...picture, { kind: "diagramText", sections: [{ inlines, ...(undrawn.length > 0 ? { undrawn } : {}) }] }];
 };
 
@@ -269,7 +316,13 @@ const diagramPieces = (shape: PptxShape, slideNumber: number, notices: DocumentN
           if (shape.chart === "withheld") notices.push({ kind: "chart-withheld", count: 1 });
           return [];
         }
-        notices.push({ kind: "unsupported-element", slide: slideNumber, what: shape.graphic, outcome: "converted", count: 1 });
+        notices.push({
+          kind: "unsupported-element",
+          slide: slideNumber,
+          what: shape.graphic,
+          outcome: "converted",
+          count: 1,
+        });
         return (shape.words ?? []).map((w) => [{ text: w }]);
       }
       const labels = [chart.title ?? "", ...(chart.data.headers ?? []), ...chart.data.rows.flat()];
@@ -293,19 +346,37 @@ const diagramPieces = (shape: PptxShape, slideNumber: number, notices: DocumentN
  *  with its sources, by the shapes' NAMES (`relationName`): the order stays
  *  today's, every word is already in the paragraphs, only a name is repeated
  *  (02/10/2026). */
-const diagramText = (slide: PptxSlide, items: readonly PptxShape[], slideNumber: number, notices: DocumentNotice[], undrawn: readonly string[] = []): IRBlock[] => {
+const diagramText = (
+  slide: PptxSlide,
+  items: readonly PptxShape[],
+  slideNumber: number,
+  notices: DocumentNotice[],
+  undrawn: readonly string[] = [],
+): IRBlock[] => {
   // Each element read ONCE, in today's order: a notice is pushed per frame it cannot convert.
   const pieces = items.map((s) => diagramPieces(s, slideNumber, notices));
   const order = slideDiagramOrder(slide.shapes, items);
   const paragraphs = order.paragraphs.length === 0 ? [items.map((_, i) => i)] : [...order.paragraphs, order.rest];
-  const lines = paragraphs.map((p) => joinedInlines(p.flatMap((i) => pieces[i] ?? []), DIAGRAM_TEXT_SEPARATOR)).filter((l) => l.length > 0);
+  const lines = paragraphs
+    .map((p) =>
+      joinedInlines(
+        p.flatMap((i) => pieces[i] ?? []),
+        DIAGRAM_TEXT_SEPARATOR,
+      ),
+    )
+    .filter((l) => l.length > 0);
   if (lines.length === 0) return [];
   const relations = order.links.flatMap((l): DiagramRelation[] => {
     const target = relationName(items[l.target]!);
     const sources = [...new Set(l.sources.map((i) => relationName(items[i]!)).filter((n) => n !== ""))];
     return target === "" || sources.length === 0 ? [] : [{ target, sources }];
   });
-  return [{ kind: "diagramText", sections: [{ ...sectionOf(lines, relations), ...(undrawn.length > 0 ? { undrawn: [...undrawn] } : {}) }] }];
+  return [
+    {
+      kind: "diagramText",
+      sections: [{ ...sectionOf(lines, relations), ...(undrawn.length > 0 ? { undrawn: [...undrawn] } : {}) }],
+    },
+  ];
 };
 
 /** Starting value to calibrate: the longest name a relation line repeats, in
@@ -317,7 +388,16 @@ const RELATION_NAME_MAX = 60;
  *  text, cut at a word past `RELATION_NAME_MAX` (then closed by « … »). */
 const relationName = (shape: PptxShape): string => {
   if (shape.kind !== "text") return "";
-  const first = shape.paragraphs.filter(visible).map((p) => collapseBlanks(inlinesOf(p).map((i) => i.text).join(""))).find((t) => t !== "");
+  const first = shape.paragraphs
+    .filter(visible)
+    .map((p) =>
+      collapseBlanks(
+        inlinesOf(p)
+          .map((i) => i.text)
+          .join(""),
+      ),
+    )
+    .find((t) => t !== "");
   if (first === undefined || first.length <= RELATION_NAME_MAX) return first ?? "";
   // eslint-disable-next-line sonarjs/super-linear-regex -- judged safe 14/10/2026: the input is cut to RELATION_NAME_MAX + 1 (61) characters
   const cut = first.slice(0, RELATION_NAME_MAX + 1).replace(/\s+\S*$/, "");
@@ -327,7 +407,11 @@ const relationName = (shape: PptxShape): string => {
 /** Paragraphs as one section: their inlines run on, a break where each next one starts. */
 const sectionOf = (lines: readonly Inline[][], relations: readonly DiagramRelation[] = []): DiagramTextSection => {
   const breaks = lines.slice(0, -1).reduce<number[]>((acc, l) => [...acc, (acc.at(-1) ?? 0) + l.length], []);
-  return { inlines: lines.flat(), ...(breaks.length > 0 ? { breaks } : {}), ...(relations.length > 0 ? { relations: [...relations] } : {}) };
+  return {
+    inlines: lines.flat(),
+    ...(breaks.length > 0 ? { breaks } : {}),
+    ...(relations.length > 0 ? { relations: [...relations] } : {}),
+  };
 };
 
 /** The sections of one slide as ONE: the old single paragraph joined by the
@@ -337,9 +421,23 @@ const mergedSections = (parts: readonly DiagramTextSection[]): DiagramTextSectio
   const relations = parts.flatMap((p) => p.relations ?? []);
   const undrawn = parts.flatMap((p) => p.undrawn ?? []);
   const notDrawn = undrawn.length > 0 ? { undrawn } : {};
-  if (parts.every((p) => p.breaks === undefined)) return { inlines: joinedInlines(parts.map((p) => p.inlines), DIAGRAM_TEXT_SEPARATOR), ...(relations.length > 0 ? { relations } : {}), ...notDrawn };
+  if (parts.every((p) => p.breaks === undefined))
+    return {
+      inlines: joinedInlines(
+        parts.map((p) => p.inlines),
+        DIAGRAM_TEXT_SEPARATOR,
+      ),
+      ...(relations.length > 0 ? { relations } : {}),
+      ...notDrawn,
+    };
   const lines = parts.flatMap(diagramParagraphs);
-  return { ...sectionOf(lines.filter((l) => l.length > 0), relations), ...notDrawn };
+  return {
+    ...sectionOf(
+      lines.filter((l) => l.length > 0),
+      relations,
+    ),
+    ...notDrawn,
+  };
 };
 
 /** A Google Slides deck: where Google's own image of a diagram slide comes
@@ -371,7 +469,10 @@ const DECK_BUDGET_MS = 120_000;
  *  page not skipped. Any other count: no slide gets Google's image (two
  *  readings that disagree, we abstain). A deck edited between the export
  *  and the images is caught by `googleDiagramImages`. */
-export const pageIdsByListIndex = (listedSlideCount: number, pages: readonly SlidePage[]): readonly string[] | undefined => {
+export const pageIdsByListIndex = (
+  listedSlideCount: number,
+  pages: readonly SlidePage[],
+): readonly string[] | undefined => {
   if (pages.length === listedSlideCount) return pages.map((p) => p.objectId);
   const shown = pages.filter((p) => !p.skipped);
   if (shown.length === listedSlideCount) return shown.map((p) => p.objectId);
@@ -437,7 +538,11 @@ const googleDiagramImages = async (
     const image = await orNothing(() => google.port.slideImage(google.presentationId, pageId));
     const pixelWidth = image === undefined ? undefined : imagePixelWidth(image.bytes);
     if (image !== undefined && pixelWidth !== undefined) {
-      found.set(slide.number, { bytes: image.bytes, pixelWidth, identity: `google-thumbnail:${pageId}:${google.modifiedTime}` });
+      found.set(slide.number, {
+        bytes: image.bytes,
+        pixelWidth,
+        identity: `google-thumbnail:${pageId}:${google.modifiedTime}`,
+      });
     }
   }
   if (found.size === 0) return found;
@@ -457,8 +562,10 @@ const slideBody = (
   google: GoogleImage | undefined,
   notices: DocumentNotice[],
 ): IRBlock[] => {
-  const blocksOf = (items: readonly PptxShape[]): IRBlock[] => items.flatMap((s) => shapeBlocks(s, images, slide.number, notices, deck));
-  if (deck.slideSize === undefined || layout === undefined) return blocksOf(slide.shapes.filter((s) => !isFooterShape(s)));
+  const blocksOf = (items: readonly PptxShape[]): IRBlock[] =>
+    items.flatMap((s) => shapeBlocks(s, images, slide.number, notices, deck));
+  if (deck.slideSize === undefined || layout === undefined)
+    return blocksOf(slide.shapes.filter((s) => !isFooterShape(s)));
   switch (layout.form) {
     case "flow":
       return blocksOf(layout.items);
@@ -477,7 +584,11 @@ const slideBody = (
       // a new rendering of the same revision changes no content hash.
       if (google !== undefined) {
         const ref = images.collect(google.bytes, PNG_MIME, false, google.identity);
-        return [{ kind: "image", ref: { ...ref, pixelWidth: ref.pixelWidth ?? google.pixelWidth } }, ...tableBlocks, ...diagramText(slide, rest, slide.number, notices)];
+        return [
+          { kind: "image", ref: { ...ref, pixelWidth: ref.pixelWidth ?? google.pixelWidth } },
+          ...tableBlocks,
+          ...diagramText(slide, rest, slide.number, notices),
+        ];
       }
       // The drawing serves reading; its text follows in one collapsed
       // paragraph, for search and Rovo, which do not read an SVG's text
@@ -487,9 +598,14 @@ const slideBody = (
       // page any more. No width on the drawing: see
       // `renderer/storage.ts#publishedImageWidthPx` and the USA 9 test.
       // The SmartArts' saved drawings join the slide's shapes: ONE picture. The model words no drawn line shows are `undrawn` for the control.
-      const { svg, picturesNotDrawn, smartArtText } = renderSlideSvg(withDrawings(slide.shapes), deck.slideSize, deck.defaultTextSizes ?? {});
+      const { svg, picturesNotDrawn, smartArtText } = renderSlideSvg(
+        withDrawings(slide.shapes),
+        deck.slideSize,
+        deck.defaultTextSizes ?? {},
+      );
       const ref = images.collect(new TextEncoder().encode(svg), SVG_MIME, true);
-      for (const p of picturesNotDrawn) notices.push({ kind: "picture-not-drawn", slide: slide.number, reason: p.reason, count: 1 });
+      for (const p of picturesNotDrawn)
+        notices.push({ kind: "picture-not-drawn", slide: slide.number, reason: p.reason, count: 1 });
       const attempted = slide.shapes.flatMap((s) => (s.kind === "graphic" ? (s.words ?? []) : []));
       return [
         { kind: "image", ref },
@@ -558,6 +674,23 @@ export const foldNotices = (notices: readonly DocumentNotice[]): DocumentNotice[
   return [...out, ...unpublishedPartNotices({ chartsWithheld, imagesMissing: 0 })];
 };
 
+/** The diagram-text blocks taken out of `blocks` into `into`, in reading order; every other block kept.
+ *  A table-form slide holds its frames in cells: the pull goes into every container. */
+const pullDiagramText = (blocks: readonly IRBlock[], into: DiagramTextSection[]): IRBlock[] =>
+  blocks.flatMap((b): IRBlock[] => {
+    if (b.kind === "diagramText") {
+      into.push(...b.sections);
+      return [];
+    }
+    return [mapBlockChildren(b, (children) => pullDiagramText(children, into))];
+  });
+
+/** The slide's declared title as the tab's heading, unless it repeats the previous slide's. */
+const slideHeading = (slide: PptxSlide): IRBlock[] =>
+  slide.title !== undefined && !slide.titleRepeated
+    ? [{ kind: "heading", level: 2, inlines: [{ text: slide.title }] }]
+    : [];
+
 export const extractPptx = async (
   bytes: Uint8Array,
   google?: GoogleSlidesSource,
@@ -586,7 +719,9 @@ export const extractPptx = async (
   // A slide over the element cap is withheld whole (7a): it pays no layout
   // and no Google image either.
   const layouts = shown.map((slide) =>
-    size === undefined || slide.elementCount > (limits?.slideElements ?? NO_CAP) ? undefined : layoutSlide(slideLayoutInput(slide, size)),
+    size === undefined || slide.elementCount > (limits?.slideElements ?? NO_CAP)
+      ? undefined
+      : layoutSlide(slideLayoutInput(slide, size)),
   );
   const googleImages = await googleDiagramImages({ ...deck, slides: shown }, layouts, google);
   // A7 of docs/CONCEPTION-CARTE-ET-REMARQUES.md (29/09/2026): a
@@ -609,11 +744,16 @@ export const extractPptx = async (
     }
     tabsSlides.push(slide);
     tabForms.push(layouts[i]?.form);
-    const heading: IRBlock[] =
-      slide.title !== undefined && !slide.titleRepeated ? [{ kind: "heading", level: 2, inlines: [{ text: slide.title }] }] : [];
+    const heading = slideHeading(slide);
     // The footer, date and number zones close the tab, as plain paragraphs in shape order (they took no part in the layout).
-    const footer = slide.shapes.filter(isFooterShape).flatMap((s) => shapeBlocks(s, images, slide.number, notices, deck));
-    const blocks = [...heading, ...slideBody(slide, deck, layouts[i], images, googleImages.get(slide.number), notices), ...footer];
+    const footer = slide.shapes
+      .filter(isFooterShape)
+      .flatMap((s) => shapeBlocks(s, images, slide.number, notices, deck));
+    const blocks = [
+      ...heading,
+      ...slideBody(slide, deck, layouts[i], images, googleImages.get(slide.number), notices),
+      ...footer,
+    ];
     tabs.push({
       // The label is the slide's rank only; its declared title is the
       // heading inside the tab (25/09/2026).
@@ -638,17 +778,13 @@ export const extractPptx = async (
     // One section per slide: a flow slide with several SmartArts gives one
     // block each, their pieces run on with the same separator.
     const mine: DiagramTextSection[] = [];
-    // A table-form slide holds its frames in cells: the pull goes into every container.
-    const pull = (blocks: readonly IRBlock[]): IRBlock[] =>
-      blocks.flatMap((b): IRBlock[] => {
-        if (b.kind === "diagramText") {
-          mine.push(...b.sections);
-          return [];
-        }
-        return [mapBlockChildren(b, pull)];
+    const kept = pullDiagramText(tab.blocks, mine);
+    if (mine.length > 0)
+      sections.push({
+        label: tab.title,
+        ...(tab.slideNumber !== undefined ? { slideNumber: tab.slideNumber } : {}),
+        ...mergedSections(mine),
       });
-    const kept = pull(tab.blocks);
-    if (mine.length > 0) sections.push({ label: tab.title, ...(tab.slideNumber !== undefined ? { slideNumber: tab.slideNumber } : {}), ...mergedSections(mine) });
     const { blocks: narrow, withheld } = withholdOversizedTables(kept, undefined, limits);
     tablesWithheld += withheld;
     // The layout table of a slide of form "table" is the one top-level table of its tab, unless the width cap just withheld it.
@@ -660,6 +796,10 @@ export const extractPptx = async (
     doc: { blocks: framed.length > 0 ? [{ kind: "tabs", tabs: framed }, ...gathered] : [] },
     images: images.images,
     layoutTables,
-    notices: [...foldNotices(notices), ...unpublishedPartNotices({ chartsWithheld: 0, imagesMissing: 0, tablesWithheld, hiddenShapes }), ...(deck.themeDamaged === true ? [{ kind: "styles-defaulted" as const }] : [])],
+    notices: [
+      ...foldNotices(notices),
+      ...unpublishedPartNotices({ chartsWithheld: 0, imagesMissing: 0, tablesWithheld, hiddenShapes }),
+      ...(deck.themeDamaged === true ? [{ kind: "styles-defaulted" as const }] : []),
+    ],
   };
 };

@@ -26,7 +26,8 @@ export interface WorkbookSheet {
   readonly partPath: string;
 }
 
-const createDamagedWorkbookError = (): ReaderError => new ReaderError("EXTRACT_FAILED", "the file is damaged or is not a valid Excel workbook");
+const createDamagedWorkbookError = (): ReaderError =>
+  new ReaderError("EXTRACT_FAILED", "the file is damaged or is not a valid Excel workbook");
 
 /** The last row number we accept in a declaration (1,048,576). A split or a table reaching past it is not a real
  *  declaration: ignored. Also the last row a chart's address may name (`xlsx-chart-reference.ts`). */
@@ -66,7 +67,11 @@ export interface HeaderSpan {
  *  Limit: the mark covers the WHOLE published row, so a table narrower than
  *  the sheet marks the cells beside it too. `sheet-workbook.ts` maps these source rows
  *  to published rows and abstains for one that is hidden or dropped. */
-export async function readDeclaredHeaderRows(opcPackage: OpcPackage, sheetPartPath: string, parsedSheetXml?: XNode): Promise<{ tableSpans: HeaderSpan[]; frozenRow?: number }> {
+export async function readDeclaredHeaderRows(
+  opcPackage: OpcPackage,
+  sheetPartPath: string,
+  parsedSheetXml?: XNode,
+): Promise<{ tableSpans: HeaderSpan[]; frozenRow?: number }> {
   // `parsedSheetXml`: the caller read the part once for everyone; a re-read costs CPU and counts against the budget twice.
   const sheetXml = parsedSheetXml ?? (await opcPackage.readXml(sheetPartPath));
   if (!sheetXml) return { tableSpans: [] };
@@ -77,7 +82,11 @@ export async function readDeclaredHeaderRows(opcPackage: OpcPackage, sheetPartPa
 }
 
 /** The header spans the Excel table parts of a sheet declare, in table order. */
-const tableHeaderSpansOf = async (opcPackage: OpcPackage, sheetPartPath: string, sheetXml: XNode): Promise<HeaderSpan[]> => {
+const tableHeaderSpansOf = async (
+  opcPackage: OpcPackage,
+  sheetPartPath: string,
+  sheetXml: XNode,
+): Promise<HeaderSpan[]> => {
   const spans: HeaderSpan[] = [];
   if (findChild(sheetXml, "tableParts") === undefined) return spans;
   const relationships = await opcPackage.relationships(sheetPartPath);
@@ -140,7 +149,12 @@ interface DrawingParts {
 }
 
 /** Adds to `found` the chart and picture parts every `<drawing>` of a sheet anchors. */
-const collectSheetDrawings = async (opcPackage: OpcPackage, sheetPartPath: string, sheetXml: XNode, found: DrawingParts): Promise<void> => {
+const collectSheetDrawings = async (
+  opcPackage: OpcPackage,
+  sheetPartPath: string,
+  sheetXml: XNode,
+  found: DrawingParts,
+): Promise<void> => {
   const sheetRelationships = await opcPackage.relationships(sheetPartPath);
   for (const drawing of findDescendants(sheetXml, "drawing", [])) {
     const drawingPart = findInternalTarget(sheetRelationships, attributeOf(drawing, "r:id"));
@@ -174,7 +188,9 @@ const collectDrawingParts = async (opcPackage: OpcPackage, drawingPart: string, 
  *  that also needs the workbook-wide tables (`xlsx-cells.ts#readSharedStringsAndStyles`)
  *  passes it back rather than triggering a second inflate of the same part
  *  (`xlsx.read-once.test.ts`). */
-export async function readWorkbookSheets(bytes: Uint8Array): Promise<{ pkg: OpcPackage; sheets: WorkbookSheet[]; workbookXml: XNode }> {
+export async function readWorkbookSheets(
+  bytes: Uint8Array,
+): Promise<{ pkg: OpcPackage; sheets: WorkbookSheet[]; workbookXml: XNode }> {
   const opcPackage = await openPackage(bytes, createDamagedWorkbookError);
   const workbook = await opcPackage.readXml(opcPackage.mainPart);
   if (!workbook) throw createDamagedWorkbookError();
@@ -188,7 +204,10 @@ export async function readWorkbookSheets(bytes: Uint8Array): Promise<{ pkg: OpcP
 }
 
 /** One `<sheet>` of the workbook, its part resolved through the workbook's relationships. */
-const workbookSheetOf = (sheet: XNode, relationships: Awaited<ReturnType<OpcPackage["relationships"]>>): WorkbookSheet => {
+const workbookSheetOf = (
+  sheet: XNode,
+  relationships: Awaited<ReturnType<OpcPackage["relationships"]>>,
+): WorkbookSheet => {
   const name = attributeOf(sheet, "name");
   const relationshipId = attributeOf(sheet, "r:id");
   const relationship = relationshipId !== undefined ? relationships.get(relationshipId) : undefined;

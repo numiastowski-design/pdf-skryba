@@ -78,8 +78,24 @@ export function findCellsByIntersection(lines: readonly ClassifiedLine[]): CellR
   const hGroups = clusterGroups(horizontals, (h) => h.y).reverse(); // top to bottom
   const xs = vGroups.map((g) => g.center);
   const ys = hGroups.map((g) => g.center);
-  const vRuns = new Map<number, InkRun[]>(vGroups.map((g) => [g.center, mergeIntervals(g.members.map((v) => ({ lo: v.yMin, hi: v.yMax })), INK_CONTINUITY_TOLERANCE)]));
-  const hRuns = new Map<number, InkRun[]>(hGroups.map((g) => [g.center, mergeIntervals(g.members.map((h) => ({ lo: h.xMin, hi: h.xMax })), INK_CONTINUITY_TOLERANCE)]));
+  const vRuns = new Map<number, InkRun[]>(
+    vGroups.map((g) => [
+      g.center,
+      mergeIntervals(
+        g.members.map((v) => ({ lo: v.yMin, hi: v.yMax })),
+        INK_CONTINUITY_TOLERANCE,
+      ),
+    ]),
+  );
+  const hRuns = new Map<number, InkRun[]>(
+    hGroups.map((g) => [
+      g.center,
+      mergeIntervals(
+        g.members.map((h) => ({ lo: h.xMin, hi: h.xMax })),
+        INK_CONTINUITY_TOLERANCE,
+      ),
+    ]),
+  );
 
   const cells: CellRect[] = [];
   for (let i = 0; i < xs.length; i++) {
@@ -112,7 +128,6 @@ export function findCellsByIntersection(lines: readonly ClassifiedLine[]): CellR
   return cells;
 }
 
-
 /** Fewer painted cells than this and the rule abstains: a lone box is a legitimate 1x1 table.
  *  **Valeur de départ à calibrer.** Two populations, measured 01/10/2026 on RENDERED tables: 10 false regions (diagram PDFs:
  *  05-Groupes, 02, 03, 04, 07, 08, 05-libya p2-3 Word drawings) hold >= 2 closed painted cells none of which touches another;
@@ -129,7 +144,10 @@ const encloses = (outer: CellRect, inner: CellRect): boolean =>
 const touches = (a: CellRect, b: CellRect): boolean => {
   const xOverlap = Math.min(a.xRight, b.xRight) - Math.max(a.xLeft, b.xLeft);
   const yOverlap = Math.min(a.yTop, b.yTop) - Math.max(a.yBottom, b.yBottom);
-  return (xOverlap >= -CLUSTER_TOLERANCE && yOverlap > TOUCH_MIN_OVERLAP) || (yOverlap >= -CLUSTER_TOLERANCE && xOverlap > TOUCH_MIN_OVERLAP);
+  return (
+    (xOverlap >= -CLUSTER_TOLERANCE && yOverlap > TOUCH_MIN_OVERLAP) ||
+    (yOverlap >= -CLUSTER_TOLERANCE && xOverlap > TOUCH_MIN_OVERLAP)
+  );
 };
 
 /**
@@ -171,10 +189,24 @@ export function isBoxesInVoidsRegion(grid: TableGrid, cells: readonly CellRect[]
     /** True when `test` holds for a cell other than `c` whose left edge is in [c.xLeft, xTo] and whose bottom edge is in
      *  [yFrom, yTo]; `useHeight` widens the lower end by the tallest cell of the group (a tall cell starting far below can
      *  still reach up to `yFrom`). */
-    return (c: CellRect, xTo: number, yFrom: number, yTo: number, useHeight: boolean, test: (o: CellRect) => boolean): boolean => {
-      for (let g = lowerBound(groups.length, (i) => groups[i]!.xLeft >= c.xLeft); g < groups.length && groups[g]!.xLeft <= xTo; g++) {
+    return (
+      c: CellRect,
+      xTo: number,
+      yFrom: number,
+      yTo: number,
+      useHeight: boolean,
+      test: (o: CellRect) => boolean,
+    ): boolean => {
+      for (
+        let g = lowerBound(groups.length, (i) => groups[i]!.xLeft >= c.xLeft);
+        g < groups.length && groups[g]!.xLeft <= xTo;
+        g++
+      ) {
         const group = groups[g]!;
-        const start = lowerBound(group.cells.length, (i) => group.cells[i]!.yBottom >= (useHeight ? yFrom - group.maxHeight : yFrom));
+        const start = lowerBound(
+          group.cells.length,
+          (i) => group.cells[i]!.yBottom >= (useHeight ? yFrom - group.maxHeight : yFrom),
+        );
         for (let k = start; k < group.cells.length && group.cells[k]!.yBottom <= yTo; k++) {
           const o = group.cells[k]!;
           if (o !== c && test(o)) return true;
@@ -191,7 +223,12 @@ export function isBoxesInVoidsRegion(grid: TableGrid, cells: readonly CellRect[]
   // come within the tolerance of each other (a gap larger than that, on either axis, is no contact).
   const anyBox = index(boxes);
   for (const c of boxes) {
-    if (anyBox(c, c.xRight + CLUSTER_TOLERANCE, c.yBottom - CLUSTER_TOLERANCE, c.yTop + CLUSTER_TOLERANCE, true, (o) => touches(c, o))) return false;
+    if (
+      anyBox(c, c.xRight + CLUSTER_TOLERANCE, c.yBottom - CLUSTER_TOLERANCE, c.yTop + CLUSTER_TOLERANCE, true, (o) =>
+        touches(c, o),
+      )
+    )
+      return false;
   }
   return true;
 }

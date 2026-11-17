@@ -48,7 +48,7 @@ function isLinearized(bytes: Uint8Array): boolean {
   if (start < 0) return false;
   // The dictionary's keys are not in a fixed order (/L may follow /H): we read /L in the same object.
   const end = head.indexOf("endobj", start);
-  const match = /\/L\s+(\d+)/.exec(head.slice(start, end < 0 ? undefined : end));
+  const match = /\/L\s+(\d+)/.exec(end < 0 ? head.slice(start) : head.slice(start, end));
   return match !== null && Number(match[1]) === bytes.length;
 }
 
@@ -72,7 +72,12 @@ function fieldTypeOf(doc: PdfObjectsDocument, field: PdfDict): string | undefine
 
 /** Rule taken from pdf.js's `#hasOnlyDocumentSignatures` (removed since): each field is an INVISIBLE signature (rectangle all zero), and the
  *  fields that have children are examined in turn, ten levels at most. */
-function onlyInvisibleSignatures(doc: PdfObjectsDocument, fields: PdfValue | undefined, depth = 0, seen = new Set<string>()): boolean {
+function onlyInvisibleSignatures(
+  doc: PdfObjectsDocument,
+  fields: PdfValue | undefined,
+  depth = 0,
+  seen = new Set<string>(),
+): boolean {
   const list = doc.resolve(fields);
   if (list?.kind !== "array") return false;
   return list.items.every((item) => {
@@ -85,9 +90,12 @@ function onlyInvisibleSignatures(doc: PdfObjectsDocument, fields: PdfValue | und
     }
     const field = doc.dictOf(item);
     if (field === undefined) return false;
-    if (field.has("Kids")) return depth < MAX_FORM_TREE_DEPTH && onlyInvisibleSignatures(doc, field.get("Kids"), depth + 1, seen);
+    if (field.has("Kids"))
+      return depth < MAX_FORM_TREE_DEPTH && onlyInvisibleSignatures(doc, field.get("Kids"), depth + 1, seen);
     const rect = doc.resolve(field.get("Rect"));
-    const invisible = rect?.kind === "array" && rect.items.every((v) => doc.resolve(v)?.kind === "number" && (doc.resolve(v) as { value: number }).value === 0);
+    const invisible =
+      rect?.kind === "array" &&
+      rect.items.every((v) => doc.resolve(v)?.kind === "number" && (doc.resolve(v) as { value: number }).value === 0);
     return fieldTypeOf(doc, field) === "Sig" && invisible;
   });
 }
@@ -124,7 +132,9 @@ function fieldsOf(doc: PdfObjectsDocument, acro: PdfDict | undefined): PdfDict[]
 
 /** The signatures: `/FT /Sig` fields that carry a `/V` dictionary (§12.8). An empty field is not signed. */
 function signatureCount(doc: PdfObjectsDocument, acro: PdfDict | undefined): number {
-  return fieldsOf(doc, acro).filter((field) => nameOf(doc.resolve(field.get("FT"))) === "Sig" && doc.dictOf(field.get("V")) !== undefined).length;
+  return fieldsOf(doc, acro).filter(
+    (field) => nameOf(doc.resolve(field.get("FT"))) === "Sig" && doc.dictOf(field.get("V")) !== undefined,
+  ).length;
 }
 
 /** The attachments: leaves of the /Names /EmbeddedFiles tree (§7.11.4.2), name + specification pairs. */
@@ -139,7 +149,8 @@ function attachmentCount(doc: PdfObjectsDocument, names: PdfDict | undefined): n
     const leaves = doc.resolve(node.get("Names"));
     if (leaves?.kind === "array") count += Math.floor(leaves.items.length / 2);
     const kids = doc.resolve(node.get("Kids"));
-    if (kids?.kind === "array" && depth < MAX_FORM_TREE_DEPTH) for (const kid of kids.items) visit(doc.dictOf(kid), depth + 1);
+    if (kids?.kind === "array" && depth < MAX_FORM_TREE_DEPTH)
+      for (const kid of kids.items) visit(doc.dictOf(kid), depth + 1);
   };
   visit(tree, 0);
   return count;

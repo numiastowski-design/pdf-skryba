@@ -1,5 +1,5 @@
 /**
- * THE DOOR OF THE PUBLISHED PDF PACKAGE (`skryba`), and nothing else (09/11/2026: « séparer la partie pdf,
+ * THE DOOR OF THE PUBLISHED PDF PACKAGE (`pdf-skryba`, named `skryba` until 0.6.2), and nothing else (09/11/2026: « séparer la partie pdf,
  * pour que skryba ne gère QUE le pdf »).
  *
  * WHY A DOOR AND NOT A FOLDER, for now. The package is an esbuild BUNDLE: what it contains is what its entry REACHES,
@@ -16,7 +16,7 @@
  *
  * Decides: what a third party may call to read a PDF, and nothing more. One name per thing it needs.
  * NOT here: the app's own door (`lib/index.ts`, which still dispatches every format for Miksumia Publisher), the
- * reader-free half (`lib/light.ts`, published as `skryba/light`: the conservation checks, the types, the bounds), nor
+ * reader-free half (`lib/light.ts`, published as `pdf-skryba/light`: the conservation checks, the types, the bounds), nor
  * the readers of the declared formats, which leave for their own package.
  * Called by: nobody in this repository — it is a PUBLISHED door, so its callers are third parties that install
  * the package, and `tools/build-library.ts`, which builds it and holds what it may reach.

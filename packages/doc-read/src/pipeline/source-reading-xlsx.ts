@@ -105,12 +105,41 @@
  *  `pipeline/no-word-lost.test.ts` imports `readXlsxSource`. */
 
 import { NO_CAP, type ReaderLimits } from "doc-ir/lib/reader-limits";
-import { addChartTable, emptyUnitStructure, excludedUnitsOf, guardedSourceAsync, unitOf, type ConservationNumericCell, type ConservationSourceReadFailure, type ConservationUnit, type DeclaredFormatConservationSource, type UnitStructure } from "./conservation-source";
+import {
+  addChartTable,
+  emptyUnitStructure,
+  excludedUnitsOf,
+  guardedSourceAsync,
+  unitOf,
+  type ConservationNumericCell,
+  type ConservationSourceReadFailure,
+  type ConservationUnit,
+  type DeclaredFormatConservationSource,
+  type UnitStructure,
+} from "./conservation-source";
 import { EXCEL_MAX_ROWS, keptCellsResolver, MAX_COLUMN, type SheetCellsResolver } from "./source-chart-reference";
-import { absorbedCells, chartShapesOf, createChartCache, declaredHeaderRowsOf, sheetStructure, type ChartCache, type HeaderDeclaration } from "./source-structure-sheet";
+import {
+  absorbedCells,
+  chartShapesOf,
+  createChartCache,
+  declaredHeaderRowsOf,
+  sheetStructure,
+  type ChartCache,
+  type HeaderDeclaration,
+} from "./source-structure-sheet";
 import { coveredByMerges, type MergeRange } from "./source-reading-table";
 import { resolveTarget } from "../extractor/ooxml/package";
-import { attrOf, first, kidsOf, openSourceParts, structureOnly, stylesOrAbsent, tagOf, textOf, type N } from "./source-reading-package";
+import {
+  attrOf,
+  first,
+  kidsOf,
+  openSourceParts,
+  structureOnly,
+  stylesOrAbsent,
+  tagOf,
+  textOf,
+  type N,
+} from "./source-reading-package";
 
 /** ECMA-376 Part 1 §22.9.2.19 ST_Xstring: a character XML cannot carry is
  *  written `_xHHHH_`, and `_x005F_` a literal underscore. One left-to-right
@@ -259,7 +288,9 @@ const readStyles = async (xmlOf: (path: string) => Promise<N | undefined>): Prom
     if (Number.isFinite(id) && code !== undefined) numFmts.set(id, code);
   }
   const cellXfsEl = first(styles, "cellXfs");
-  const cellXfs = (cellXfsEl ? kidsOf(cellXfsEl).filter((c) => tagOf(c) === "xf") : []).map((xf) => Number(attrOf(xf, "numFmtId") ?? "0"));
+  const cellXfs = (cellXfsEl ? kidsOf(cellXfsEl).filter((c) => tagOf(c) === "xf") : []).map((xf) =>
+    Number(attrOf(xf, "numFmtId") ?? "0"),
+  );
   return { cellXfs, numFmts };
 };
 
@@ -490,25 +521,50 @@ interface KeptCells {
 
 /** The line a visible cell keeps: a filled cell in a hidden row OR column keeps NEITHER line (the caller never gets here for it).
  *  Also what it would show, for the columns the renderer drops. */
-const keepLine = (kept: KeptCells, cell: N, at: { rowNum: number; colNum: number }, shared: readonly string[], numeric: boolean): void => {
+const keepLine = (
+  kept: KeptCells,
+  cell: N,
+  at: { rowNum: number; colNum: number },
+  shared: readonly string[],
+  numeric: boolean,
+): void => {
   const { rowNum, colNum } = at;
   if (!Number.isFinite(rowNum)) return;
   kept.keptRows.add(rowNum);
   kept.keptCols.add(colNum);
   const shown = cellText(cell, shared);
-  kept.keptCells.push({ rowNum, colNum, shows: shown === undefined || shown.trim().length > 0, text: shown ?? textOf(first(cell, "v") ?? {}), numeric });
+  kept.keptCells.push({
+    rowNum,
+    colNum,
+    shows: shown === undefined || shown.trim().length > 0,
+    text: shown ?? textOf(first(cell, "v") ?? {}),
+    numeric,
+  });
 };
 
 /** The text and the numeric source cell a visible cell may bring, expected only once the merges are resolved. */
-const collectCandidates = (kept: KeptCells, cell: N, at: { rowNum: number; colNum: number }, parts: Pick<WorkbookParts, "shared">, cause: "number" | "date" | undefined): void => {
+const collectCandidates = (
+  kept: KeptCells,
+  cell: N,
+  at: { rowNum: number; colNum: number },
+  parts: Pick<WorkbookParts, "shared">,
+  cause: "number" | "date" | undefined,
+): void => {
   const { rowNum, colNum } = at;
   const text = cellText(cell, parts.shared);
   if (text !== undefined && text.length > 0) kept.candidateTexts.push({ text, rowNum, colNum });
-  if (cause !== undefined && Number.isFinite(rowNum)) kept.numericCandidates.push({ ref: `${colLetters(colNum)}${rowNum}`, rowNum, colNum, cause });
+  if (cause !== undefined && Number.isFinite(rowNum))
+    kept.numericCandidates.push({ ref: `${colLetters(colNum)}${rowNum}`, rowNum, colNum, cause });
 };
 
 /** The cells of one row of the sheet data. */
-const readRowCells = (kept: KeptCells, row: N, rowNum: number, hiddenCols: ReadonlySet<number>, parts: Pick<WorkbookParts, "shared" | "styles">): void => {
+const readRowCells = (
+  kept: KeptCells,
+  row: N,
+  rowNum: number,
+  hiddenCols: ReadonlySet<number>,
+  parts: Pick<WorkbookParts, "shared" | "styles">,
+): void => {
   const rowHidden = attrOf(row, "hidden") === "1" || attrOf(row, "hidden") === "true";
   let previousCol = 0;
   for (const cell of kidsOf(row).filter((c) => tagOf(c) === "c")) {
@@ -531,8 +587,19 @@ const readRowCells = (kept: KeptCells, row: N, rowNum: number, hiddenCols: Reado
 };
 
 /** One walk over the cells of the sheet, hidden rows and columns and cells that publish nothing left out. */
-const readKeptCells = (ws: N, hiddenCols: ReadonlySet<number>, parts: Pick<WorkbookParts, "shared" | "styles">): KeptCells => {
-  const kept: KeptCells = { keptRows: new Set(), keptCols: new Set(), candidateTexts: [], numericCandidates: [], hiddenRows: new Set(), keptCells: [] };
+const readKeptCells = (
+  ws: N,
+  hiddenCols: ReadonlySet<number>,
+  parts: Pick<WorkbookParts, "shared" | "styles">,
+): KeptCells => {
+  const kept: KeptCells = {
+    keptRows: new Set(),
+    keptCols: new Set(),
+    candidateTexts: [],
+    numericCandidates: [],
+    hiddenRows: new Set(),
+    keptCells: [],
+  };
   const sheetData = first(ws, "sheetData");
   // §18.3.1.73 row@r and §18.3.1.4 c@r are optional: an absent one is the
   // next after its predecessor (the extractor's rule, `xlsx-cells.ts`).
@@ -559,19 +626,28 @@ const readMergeRanges = (ws: N): MergeRange[] => {
       const [a, b] = (attrOf(m, "ref") ?? "").split(":");
       const from = parseRef(a ?? "");
       const to = parseRef(b ?? a ?? "");
-      if (from && to) mergeRanges.push({
-        r1: Math.min(from.row, to.row),
-        c1: Math.min(from.col, to.col),
-        r2: Math.max(from.row, to.row),
-        c2: Math.max(from.col, to.col),
-      });
+      if (from && to)
+        mergeRanges.push({
+          r1: Math.min(from.row, to.row),
+          c1: Math.min(from.col, to.col),
+          r2: Math.max(from.row, to.row),
+          c2: Math.max(from.col, to.col),
+        });
     }
   }
   return mergeRanges;
 };
 
 /** The expected words of a sheet that publishes a table, and the position of its numeric cells on that table, once the merges are resolved. */
-const placeCells = (name: string, kept: KeptCells, mergeRanges: readonly MergeRange[]): { texts: string[]; numericCells: XlsxNumericCell[]; structureWith: (declared: HeaderDeclaration) => UnitStructure } => {
+const placeCells = (
+  name: string,
+  kept: KeptCells,
+  mergeRanges: readonly MergeRange[],
+): {
+  texts: string[];
+  numericCells: XlsxNumericCell[];
+  structureWith: (declared: HeaderDeclaration) => UnitStructure;
+} => {
   const { keptRows, keptCols, candidateTexts, numericCandidates, keptCells } = kept;
   // The OUTPUT position of a numeric cell is its rank among the sorted
   // kept rows/columns — the exact order `sheet-grid.ts#keptLinesOf` +
@@ -618,22 +694,62 @@ const placeCells = (name: string, kept: KeptCells, mergeRanges: readonly MergeRa
       rows: keptRows.size,
       shownColumns: shownCols.size,
       covered: coveredInShown,
-      absorbed: absorbedCells({ keptRows: sortedRows, keptCols: sortedCols, shownCols, covered: anchorOfCovered, texts: pageTexts, headerRows: declaredHeaderRowsOf(sortedRows, kept.hiddenRows, declared) }),
+      absorbed: absorbedCells({
+        keptRows: sortedRows,
+        keptCols: sortedCols,
+        shownCols,
+        covered: anchorOfCovered,
+        texts: pageTexts,
+        headerRows: declaredHeaderRowsOf(sortedRows, kept.hiddenRows, declared),
+      }),
     });
   return { texts, numericCells, structureWith };
 };
 
 /** The reading of one worksheet part. */
-const readWorksheet = (name: string, ws: N, parts: WorkbookParts, limits: ReaderLimits | undefined): { reading: XlsxSheetReading; structureWith?: (declared: HeaderDeclaration) => UnitStructure; chartCells?: SheetCellsResolver } => {
+const readWorksheet = (
+  name: string,
+  ws: N,
+  parts: WorkbookParts,
+  limits: ReaderLimits | undefined,
+): {
+  reading: XlsxSheetReading;
+  structureWith?: (declared: HeaderDeclaration) => UnitStructure;
+  chartCells?: SheetCellsResolver;
+} => {
   const kept = readKeptCells(ws, readHiddenCols(ws), parts);
   const mergeRanges = readMergeRanges(ws);
-  const withheld = kept.keptRows.size > (limits?.sheetRows ?? NO_CAP) || kept.keptCols.size > (limits?.sheetCols ?? NO_CAP);
+  const withheld =
+    kept.keptRows.size > (limits?.sheetRows ?? NO_CAP) || kept.keptCols.size > (limits?.sheetCols ?? NO_CAP);
   // A withheld sheet publishes no table at all: no numeric cell survives it either, same as its words.
-  if (withheld) return { reading: { name, text: "", numericCells: [], hidden: false, overCap: false, withheld, structure: emptyUnitStructure() } };
+  if (withheld)
+    return {
+      reading: {
+        name,
+        text: "",
+        numericCells: [],
+        hidden: false,
+        overCap: false,
+        withheld,
+        structure: emptyUnitStructure(),
+      },
+    };
   const { texts, numericCells, structureWith } = placeCells(name, kept, mergeRanges);
   // The structure starts EMPTY: `finishStructure` always rebuilds it with the header declaration (computing it here too
   // was pure double work on every kept cell, revue 27/10/2026), and an unreadable declaration must abstain, not keep a draft.
-  return { reading: { name, text: texts.join(" "), numericCells, hidden: false, overCap: false, withheld, structure: emptyUnitStructure() }, structureWith, chartCells: keptCellsResolver(name, kept.keptCells) };
+  return {
+    reading: {
+      name,
+      text: texts.join(" "),
+      numericCells,
+      hidden: false,
+      overCap: false,
+      withheld,
+      structure: emptyUnitStructure(),
+    },
+    structureWith,
+    chartCells: keptCellsResolver(name, kept.keptCells),
+  };
 };
 
 /** What a worksheet DECLARES as header, in 1-based source rows, written on its own from the spec (ISO/IEC 29500-1 §18.5.1.2 `table@ref` and
@@ -654,7 +770,13 @@ const tableHeaderSpans = async (xmlOf: XmlOf, sheetPart: string): Promise<{ star
   for (const rel of rels ? kidsOf(rels) : []) {
     const type = attrOf(rel, "Type");
     const target = attrOf(rel, "Target");
-    if (type === undefined || target === undefined || attrOf(rel, "TargetMode") === "External" || type.slice(type.lastIndexOf("/") + 1) !== "table") continue;
+    if (
+      type === undefined ||
+      target === undefined ||
+      attrOf(rel, "TargetMode") === "External" ||
+      type.slice(type.lastIndexOf("/") + 1) !== "table"
+    )
+      continue;
     const span = tableSpanOf(await xmlOf(resolveTarget(sheetPart, target)));
     if (span !== undefined) spans.push(span);
   }
@@ -704,14 +826,26 @@ const readHeaderDeclaration = async (xmlOf: XmlOf, sheetPart: string, ws: N): Pr
 
 /** The declared header rows are known only from parts the words never read (table parts): the sheet's structure is built again with them, after every
  *  part the words need. A part refused makes only the STRUCTURE of the document abstain. */
-const finishStructure = async (xmlOf: XmlOf, sheetPart: string, ws: N, reading: XlsxSheetReading, structureWith: (declared: HeaderDeclaration) => UnitStructure): Promise<void> => {
+const finishStructure = async (
+  xmlOf: XmlOf,
+  sheetPart: string,
+  ws: N,
+  reading: XlsxSheetReading,
+  structureWith: (declared: HeaderDeclaration) => UnitStructure,
+): Promise<void> => {
   const read = await structureOnly(() => readHeaderDeclaration(xmlOf, sheetPart, ws));
   if ("unreadable" in read) reading.structureUnreadable = true;
   else reading.structure = structureWith(read.value);
 };
 
 /** The charts of a sheet that has a tab (a chartsheet's too, which has no grid) are tables the page adds to it. */
-const addChartTables = async (xmlOf: XmlOf, target: string | undefined, worksheet: N | undefined, sheetRead: { reading: XlsxSheetReading; chartCells?: SheetCellsResolver }, cache: ChartCache): Promise<void> => {
+const addChartTables = async (
+  xmlOf: XmlOf,
+  target: string | undefined,
+  worksheet: N | undefined,
+  sheetRead: { reading: XlsxSheetReading; chartCells?: SheetCellsResolver },
+  cache: ChartCache,
+): Promise<void> => {
   const { reading, chartCells } = sheetRead;
   if (target === undefined || reading.withheld) return;
   // The chartsheet part, the drawing, the relationships and the chart parts: nothing here served the words before the structure control, so a part
@@ -771,10 +905,13 @@ export const readXlsxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
     }
     const ws = slot.ws;
     visibleSoFar++;
-    const read: ReturnType<typeof readWorksheet> = ws ? readWorksheet(name, ws, parts, limits) : { reading: emptySheet(name) };
+    const read: ReturnType<typeof readWorksheet> = ws
+      ? readWorksheet(name, ws, parts, limits)
+      : { reading: emptySheet(name) };
     const reading = read.reading;
     drawn.push(async () => {
-      if (ws !== undefined && target !== undefined && read.structureWith !== undefined) await finishStructure(xmlOf, target, ws, reading, read.structureWith);
+      if (ws !== undefined && target !== undefined && read.structureWith !== undefined)
+        await finishStructure(xmlOf, target, ws, reading, read.structureWith);
       await addChartTables(xmlOf, target, ws, read, charts);
     });
     sheets.push(reading);
@@ -818,7 +955,11 @@ export async function readXlsxConservationSourceUnder(
       deliberateRemovals: [],
       excludedUnits,
       ...(numericCells.length > 0 ? { numericCells } : {}),
-      structure: { units: sheets.map((sheet) => sheet.structure), format: "xlsx", ...(sheets.some((sheet) => sheet.structureUnreadable === true) ? { unreadable: true as const } : {}) },
+      structure: {
+        units: sheets.map((sheet) => sheet.structure),
+        format: "xlsx",
+        ...(sheets.some((sheet) => sheet.structureUnreadable === true) ? { unreadable: true as const } : {}),
+      },
     };
   });
 }

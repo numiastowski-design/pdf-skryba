@@ -12,13 +12,22 @@
  * `discovered` vs `unsupported` vs `shortcut` before any download happens.
  */
 
-import { DOCX_MIME as DOCX, GOOGLE_DOC, GOOGLE_SHEET, GOOGLE_SHORTCUT, GOOGLE_SLIDES, PPTX_MIME as PPTX, XLSX_MIME as XLSX } from "../lib/mime-types";
+import {
+  DOCX_MIME as DOCX,
+  GOOGLE_DOC,
+  GOOGLE_SHEET,
+  GOOGLE_SHORTCUT,
+  GOOGLE_SLIDES,
+  PPTX_MIME as PPTX,
+  XLSX_MIME as XLSX,
+} from "../lib/mime-types";
 
 const PDF = "application/pdf";
 const PNG = "image/png";
 const JPEG = "image/jpeg";
 
-export type SupportedKind = "google-doc" | "google-sheet" | "google-slides" | "docx" | "xlsx" | "pptx" | "pdf" | "image";
+export type SupportedKind =
+  "google-doc" | "google-sheet" | "google-slides" | "docx" | "xlsx" | "pptx" | "pdf" | "image";
 
 /** What the dashboard says when a file is set aside as « unsupported format »
  *  (rules review, 18/09/2026) — one line per `SupportedKind` family,
@@ -28,7 +37,8 @@ export const ACCEPTED_FORMATS_TEXT =
 export type MimeClassification = SupportedKind | "unsupported" | "shortcut";
 
 /** Accepted at all: neither an unsupported type nor a shortcut. The ONE definition of « supported ». */
-export const isSupportedKind = (kind: MimeClassification): kind is SupportedKind => kind !== "unsupported" && kind !== "shortcut";
+export const isSupportedKind = (kind: MimeClassification): kind is SupportedKind =>
+  kind !== "unsupported" && kind !== "shortcut";
 
 /** Spreadsheets are never translated or harmonised: a workbook is an xlsx or a Google Sheet. The ONE definition. */
 export const isWorkbookKind = (kind: MimeClassification): boolean => kind === "xlsx" || kind === "google-sheet";

@@ -11,7 +11,19 @@ import type { PdfDict, PdfStream } from "./pdf-objects/objects";
 import type { PictureScope } from "./pdf-image-pixels";
 import type { DecodedImageObject } from "./pdf-ccitt-images";
 import { alphaOf, maskSupported } from "./pdf-smask";
-import { objectRefOf, componentsOfSpace, decodeArrayOf, entryOf, jpegFrameOf, nameOf, numberOf, pictureSizeOk, withDecode, cmykToRgb, rgbOf } from "./pdf-image-pixels";
+import {
+  objectRefOf,
+  componentsOfSpace,
+  decodeArrayOf,
+  entryOf,
+  jpegFrameOf,
+  nameOf,
+  numberOf,
+  pictureSizeOk,
+  withDecode,
+  cmykToRgb,
+  rgbOf,
+} from "./pdf-image-pixels";
 
 type Decodes = readonly (readonly [number, number])[] | undefined;
 
@@ -60,7 +72,12 @@ function rawBytesOf(doc: PdfObjectsDocument, stream: PdfStream): Uint8Array | un
 }
 
 /** The JPEG image `name` of the page, as an object the image reader takes (RGB, 24 bits), or `undefined` when not decoded here. */
-export function jpegImageObjectOf(doc: PdfObjectsDocument, scope: PictureScope, name: string, kinds: { rgb: number; rgba: number }): DecodedImageObject | undefined {
+export function jpegImageObjectOf(
+  doc: PdfObjectsDocument,
+  scope: PictureScope,
+  name: string,
+  kinds: { rgb: number; rgba: number },
+): DecodedImageObject | undefined {
   const xobjects = doc.dictOf(scope.resources?.get("XObject"));
   const declared = xobjects?.get(name);
   const stream = doc.resolve(declared);
@@ -74,7 +91,8 @@ export function jpegImageObjectOf(doc: PdfObjectsDocument, scope: PictureScope, 
   // A JPEG whose own size differs from the dictionary's is drawn at the dictionary's size, resampled as pdf.js did (RGB,
   // grey and CMYK: measured byte for byte).
   const frame = jpegFrameOf(raw);
-  if (frame === undefined || frame.components !== spaceComponents || !pictureSizeOk(frame.width, frame.height)) return undefined;
+  if (frame === undefined || frame.components !== spaceComponents || !pictureSizeOk(frame.width, frame.height))
+    return undefined;
   const ref = objectRefOf(declared);
   const alpha = maskStream !== undefined ? () => alphaOf(doc, maskStream, width, height) : undefined;
   // Decoded on first read, once (a JPEG the reader copies from its own bytes is never decoded). A decode that fails
@@ -113,7 +131,8 @@ function pixelsOf(
   alpha: (() => Uint8Array | undefined) | undefined,
 ): Uint8Array {
   const { components, decodes, width, height } = layout;
-  const rgb = components === 4 ? cmykToRgb(raw, decodes, { width, height }) : withDecode(rgbOf(raw, { width, height }), decodes);
+  const rgb =
+    components === 4 ? cmykToRgb(raw, decodes, { width, height }) : withDecode(rgbOf(raw, { width, height }), decodes);
   if (rgb === undefined || rgb.width !== width || rgb.height !== height) return new Uint8Array(0);
   if (alpha === undefined) return rgb.data;
   const a = alpha();

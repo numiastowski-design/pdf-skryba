@@ -14,7 +14,8 @@ export class MemoryBudget {
 
   constructor(maxBytes: number) {
     // A caller's bug, not the stream's: NaN would compare false, i.e. no guard at all.
-    if (!Number.isFinite(maxBytes) || maxBytes < 0) throw new Error("MemoryBudget: maxBytes must be a finite number >= 0");
+    if (!Number.isFinite(maxBytes) || maxBytes < 0)
+      throw new Error("MemoryBudget: maxBytes must be a finite number >= 0");
     this.maxBytes = maxBytes;
   }
 

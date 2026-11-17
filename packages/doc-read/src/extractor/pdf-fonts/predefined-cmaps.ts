@@ -127,7 +127,8 @@ function rangesOf(collection: string): CidRanges {
   const [first, last, cid] = COLUMNS[collection]!;
   const codes = { first: columnOf(first), last: columnOf(last), cid: columnOf(cid) };
   let highest = 0;
-  for (let at = 0; at < codes.first.length; at++) highest = Math.max(highest, codes.cid[at]! + (codes.last[at]! - codes.first[at]!));
+  for (let at = 0; at < codes.first.length; at++)
+    highest = Math.max(highest, codes.cid[at]! + (codes.last[at]! - codes.first[at]!));
   const built: CidRanges = { ...codes, highest };
   tables.set(collection, built);
   return built;

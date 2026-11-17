@@ -104,7 +104,14 @@ export const fillBetween = (text: string, linkAt: (number | undefined)[], target
     const link = linkAt[c];
     const isWord = WORD_CHAR.test(text[c]!);
     const before = left[c];
-    if (link === undefined && !isWord && before !== undefined && next !== undefined && targetOf(before) === targetOf(next)) linkAt[c] = before;
+    if (
+      link === undefined &&
+      !isWord &&
+      before !== undefined &&
+      next !== undefined &&
+      targetOf(before) === targetOf(next)
+    )
+      linkAt[c] = before;
     // `next` is read from the ORIGINAL marks: a character filled here was unlinked punctuation, transparent either way.
     if (link !== undefined) next = link;
     else if (isWord) next = undefined;
@@ -121,7 +128,11 @@ export const linkSpansOfPage = <T extends PdfTextRun>(
 ): Map<T, PdfLinkSpan[]> => linkTieOfPage(runs, glyphs, annotations).spansByRun;
 
 /** A run whose words some link covers: its glyph per code unit, and each covered word with the links that cover it. */
-type PlacedRun<T> = { run: T; at: (GlyphFragment | undefined)[]; words: { start: number; end: number; links: number[] }[] };
+type PlacedRun<T> = {
+  run: T;
+  at: (GlyphFragment | undefined)[];
+  words: { start: number; end: number; links: number[] }[];
+};
 
 /** Rules 1 to 3: ties each word of each run to the links whose rectangle holds the centre of all its glyphs. A link
  *  that is only partly on a word, that covers one word with another target, or that sits on a run the glyphs do not
@@ -163,7 +174,12 @@ function tieWordsToLinks<T extends PdfTextRun>(
 
 /** Rule 4, glued punctuation: outward from a linked word character, in both directions, while the glyph centre stays
  *  in the link's rectangle. Fills `linkAt` in place. */
-function extendGluedPunctuation(text: string, at: readonly (GlyphFragment | undefined)[], linkAt: (number | undefined)[], links: readonly PdfLinkAnnotation[]): void {
+function extendGluedPunctuation(
+  text: string,
+  at: readonly (GlyphFragment | undefined)[],
+  linkAt: (number | undefined)[],
+  links: readonly PdfLinkAnnotation[],
+): void {
   for (let c = 0; c < text.length; c++) {
     const link = linkAt[c];
     if (link === undefined || !WORD_CHAR.test(text[c]!)) continue;
@@ -196,7 +212,12 @@ function linkIndexPerChar<T extends PdfTextRun>(
 }
 
 /** Notes each glyph's link in `glyphLink`: its href, or `null` when two characters it paints disagree. */
-function noteGlyphLinks(glyphLink: Map<GlyphFragment, string | null>, at: readonly (GlyphFragment | undefined)[], linkAt: readonly (number | undefined)[], links: readonly PdfLinkAnnotation[]): void {
+function noteGlyphLinks(
+  glyphLink: Map<GlyphFragment, string | null>,
+  at: readonly (GlyphFragment | undefined)[],
+  linkAt: readonly (number | undefined)[],
+  links: readonly PdfLinkAnnotation[],
+): void {
   for (let c = 0; c < linkAt.length; c++) {
     const glyph = at[c];
     if (glyph === undefined) continue;

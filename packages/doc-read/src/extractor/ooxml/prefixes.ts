@@ -67,7 +67,8 @@ export const CANONICAL_PREFIX: Record<string, string> = {
 };
 
 /** The canonical prefix of a namespace URI, own keys only: « toString » or « constructor » is no namespace. */
-export const canonicalPrefixOf = (uri: string): string | undefined => (Object.hasOwn(CANONICAL_PREFIX, uri) ? CANONICAL_PREFIX[uri] : undefined);
+export const canonicalPrefixOf = (uri: string): string | undefined =>
+  Object.hasOwn(CANONICAL_PREFIX, uri) ? CANONICAL_PREFIX[uri] : undefined;
 
 /** What `renamed` reads of a scope: the namespace URI bound to a prefix (`""`: the default namespace). */
 export interface PrefixScope {

@@ -33,7 +33,10 @@ const numberOfEntry = (dict: PDFDict, key: string): number | undefined => {
  * `pdf-lib` refuses to open it before this function can say anything about it.
  */
 export function readStandardSecurity(doc: PDFDocument): StandardSecurity | "clear" | "unsupported" {
-  const ctx = doc.context as unknown as { lookup: (x: unknown) => unknown; trailerInfo: { Encrypt?: unknown; ID?: unknown } };
+  const ctx = doc.context as unknown as {
+    lookup: (x: unknown) => unknown;
+    trailerInfo: { Encrypt?: unknown; ID?: unknown };
+  };
   const encRaw = ctx.trailerInfo.Encrypt;
   if (encRaw === undefined) return "clear";
   const enc = ctx.lookup(encRaw);

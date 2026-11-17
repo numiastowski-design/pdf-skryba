@@ -12,7 +12,13 @@
 import { maxOf, minOf } from "doc-ir/lib/extent";
 import type { ImageRef } from "doc-ir/lib/ir";
 import { groupIntoReseatedLines, SAME_LINE_TOLERANCE } from "doc-ir/layout/baseline-lines";
-import { dominantSizeByChars, LEADING_CALL_GAP_EM, SUPERSCRIPT_MAX_RISE_EM, SUPERSCRIPT_MAX_SIZE_RATIO, SUPERSCRIPT_MIN_RISE_EM } from "doc-ir/layout/superscript";
+import {
+  dominantSizeByChars,
+  LEADING_CALL_GAP_EM,
+  SUPERSCRIPT_MAX_RISE_EM,
+  SUPERSCRIPT_MAX_SIZE_RATIO,
+  SUPERSCRIPT_MIN_RISE_EM,
+} from "doc-ir/layout/superscript";
 import type { Line, PositionedItem, TextRun } from "./pdf-model";
 
 export { SAME_LINE_TOLERANCE };
@@ -146,7 +152,12 @@ export const groupItemsIntoLines = <T extends PositionedItem>(pageItems: readonl
     pageItems.filter((it) => it.rotated === true),
     (it) => it.fontSize,
   );
-  const lines = liftDropCaps(groupIntoReseatedLines(pageItems.filter((it) => it.rotated !== true), (it) => it.fontSize));
+  const lines = liftDropCaps(
+    groupIntoReseatedLines(
+      pageItems.filter((it) => it.rotated !== true),
+      (it) => it.fontSize,
+    ),
+  );
   for (const line of turned) {
     const y = line[0]!.y;
     const before = lines.findIndex((other) => other[0]!.y < y);
@@ -172,7 +183,8 @@ const twoLettersShape = /^\p{L}{2}$/u;
  *  `MIN_DROP_CAP_RATIO` smaller than it: « Le » of « Le Monde » in 30 pt under a 12 pt kicker (review 06/11/2026). A real
  *  drop cap shares its baseline with body lines only. The pieces of one letter (« C’ ») keep the old rule. */
 const isTitleWord = (cap: PositionedItem, line: readonly PositionedItem[]): boolean =>
-  twoLettersShape.test(cap.text.trim()) && line.some((it) => it !== cap && it.text.trim() !== "" && it.fontSize * MIN_DROP_CAP_RATIO > cap.fontSize);
+  twoLettersShape.test(cap.text.trim()) &&
+  line.some((it) => it !== cap && it.text.trim() !== "" && it.fontSize * MIN_DROP_CAP_RATIO > cap.fontSize);
 
 /** 🔴 THE DROP-CAP RULE, IN ONE PLACE (13/11/2026). `extractor/pdf-page-plan.ts` applies the same one to say which
  *  line a drop cap SHOULD open inside its own column; a rule written twice diverges, so the three pieces below are
@@ -197,7 +209,11 @@ export const inkOfLine = (line: readonly PositionedItem[]): LineInk | undefined 
 /** The line is overhung by the cap: baseline between the cap's baseline and its top, starting to the right of its left
  *  edge, in a body at most half its size (tested first: the cheapest refusal). The highest such line receives the cap. */
 export const isOverhungBy = (cap: PositionedItem, ink: LineInk | undefined): boolean =>
-  ink !== undefined && ink.size * MIN_DROP_CAP_RATIO <= cap.fontSize && ink.y > cap.y && ink.y < cap.y + cap.fontSize && ink.left > cap.x;
+  ink !== undefined &&
+  ink.size * MIN_DROP_CAP_RATIO <= cap.fontSize &&
+  ink.y > cap.y &&
+  ink.y < cap.y + cap.fontSize &&
+  ink.left > cap.x;
 
 const liftDropCaps = <T extends PositionedItem>(lines: T[][]): T[][] => {
   const out = lines.map((line) => [...line]);
@@ -211,7 +227,7 @@ const liftDropCaps = <T extends PositionedItem>(lines: T[][]): T[][] => {
       if (target < 0) continue;
       out[li] = out[li]!.filter((it) => it !== cap);
       out[target]!.unshift(cap);
-      inks[li] = inkOfLine(out[li]!);
+      inks[li] = inkOfLine(out[li]);
       inks[target] = inkOfLine(out[target]!);
     }
   }
@@ -229,7 +245,8 @@ const trimBlankEnds = (group: readonly PositionedItem[]): readonly PositionedIte
 };
 
 /** The item of a line that stands on the line's baseline: the first ink item of the dominant size. */
-const hostOf = (measured: readonly PositionedItem[], size: number): PositionedItem | undefined => measured.find((it) => it.fontSize === size && it.text.trim() !== "");
+const hostOf = (measured: readonly PositionedItem[], size: number): PositionedItem | undefined =>
+  measured.find((it) => it.fontSize === size && it.text.trim() !== "");
 
 /**
  * A NOTE CALL OR AN ORDINAL SUFFIX IS A TOKEN OF ITS OWN (19/10/2026, corpus 008 p5 « Money2. », 261 p4-5 « supraterane3. »,
@@ -240,9 +257,19 @@ const hostOf = (measured: readonly PositionedItem[], size: number): PositionedIt
  * text was refused: it would write « 18 th », a letter-spaced ordinal the document does not have.
  */
 const isRaisedCall = (it: PositionedItem, host: PositionedItem | undefined, size: number): boolean => {
-  if (host === undefined || it === host || it.text.trim() === "" || !(it.x > host.x || opensAsNoteNumber(it, host, size))) return false;
+  if (
+    host === undefined ||
+    it === host ||
+    it.text.trim() === "" ||
+    !(it.x > host.x || opensAsNoteNumber(it, host, size))
+  )
+    return false;
   const rise = it.y - host.y;
-  return it.fontSize <= SUPERSCRIPT_MAX_SIZE_RATIO * size && rise > SUPERSCRIPT_MIN_RISE_EM * size && rise <= SUPERSCRIPT_MAX_RISE_EM * size;
+  return (
+    it.fontSize <= SUPERSCRIPT_MAX_SIZE_RATIO * size &&
+    rise > SUPERSCRIPT_MIN_RISE_EM * size &&
+    rise <= SUPERSCRIPT_MAX_RISE_EM * size
+  );
 };
 
 /**
@@ -334,9 +361,22 @@ export const linesFromGroups = (
           if (last !== undefined && last.marker === undefined && last.href === undefined) last.text += sep;
           else runs.push({ text: sep, bold: false });
         }
-        runs.push({ text: lead + pieces[0]!.text, bold, ...(italic ? { italic } : {}), ...(href !== undefined ? { href } : {}), ...(sup ? { sup } : {}) });
+        runs.push({
+          text: lead + pieces[0]!.text,
+          bold,
+          ...(italic ? { italic } : {}),
+          ...(href !== undefined ? { href } : {}),
+          ...(sup ? { sup } : {}),
+        });
       }
-      for (const piece of pieces.slice(1)) runs.push({ text: piece.text, bold, ...(italic ? { italic } : {}), ...(piece.href !== undefined ? { href: piece.href } : {}), ...(sup ? { sup } : {}) });
+      for (const piece of pieces.slice(1))
+        runs.push({
+          text: piece.text,
+          bold,
+          ...(italic ? { italic } : {}),
+          ...(piece.href !== undefined ? { href: piece.href } : {}),
+          ...(sup ? { sup } : {}),
+        });
     }
     // THE EDGES ARE MEASURED ON THE REAL TEXT, never on `unpdf`'s FILLER
     // items — those `str: " "` whose width covers ALL the visual
@@ -356,7 +396,10 @@ export const linesFromGroups = (
       left: minOf(measured, (it) => it.x),
       right: maxOf(measured, (it) => it.x + it.width),
       // The first word of THIS line: measured from its own left edge, never from the leftmost column at that height.
-      firstWordWidth: firstWordWidthAt(all[0]!.y, minOf(measured, (it) => it.x)),
+      firstWordWidth: firstWordWidthAt(
+        all[0]!.y,
+        minOf(measured, (it) => it.x),
+      ),
       ...(firstWordEstimate !== undefined ? { firstWordEstimate } : {}),
       maxInnerGap: inner.gap,
       ...(inner.end !== undefined ? { valueStart: inner.end } : {}),
@@ -405,14 +448,17 @@ const estimateFirstWord = (run: PositionedItem | undefined): number | undefined 
  * that carries the title.
  */
 const dominantSize = <T extends { text: string; fontSize: number }>(items: readonly T[]): number =>
-  dominantSizeByChars(items, (it) => it.text, (it) => it.fontSize);
+  dominantSizeByChars(
+    items,
+    (it) => it.text,
+    (it) => it.fontSize,
+  );
 
 export const linesFromItems = (
   pageItems: readonly PositionedItem[],
   isBold?: (item: PositionedItem) => boolean,
   firstWordWidthAt?: (y: number, left?: number) => number,
-): Line[] =>
-  linesFromGroups(groupItemsIntoLines(pageItems), isBold, firstWordWidthAt);
+): Line[] => linesFromGroups(groupItemsIntoLines(pageItems), isBold, firstWordWidthAt);
 
 /**
  * Does a page carry USABLE text — not just lines?

@@ -136,7 +136,12 @@ const requireTableId = (id: number, max: number): void => {
 export const componentDims = (
   frame: JpegFrame,
   c: JpegComponent,
-): { readonly realWidth: number; readonly realHeight: number; readonly blocksPerLine: number; readonly blocksPerColumn: number } => {
+): {
+  readonly realWidth: number;
+  readonly realHeight: number;
+  readonly blocksPerLine: number;
+  readonly blocksPerColumn: number;
+} => {
   const realWidth = Math.ceil((frame.width * c.h) / frame.maxH);
   const realHeight = Math.ceil((frame.height * c.v) / frame.maxV);
   return { realWidth, realHeight, blocksPerLine: Math.ceil(realWidth / 8), blocksPerColumn: Math.ceil(realHeight / 8) };
@@ -217,7 +222,15 @@ const requireSupportedMarker = (marker: number): void => {
   if (UNSUPPORTED.has(marker) || (marker >= 0xc0 && marker <= 0xcf && marker !== DHT && !(marker in PROCESS_OF))) {
     throw refuse("unsupported process");
   }
-  const known = marker in PROCESS_OF || marker === DHT || marker === DQT || marker === DRI || marker === SOS || marker === DNL || marker === COM || isApp(marker);
+  const known =
+    marker in PROCESS_OF ||
+    marker === DHT ||
+    marker === DQT ||
+    marker === DRI ||
+    marker === SOS ||
+    marker === DNL ||
+    marker === COM ||
+    isApp(marker);
   if (!known) throw refuse("unexpected marker");
 };
 
@@ -231,10 +244,27 @@ const readSegmentLength = (bytes: Uint8Array, at: number): number => {
 
 /** An APPn or COM segment: only the JFIF APP0 and the Adobe APP14 are kept. */
 const readAppSegment = (marker: number, p: Uint8Array, state: ParseState): void => {
-  if (marker === 0xe0 && p.length >= 5 && p[0] === 0x4a && p[1] === 0x46 && p[2] === 0x49 && p[3] === 0x46 && p[4] === 0) state.jfif = true;
+  if (
+    marker === 0xe0 &&
+    p.length >= 5 &&
+    p[0] === 0x4a &&
+    p[1] === 0x46 &&
+    p[2] === 0x49 &&
+    p[3] === 0x46 &&
+    p[4] === 0
+  )
+    state.jfif = true;
   // "Adobe", then version, flags0, flags1 (two bytes each), then the
   // transform: payload byte 11 (the layout jpeg-js and IJG read).
-  if (marker === 0xee && p.length >= 12 && p[0] === 0x41 && p[1] === 0x64 && p[2] === 0x6f && p[3] === 0x62 && p[4] === 0x65) {
+  if (
+    marker === 0xee &&
+    p.length >= 12 &&
+    p[0] === 0x41 &&
+    p[1] === 0x64 &&
+    p[2] === 0x6f &&
+    p[3] === 0x62 &&
+    p[4] === 0x65
+  ) {
     state.adobe = { transform: p[11]! };
   }
 };
@@ -262,7 +292,8 @@ const readDqt = (p: Uint8Array, state: ParseState): void => {
     if (i + 1 + size > p.length) throw refuse("bad quantization table");
     const table = readQuantTable(p, i, pq);
     const previous = state.quantTables[tq];
-    if (state.quantInUse.has(tq) && previous && previous.some((q, k) => q !== table[k])) throw refuse("quantization table changed after use");
+    if (state.quantInUse.has(tq) && previous && previous.some((q, k) => q !== table[k]))
+      throw refuse("quantization table changed after use");
     state.quantTables[tq] = table;
     i += 1 + size;
   }
@@ -295,7 +326,13 @@ const readScanSegment = (bytes: Uint8Array, at: number, p: Uint8Array, state: Pa
   const header = readScanHeader(frame, p, state.dcTables, state.acTables, state.quantTables);
   for (const c of header.components) state.quantInUse.add(frame.components[c.componentIndex]!.tq);
   const end = entropyEnd(bytes, at);
-  scans.push({ ...header, restartInterval: state.restartInterval, dcTables: [...state.dcTables], acTables: [...state.acTables], data: bytes.subarray(at, end) });
+  scans.push({
+    ...header,
+    restartInterval: state.restartInterval,
+    dcTables: [...state.dcTables],
+    acTables: [...state.acTables],
+    data: bytes.subarray(at, end),
+  });
   return end;
 };
 
@@ -324,7 +361,8 @@ const readSegment = (bytes: Uint8Array, marker: number, p: Uint8Array, at: numbe
 };
 
 export const parseJpeg = (bytes: Uint8Array, guard: JpegGuard): JpegStructure => {
-  if (!Number.isFinite(guard.maxPixels) || guard.maxPixels < 0) throw new Error("parseJpeg: maxPixels must be a finite number >= 0");
+  if (!Number.isFinite(guard.maxPixels) || guard.maxPixels < 0)
+    throw new Error("parseJpeg: maxPixels must be a finite number >= 0");
   if (bytes.length < 2 || bytes[0] !== 0xff || bytes[1] !== SOI) throw refuse("not a jpeg stream");
 
   const state: ParseState = {
@@ -413,7 +451,10 @@ const readScanHeader = (
   // T.81 B.2.3, G.1.1.1: a DC scan has Ss = Se = 0; an AC scan 1 <= Ss <= Se <= 63, one component; a refinement
   // adds one bit (Al = Ah - 1). Checked here, before `jpeg/decode.ts` sums the work of the scans: a scan with
   // Ss > Se counted negatively there (counter-review of 06/10/2026).
-  const validProgressive = (ss === 0 ? se === 0 : ss <= se && se <= 63 && count === 1) && (ah === 0 || al === ah - 1) && al <= MAX_SUCCESSIVE_BIT;
+  const validProgressive =
+    (ss === 0 ? se === 0 : ss <= se && se <= 63 && count === 1) &&
+    (ah === 0 || al === ah - 1) &&
+    al <= MAX_SUCCESSIVE_BIT;
   if (progressive && !validProgressive) throw refuse("bad progressive scan parameters");
   const needDc = !progressive || (ss === 0 && ah === 0);
   const needAc = !progressive || se > 0;
@@ -421,7 +462,8 @@ const readScanHeader = (
   const components: JpegScanComponent[] = [];
   for (let i = 0; i < count; i++) {
     const componentIndex = frame.components.findIndex((c) => c.id === p[1 + 2 * i]);
-    if (componentIndex < 0 || components.some((c) => c.componentIndex === componentIndex)) throw refuse("scan names an unknown component");
+    if (componentIndex < 0 || components.some((c) => c.componentIndex === componentIndex))
+      throw refuse("scan names an unknown component");
     const td = p[2 + 2 * i]! >> 4;
     const ta = p[2 + 2 * i]! & 15;
     requireTableId(td, maxTable);
@@ -431,7 +473,10 @@ const readScanHeader = (
     components.push({ componentIndex, td, ta });
   }
   if (count > 1) {
-    const blocks = components.reduce((sum, c) => sum + frame.components[c.componentIndex]!.h * frame.components[c.componentIndex]!.v, 0);
+    const blocks = components.reduce(
+      (sum, c) => sum + frame.components[c.componentIndex]!.h * frame.components[c.componentIndex]!.v,
+      0,
+    );
     if (blocks > MAX_BLOCKS_PER_MCU) throw refuse("too many blocks per mcu");
   }
   return { components, ss, se, ah, al };

@@ -58,26 +58,30 @@ export const tsconfigOf = (pkg: LibraryPackage): string => join(pkg.dir, "tsconf
 
 
 /** Shared with the test, so that the package measured is the one that will be published. ESM: the repository is in
- *  modules, and a new package has no reason to be born CommonJS. Minified, for the reason written at `minify` below. */
+ *  modules, and a new package has no reason to be born CommonJS. */
 export const LIBRARY_BUILD_OPTIONS = {
   bundle: true,
   platform: "node",
   target: "node20",
   format: "esm",
-  // NO COMMENT LEAVES (security review of 30/10/2026). The bundle carried six that named the maintainer, cited
-  // internal arbitrations, `docs/` paths and even the CONTENT of a fixture — the words of a real document, exactly what
-  // the repository's rule keeps out of everything shipped. Without minification, esbuild copies the source's comments;
-  // `legalComments` only touches the licence ones. Minification is therefore what removes them, and it is the usual
-  // choice for a published package: whoever wants to read the code reads the SOURCES, public under AGPL.
-  // (The Forge functions stay unminified: their stack traces go to OUR logs, a consumer's never come back to us.)
-  minify: true,
   legalComments: "none",
   logLevel: "warning",
 } satisfies BuildOptions;
 
+/** THREE FILES PER DOOR, AS `pdfjs-dist` SHIPS THEM (decided 17/11/2026): `<door>.js`, readable, the one a consumer gets;
+ *  `<door>.js.map`, its source map, the sources in clear; `<door>.min.js`, the same code minified, for whoever asks.
+ *  THIS REVERSES the security review of 30/10/2026, which shipped the minified file ALONE so that no comment left: the
+ *  bundle carried six that named the maintainer, cited internal arbitrations, `docs/` paths and the words of a fixture.
+ *  Its reason is gone: the sources are public since 14/11/2026, comments included. What a publication must still never
+ *  carry — a person's name, a path of the author's machine, a test file — is held by `build-library.test.ts` on the
+ *  built files, map included.
+ *  (The Forge functions stay unminified for another reason: their stack traces go to OUR logs.) */
+const READABLE_DOOR = { minify: false, sourcemap: "linked", sourcesContent: true } satisfies BuildOptions;
+const MINIFIED_DOOR = { minify: true, sourcemap: false } satisfies BuildOptions;
+
 /** What the bundle REALLY swallowed, as told by esbuild itself: the repository files it carried, and the packages it
- *  left outside. Returned rather than re-read from the bundle's text — once minified, that text holds neither a
- *  provenance comment nor any formatting to rely on (security review of 30/10/2026). */
+ *  left outside. Returned rather than re-read from the bundle's text: esbuild's own account is the one that cannot drift
+ *  from what it wrote. */
 export interface BuiltGraph {
   /** Repository paths, separators normalised (`packages/doc-read/src/extractor/pdf.ts`). */
   inputs: string[];
@@ -160,7 +164,10 @@ export const buildLibrary = async (pkg: LibraryPackage, outDir = distDirOf(pkg))
   const inputs = new Set<string>();
   const external = new Set<string>();
   for (const [name, entry] of Object.entries(pkg.entries)) {
-    const result = await build({ ...LIBRARY_BUILD_OPTIONS, external: [...pkg.external], entryPoints: [entry], outfile: join(outDir, `${name}.js`), metafile: true });
+    const door = { ...LIBRARY_BUILD_OPTIONS, external: [...pkg.external], entryPoints: [entry] } satisfies BuildOptions;
+    const result = await build({ ...door, ...READABLE_DOOR, outfile: join(outDir, `${name}.js`), metafile: true });
+    // The same graph, minified: what it swallowed is read from the readable build alone.
+    await build({ ...door, ...MINIFIED_DOOR, outfile: join(outDir, `${name}.min.js`) });
     for (const file of Object.keys(result.metafile.inputs)) inputs.add(file.replaceAll("\\", "/"));
     for (const output of Object.values(result.metafile.outputs)) {
       for (const imported of output.imports) if (imported.external === true) external.add(imported.path);

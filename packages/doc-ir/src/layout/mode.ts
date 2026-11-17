@@ -16,7 +16,9 @@ export function modeOf<K extends number>(counts: ReadonlyMap<K, number>, tie: Mo
   for (const [key, count] of counts) {
     const wins =
       count > bestCount ||
-      (count === bestCount && best !== undefined && ((tie === "smallest" && key < best) || (tie === "largest" && key > best)));
+      (count === bestCount &&
+        best !== undefined &&
+        ((tie === "smallest" && key < best) || (tie === "largest" && key > best)));
     if (wins) {
       best = key;
       bestCount = count;

@@ -20,7 +20,16 @@ import type { PdfDict, PdfStream } from "./pdf-objects/objects";
 import type { PictureScope } from "./pdf-image-pixels";
 import type { DecodedImageObject } from "./pdf-ccitt-images";
 import { alphaOf, maskSupported } from "./pdf-smask";
-import { objectRefOf, componentsOfSpace, entryOf, indexedOf, nameOf, numberOf, pictureSizeOk, unpackSamples } from "./pdf-image-pixels";
+import {
+  objectRefOf,
+  componentsOfSpace,
+  entryOf,
+  indexedOf,
+  nameOf,
+  numberOf,
+  pictureSizeOk,
+  unpackSamples,
+} from "./pdf-image-pixels";
 
 type Palette = NonNullable<ReturnType<typeof indexedOf>>;
 
@@ -44,7 +53,12 @@ function flateDictSupported(doc: PdfObjectsDocument, dict: PdfDict): boolean {
   // un masque. Lus par la présence, ces trois entrées refusaient une image ordinaire ici ET sur le chemin octet pour
   // octet, alors que `pdf-ops-ours.ts` la peignait bien comme une image : la page la perdait (`entryOf`).
   const imageMask = entryOf(doc, dict, "ImageMask");
-  if (entryOf(doc, dict, "Mask") !== undefined || entryOf(doc, dict, "Decode") !== undefined || (imageMask?.kind === "bool" && imageMask.value)) return false;
+  if (
+    entryOf(doc, dict, "Mask") !== undefined ||
+    entryOf(doc, dict, "Decode") !== undefined ||
+    (imageMask?.kind === "bool" && imageMask.value)
+  )
+    return false;
   const bpc = numberOf(doc.resolve(dict.get("BitsPerComponent")));
   if (bpc !== 1 && bpc !== 2 && bpc !== 4 && bpc !== 8) return false;
   const parms = doc.dictOf(doc.resolve(dict.get("DecodeParms")));
@@ -56,7 +70,8 @@ function flateLayoutOf(doc: PdfObjectsDocument, dict: PdfDict): FlateLayout | un
   const bpc = numberOf(doc.resolve(dict.get("BitsPerComponent")));
   const width = numberOf(doc.resolve(dict.get("Width")));
   const height = numberOf(doc.resolve(dict.get("Height")));
-  if (bpc === undefined || width === undefined || height === undefined || !pictureSizeOk(width, height)) return undefined;
+  if (bpc === undefined || width === undefined || height === undefined || !pictureSizeOk(width, height))
+    return undefined;
   const space = doc.resolve(dict.get("ColorSpace"));
   // An indexed picture: one index per pixel, looked up in the palette (its highest index clamps, as pdf.js's `IndexedCS`).
   const palette = indexedOf(doc, space);
@@ -73,7 +88,12 @@ function flateLayoutOf(doc: PdfObjectsDocument, dict: PdfDict): FlateLayout | un
  *  made those pictures reachable at all (they were refused before, so the defect could not show). `pdf-smask.ts`
  *  already scaled its own samples this way: the two readers of the same thing now agree.
  *  The palette branch does NOT scale, and must not: an index is an index, never a colour. */
-function writeSampleColours(samples: Uint8Array, layout: FlateLayout, pixels: number, into: { data: Uint8Array; channels: number }): void {
+function writeSampleColours(
+  samples: Uint8Array,
+  layout: FlateLayout,
+  pixels: number,
+  into: { data: Uint8Array; channels: number },
+): void {
   const { data, channels } = into;
   const { components, bpc } = layout;
   const stride = components === 3 ? 3 : 1;
@@ -103,7 +123,12 @@ function writeSampleColours(samples: Uint8Array, layout: FlateLayout, pixels: nu
 
 /** The palette entry of each index in the three channels (its highest index clamps, as pdf.js's `IndexedCS`): the three
  *  components of the entry for a colour palette, its single one three times for a grey palette. */
-function writePaletteColours(samples: Uint8Array, palette: Palette, pixels: number, into: { data: Uint8Array; channels: number }): void {
+function writePaletteColours(
+  samples: Uint8Array,
+  palette: Palette,
+  pixels: number,
+  into: { data: Uint8Array; channels: number },
+): void {
   const { data, channels } = into;
   const step = palette.base === 3 ? 1 : 0;
   for (let i = 0; i < pixels; i += 1) {
@@ -138,7 +163,11 @@ function samplesOf(doc: PdfObjectsDocument, stream: PdfStream, layout: FlateLayo
 /** What the picture's `/SMask` gives: an `alpha` for a mask we read, an `alpha` of `undefined` for a picture that has no
  *  mask at all (an opaque one), and `undefined` for a mask we do NOT read — a refusal, because publishing such a picture
  *  opaque would show what the mask hides. */
-function maskOf(doc: PdfObjectsDocument, dict: PdfDict, size: { width: number; height: number }): { alpha: Uint8Array | undefined } | undefined {
+function maskOf(
+  doc: PdfObjectsDocument,
+  dict: PdfDict,
+  size: { width: number; height: number },
+): { alpha: Uint8Array | undefined } | undefined {
   const smask = doc.resolve(dict.get("SMask"));
   // An absent `/SMask`, or one that is not a stream (`/SMask null` is written by real producers): an opaque picture.
   if (smask?.kind !== "stream") return { alpha: undefined };
@@ -150,7 +179,12 @@ function maskOf(doc: PdfObjectsDocument, dict: PdfDict, size: { width: number; h
 /** The Flate or uncoded picture `name` of the page, as the object the image reader takes: RGBA with its soft mask, RGB
  *  without one. `undefined` when it is not decoded here (a mask we do not read, a picture we do not read, or a refusal
  *  of the reader). */
-export function flateImageObjectOf(doc: PdfObjectsDocument, scope: PictureScope, name: string, kinds: { rgb: number; rgba: number }): DecodedImageObject | undefined {
+export function flateImageObjectOf(
+  doc: PdfObjectsDocument,
+  scope: PictureScope,
+  name: string,
+  kinds: { rgb: number; rgba: number },
+): DecodedImageObject | undefined {
   const xobjects = doc.dictOf(scope.resources?.get("XObject"));
   const declared = xobjects?.get(name);
   const stream = doc.resolve(declared);
@@ -163,5 +197,11 @@ export function flateImageObjectOf(doc: PdfObjectsDocument, scope: PictureScope,
   const samples = samplesOf(doc, stream, layout);
   if (samples === undefined) return undefined;
   const data = pixelsOf(samples, mask.alpha, layout);
-  return { ref: objectRefOf(declared), width: layout.width, height: layout.height, kind: mask.alpha === undefined ? kinds.rgb : kinds.rgba, data };
+  return {
+    ref: objectRefOf(declared),
+    width: layout.width,
+    height: layout.height,
+    kind: mask.alpha === undefined ? kinds.rgb : kinds.rgba,
+    data,
+  };
 }

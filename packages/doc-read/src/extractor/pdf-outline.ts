@@ -35,7 +35,12 @@ export interface OutlineNode {
 
 /** Title of a bookmark: cut, normalised, then cut (normalisation can lengthen or shorten). */
 const bookmarkTitle = (raw: string): string =>
-  raw.trim().slice(0, 2 * OUTLINE_TITLE_MAX_CHARS).normalize("NFKC").trim().slice(0, OUTLINE_TITLE_MAX_CHARS);
+  raw
+    .trim()
+    .slice(0, 2 * OUTLINE_TITLE_MAX_CHARS)
+    .normalize("NFKC")
+    .trim()
+    .slice(0, OUTLINE_TITLE_MAX_CHARS);
 
 /** The tree flattened in reading order. A tree that is too large (or has no title) gives `undefined`: a partial list
  *  would demote real headings. Every node counts, titled or not, so that a hostile tree stays bounded. */

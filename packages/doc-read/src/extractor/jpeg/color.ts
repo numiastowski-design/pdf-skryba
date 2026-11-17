@@ -47,12 +47,12 @@ import { componentDims, refuse, type JpegFrame } from "./markers";
  * no real sample yet: open limit.
  */
 
-
 const clamp = (a: number): number => (a < 0 ? 0 : a > 255 ? 255 : a);
 
 /** YCbCr to RGB, one channel at a time (a tuple would allocate once per pixel); the expressions keep their float order. */
 const ycbcrRed = (y: number, cr: number): number => clamp(y + 1.402 * (cr - 128));
-const ycbcrGreen = (y: number, cb: number, cr: number): number => clamp(y - 0.344136 * (cb - 128) - 0.714136 * (cr - 128));
+const ycbcrGreen = (y: number, cb: number, cr: number): number =>
+  clamp(y - 0.344136 * (cb - 128) - 0.714136 * (cr - 128));
 const ycbcrBlue = (y: number, cb: number): number => clamp(y + 1.772 * (cb - 128));
 
 /** For each output column (or row), the sample index it reads in a plane. */
@@ -138,7 +138,12 @@ const fillLine = (source: RowSource, y: number, width: number): void => {
   }
 };
 
-export const toRgba = (frame: JpegFrame, planes: readonly SamplePlane[], adobe: { transform: number } | undefined, out: Uint8Array): void => {
+export const toRgba = (
+  frame: JpegFrame,
+  planes: readonly SamplePlane[],
+  adobe: { transform: number } | undefined,
+  out: Uint8Array,
+): void => {
   const { width, height } = frame;
   const count = frame.components.length;
   if (count === 3 && adobe && adobe.transform === 0) throw refuse("adobe rgb colour transform not supported");

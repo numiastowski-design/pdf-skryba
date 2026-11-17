@@ -42,7 +42,14 @@ const framed = (run: PdfTextRun): Framed => {
   const n = Math.hypot(run.matrix.a, run.matrix.b);
   const ax = run.matrix.a / n;
   const ay = run.matrix.b / n;
-  return { run, text: run.text, x: run.x * ax + run.y * ay, y: -run.x * ay + run.y * ax, width: run.width, fontSize: run.fontSize };
+  return {
+    run,
+    text: run.text,
+    x: run.x * ax + run.y * ay,
+    y: -run.x * ay + run.y * ax,
+    width: run.width,
+    fontSize: run.fontSize,
+  };
 };
 
 /** One line of runs, in reading order, as a single copy of its first run. */
@@ -63,7 +70,10 @@ const pushTo = <V>(map: Map<string, V[]>, key: string, value: V): void => {
 const framedByDirection = (runs: readonly PdfTextRun[]): Map<string, Framed[]> => {
   const byDirection = new Map<string, Framed[]>();
   for (const run of runs) {
-    const key = writingDirectionTurned(run.matrix) && (run as PositionedItem).links === undefined && run.text.trim() !== "" ? directionKey(run) : undefined;
+    const key =
+      writingDirectionTurned(run.matrix) && (run as PositionedItem).links === undefined && run.text.trim() !== ""
+        ? directionKey(run)
+        : undefined;
     if (key !== undefined) pushTo(byDirection, key, framed(run));
   }
   return byDirection;
@@ -73,10 +83,15 @@ const framedByDirection = (runs: readonly PdfTextRun[]): Map<string, Framed[]> =
  * `runs` with every line of several rotated runs replaced by one run. `onCopy(copy, source)` is told each copy and the run it stands for
  * (the first of the line), like the other enrichments of `pdf.ts#enrichRuns`. The same array when nothing is merged.
  */
-export function gatherRotatedLines(runs: readonly PdfTextRun[], onCopy: (copy: PdfTextRun, source: PdfTextRun) => void): readonly PdfTextRun[] {
+export function gatherRotatedLines(
+  runs: readonly PdfTextRun[],
+  onCopy: (copy: PdfTextRun, source: PdfTextRun) => void,
+): readonly PdfTextRun[] {
   const copyOf = new Map<PdfTextRun, PdfTextRun>();
   const swallowed = new Set<PdfTextRun>();
-  const lines = [...framedByDirection(runs).values()].flatMap((items) => groupByBaseline(items).filter((line) => line.length >= 2));
+  const lines = [...framedByDirection(runs).values()].flatMap((items) =>
+    groupByBaseline(items).filter((line) => line.length >= 2),
+  );
   for (const line of lines) {
     const copy = merged(line);
     copyOf.set(line[0]!.run, copy);

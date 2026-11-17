@@ -25,7 +25,17 @@ import type { Box } from "doc-ir/layout/slide-elements";
 import { IDENTITY_MATRIX } from "doc-ir/layout/painted-paths";
 import type { Relationship } from "./ooxml/package";
 import { attributeOf, findChild, findChildren, findDescendants, qualifiedNameOf, type XNode } from "./ooxml/xml";
-import { type ColorContext, elements, exactColorOf, type Hex, type PptxFill, schemeOf, solidFillColor, styleFill, writtenFillOf } from "./pptx-reader/color";
+import {
+  type ColorContext,
+  elements,
+  exactColorOf,
+  type Hex,
+  type PptxFill,
+  schemeOf,
+  solidFillColor,
+  styleFill,
+  writtenFillOf,
+} from "./pptx-reader/color";
 import { frameOf, type Frame, FULL_TURN, QUARTER_TURN, visibleBox } from "./pptx-reader/geometry";
 import { guidesOf, presetOf } from "./pptx-reader/shape-parts";
 import { bodyOf, type PptxTextShape } from "./pptx-reader/shapes";
@@ -82,24 +92,39 @@ const isUpright = (upright: string | undefined): boolean => upright === "1" || u
  *  rectangle's centre ([MS-ODRAWXML] §2.5.40; the shape's own turn comes on top, about the frame's centre). `undefined` when the rule is
  *  not known and the words are left out: stacked glyphs, `upright`, a `bodyPr rot` (the standard does not say which of the two wins
  *  with `txXfrm rot`), a mirrored shape. 0 occurrences of those in 355 documents (measured 20/10/2026). */
-const textPlacement = (sp: XNode, frame: Frame, body: XNode | undefined): { textFrame: Frame; textTurn: number | undefined; swapped: boolean } => {
+const textPlacement = (
+  sp: XNode,
+  frame: Frame,
+  body: XNode | undefined,
+): { textFrame: Frame; textTurn: number | undefined; swapped: boolean } => {
   const tx = frameOf(findChild(sp, "dsp:txXfrm"));
   const textFrame = tx ?? frame;
   if (body === undefined) return { textFrame, textTurn: 0, swapped: false };
   const bodyPr = findChild(body, "a:bodyPr") ?? {};
   const upright = attributeOf(bodyPr, "upright");
   const vert = VERT_TURN.get(attributeOf(bodyPr, "vert") ?? "horz");
-  const unknown = vert === undefined || isUpright(upright) || Number(attributeOf(bodyPr, "rot") ?? "0") !== 0 || frame.flipH || frame.flipV;
+  const unknown =
+    vert === undefined ||
+    isUpright(upright) ||
+    Number(attributeOf(bodyPr, "rot") ?? "0") !== 0 ||
+    frame.flipH ||
+    frame.flipV;
   // `vert` turns the glyphs but leaves the written width and height of the box as they are (a `txXfrm rot`, the hexagons', has them swapped
   // by Office already): with a quarter `vert` the lines run along the written HEIGHT, so the box is laid with its sides swapped.
-  return { textFrame, textTurn: unknown ? undefined : folded((tx?.rot ?? 0) + vert), swapped: !unknown && vert !== 0 && vert % (2 * QUARTER_TURN) !== 0 };
+  return {
+    textFrame,
+    textTurn: unknown ? undefined : folded((tx?.rot ?? 0) + vert),
+    swapped: !unknown && vert !== 0 && vert % (2 * QUARTER_TURN) !== 0,
+  };
 };
 
 const boxOf = (f: Frame): Box => ({ x: f.x, y: f.y, cx: f.cx, cy: f.cy });
 
 /** The guides a traced preset reads: a hexagon's `vf`, a chord's `adj1` and `adj2` (those written). */
 const presetGuides = (guides: Readonly<Record<string, number>>): { vf?: number; adj1?: number; adj2?: number } =>
-  Object.fromEntries((["vf", "adj1", "adj2"] as const).filter((name) => guides[name] !== undefined).map((name) => [name, guides[name]]));
+  Object.fromEntries(
+    (["vf", "adj1", "adj2"] as const).filter((name) => guides[name] !== undefined).map((name) => [name, guides[name]]),
+  );
 
 /** One `dsp:sp`, in the drawing's own space (EMU, origin the frame's corner). */
 const readShape = (sp: XNode, rank: number, context: ColorContext | undefined): PptxTextShape => {
@@ -111,7 +136,8 @@ const readShape = (sp: XNode, rank: number, context: ColorContext | undefined): 
   const guides = guidesOf(spPr);
   const fontColor = fontColorOf(style, context);
   const colors: RunColors = { ...(context === undefined ? {} : { context }), inherited: () => fontColor };
-  const paragraphs: PptxParagraph[] = body === undefined ? [] : findChildren(body, "a:p").map((p) => readParagraph(p, NO_RELATIONSHIPS, colors));
+  const paragraphs: PptxParagraph[] =
+    body === undefined ? [] : findChildren(body, "a:p").map((p) => readParagraph(p, NO_RELATIONSHIPS, colors));
   // `bodyOf` marks every `vert` as a turned text (right for a slide); `textPlacement` knows the ones that are only a turn.
   const bodyRead = bodyOf(body ?? {});
   delete bodyRead.turnedText;
@@ -150,7 +176,11 @@ const readShape = (sp: XNode, rank: number, context: ColorContext | undefined): 
 export type DrawingRead = { shapes: PptxTextShape[] } | "too-many";
 
 /** The shapes of a `dsp:drawing` root, in the drawing's own space. `context`: the colours of the part that holds the frame. */
-export const readSmartArtDrawing = (root: XNode, context: ColorContext | undefined, limits?: ReaderLimits): DrawingRead => {
+export const readSmartArtDrawing = (
+  root: XNode,
+  context: ColorContext | undefined,
+  limits?: ReaderLimits,
+): DrawingRead => {
   const sps = findDescendants(root, "dsp:sp");
   if (sps.length > (limits?.slideElements ?? NO_CAP)) return "too-many";
   // Office writes the tints and shades of its colour styles on the drawing's colours (`tint 40000`, `lumMod`…): resolved here, for a
@@ -168,7 +198,13 @@ export const placeShapes = (shapes: readonly PptxTextShape[], origin: { x: numbe
     ...(s.box === undefined ? {} : { box: movedBox(s.box, origin.x, origin.y) }),
     ...(s.smartArt === undefined
       ? {}
-      : { smartArt: { ...s.smartArt, frame: movedBox(s.smartArt.frame, origin.x, origin.y), textBox: movedBox(s.smartArt.textBox, origin.x, origin.y) } }),
+      : {
+          smartArt: {
+            ...s.smartArt,
+            frame: movedBox(s.smartArt.frame, origin.x, origin.y),
+            textBox: movedBox(s.smartArt.textBox, origin.x, origin.y),
+          },
+        }),
   }));
 
 /** The colours a Word document's SmartArt text and fills resolve through: the document's theme (`word/theme/theme1.xml`) with the

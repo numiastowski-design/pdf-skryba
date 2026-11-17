@@ -181,7 +181,9 @@ const ROWS: ReadonlyArray<readonly [number, number]> = [
   [0xf5, 0x2321], // integralbt
 ];
 
-export const SYMBOL_FONT_TABLE: ReadonlyMap<number, string> = new Map(ROWS.map(([code, unicode]) => [code, String.fromCodePoint(unicode)]));
+export const SYMBOL_FONT_TABLE: ReadonlyMap<number, string> = new Map(
+  ROWS.map(([code, unicode]) => [code, String.fromCodePoint(unicode)]),
+);
 
 const POINT_TO_CODE_OFFSET = 0xf000;
 const POINTS = /[\uF020-\uF0FF]/;
@@ -189,7 +191,9 @@ const POINTS_ALL = /[\uF020-\uF0FF]/g;
 
 /** `text` with each point U+F020–U+F0FF that has an entry replaced by its character; the same string when none. */
 export const symbolFontText = (text: string): string =>
-  POINTS.test(text) ? text.replace(POINTS_ALL, (point) => SYMBOL_FONT_TABLE.get(point.charCodeAt(0) - POINT_TO_CODE_OFFSET) ?? point) : text;
+  POINTS.test(text)
+    ? text.replace(POINTS_ALL, (point) => SYMBOL_FONT_TABLE.get(point.charCodeAt(0) - POINT_TO_CODE_OFFSET) ?? point)
+    : text;
 
 /** Symbol by its name only (subset prefix and style suffix allowed): Segoe UI Symbol and SymbolNeu are Unicode fonts. */
 const SYMBOL_FONT_NAME = /^(?:[A-Z]{6}\+)?Symbol(?:MT)?(?:[,-](?:Bold|Italic|BoldItalic))?$/i;

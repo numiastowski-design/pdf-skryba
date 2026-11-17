@@ -38,9 +38,9 @@ const IDENTITY: Transform = IDENTITY_MATRIX;
 /** `outer` after `inner`: a point goes through `inner` first (`composeMatrix` takes the first-applied map first). */
 const compose = (outer: Transform, inner: Transform): Transform => composeMatrix(inner, outer);
 
-const apply = (t: Transform, x: number, y: number): [number, number] => {
-  const p = applyMatrix(t, x, y);
-  return [p.x, p.y];
+const apply = (transform: Transform, x: number, y: number): [number, number] => {
+  const point = applyMatrix(transform, x, y);
+  return [point.x, point.y];
 };
 
 /** ST_Angle: 60 000ths of a degree, clockwise (y points down). */
@@ -66,12 +66,12 @@ const cosSin = (rot: number): readonly [number, number] => {
 /** Rotation by `rot` then (applied first) the flips, about (cx, cy). */
 const turnAbout = (rot: number, flipH: boolean, flipV: boolean, cx: number, cy: number): Transform => {
   const [cos, sin] = cosSin(rot);
-  const sx = flipH ? -1 : 1;
-  const sy = flipV ? -1 : 1;
-  const a = cos * sx;
-  const b = sin * sx;
-  const c = -sin * sy;
-  const d = cos * sy;
+  const scaleX = flipH ? -1 : 1;
+  const scaleY = flipV ? -1 : 1;
+  const a = cos * scaleX;
+  const b = sin * scaleX;
+  const c = -sin * scaleY;
+  const d = cos * scaleY;
   return { a, b, c, d, e: cx - a * cx - c * cy, f: cy - b * cx - d * cy };
 };
 
@@ -87,8 +87,8 @@ const MAX_COORDINATE_EMU = 27_273_042_329_600;
 const integer = (node: XNode | undefined, name: string): number | undefined => {
   const raw = node === undefined ? undefined : attributeOf(node, name);
   if (raw === undefined || raw.trim() === "") return undefined;
-  const n = Number(raw);
-  return Number.isInteger(n) && Math.abs(n) <= MAX_COORDINATE_EMU ? n : undefined;
+  const value = Number(raw);
+  return Number.isInteger(value) && Math.abs(value) <= MAX_COORDINATE_EMU ? value : undefined;
 };
 
 const flag = (node: XNode, name: string): boolean => {
@@ -97,14 +97,18 @@ const flag = (node: XNode, name: string): boolean => {
 
 /** A declared frame: `a:off` and `a:ext` as written, `rot` (0 when absent). */
 export interface Frame {
-  x: number;
-  y: number;
-  cx: number;
-  cy: number;
-  rot: number;
-  flipH: boolean;
-  flipV: boolean;
+  readonly x: number;
+  readonly y: number;
+  readonly cx: number;
+  readonly cy: number;
+  readonly rot: number;
+  readonly flipH: boolean;
+  readonly flipV: boolean;
 }
+
+/** A frame's own rotation and flips, about its centre. */
+const ownTurn = (frame: Frame): Transform =>
+  turnAbout(frame.rot, frame.flipH, frame.flipV, frame.x + frame.cx / 2, frame.y + frame.cy / 2);
 
 /** The frame an `a:xfrm` (or `p:xfrm`) declares; `undefined` without an
  *  integer `a:off` and `a:ext`. */
@@ -125,8 +129,8 @@ export const frameOf = (xfrm: XNode | undefined): Frame | undefined => {
  *  `a:off`/`a:ext`, then its flips and rotation about its centre), and
  *  whether that scale is uneven (x and y scaled differently). */
 export interface GroupLevel {
-  map: Transform;
-  uneven: boolean;
+  readonly map: Transform;
+  readonly uneven: boolean;
 }
 
 /** Starting value to calibrate: the relative gap between x and y scales
@@ -136,8 +140,8 @@ export interface GroupLevel {
  *  real stretch is a gap of several percent. Neither population measured. */
 const UNEVEN_RELATIVE_GAP = 1e-4;
 
-const unevenScale = (sx: number, sy: number): boolean =>
-  Math.abs(sx - sy) > UNEVEN_RELATIVE_GAP * Math.max(Math.abs(sx), Math.abs(sy));
+const unevenScale = (scaleX: number, scaleY: number): boolean =>
+  Math.abs(scaleX - scaleY) > UNEVEN_RELATIVE_GAP * Math.max(Math.abs(scaleX), Math.abs(scaleY));
 
 /** A group's level, from its `p:grpSpPr`. An axis whose `chExt` is 0 or
  *  absent is not scaled; absent `chOff` is `off`. `undefined` for a group
@@ -153,11 +157,10 @@ export const groupLevel = (grpSpPr: XNode | undefined): GroupLevel | undefined =
   const chY = integer(chOff, "y") ?? frame.y;
   const chCx = integer(chExt, "cx");
   const chCy = integer(chExt, "cy");
-  const sx = chCx === undefined || chCx === 0 ? 1 : frame.cx / chCx;
-  const sy = chCy === undefined || chCy === 0 ? 1 : frame.cy / chCy;
-  const scale: Transform = { a: sx, b: 0, c: 0, d: sy, e: frame.x - chX * sx, f: frame.y - chY * sy };
-  const turn = turnAbout(frame.rot, frame.flipH, frame.flipV, frame.x + frame.cx / 2, frame.y + frame.cy / 2);
-  return { map: compose(turn, scale), uneven: unevenScale(sx, sy) };
+  const scaleX = chCx === undefined || chCx === 0 ? 1 : frame.cx / chCx;
+  const scaleY = chCy === undefined || chCy === 0 ? 1 : frame.cy / chCy;
+  const scale: Transform = { a: scaleX, b: 0, c: 0, d: scaleY, e: frame.x - chX * scaleX, f: frame.y - chY * scaleY };
+  return { map: compose(ownTurn(frame), scale), uneven: unevenScale(scaleX, scaleY) };
 };
 
 /** The map from the innermost group's child coordinates to the slide:
@@ -167,10 +170,11 @@ export const throughGroups = (levels: readonly GroupLevel[]): Transform =>
 
 /** The map is a turn or a mirror: anything but a move and a positive scale
  *  of each axis. */
-export const turnsOrMirrors = (t: Transform): boolean => t.b !== 0 || t.c !== 0 || t.a < 0 || t.d < 0;
+export const turnsOrMirrors = (transform: Transform): boolean =>
+  transform.b !== 0 || transform.c !== 0 || transform.a < 0 || transform.d < 0;
 
 /** `Math.round`, without the -0 it returns for -0.5 … -0. */
-const round = (v: number): number => Math.round(v) + 0;
+const round = (value: number): number => Math.round(value) + 0;
 
 /** The two ends of a line shape (a connector) on the slide, in integer EMU:
  *  its geometry runs from the frame's top-left corner (the start, where
@@ -179,14 +183,14 @@ const round = (v: number): number => Math.round(v) + 0;
  *  carry both. A flip swaps which corners the line joins; the box alone
  *  cannot say it. Each coordinate rounded to the nearest EMU. */
 export interface LineEnds {
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
+  readonly x1: number;
+  readonly y1: number;
+  readonly x2: number;
+  readonly y2: number;
 }
 
 export const lineEnds = (frame: Frame, parent: Transform): LineEnds => {
-  const turn = compose(parent, turnAbout(frame.rot, frame.flipH, frame.flipV, frame.x + frame.cx / 2, frame.y + frame.cy / 2));
+  const turn = compose(parent, ownTurn(frame));
   const [x1, y1] = apply(turn, frame.x, frame.y);
   const [x2, y2] = apply(turn, frame.x + frame.cx, frame.y + frame.cy);
   return { x1: round(x1), y1: round(y1), x2: round(x2), y2: round(y2) };
@@ -210,10 +214,10 @@ export const visibleBox = (frame: Frame, parent: Transform): Box => {
     apply(turn, frame.x, frame.y + frame.cy),
     apply(turn, frame.x + frame.cx, frame.y + frame.cy),
   ];
-  const left = round(Math.min(...corners.map((p) => p[0])));
-  const top = round(Math.min(...corners.map((p) => p[1])));
-  const right = round(Math.max(...corners.map((p) => p[0])));
-  const bottom = round(Math.max(...corners.map((p) => p[1])));
+  const left = round(Math.min(...corners.map((corner) => corner[0])));
+  const top = round(Math.min(...corners.map((corner) => corner[1])));
+  const right = round(Math.max(...corners.map((corner) => corner[0])));
+  const bottom = round(Math.max(...corners.map((corner) => corner[1])));
   return { x: left, y: top, cx: right - left, cy: bottom - top };
 };
 
@@ -236,9 +240,9 @@ export const placePicture = (
   frame: Frame,
   levels: readonly GroupLevel[],
 ): { frame: Box; matrix?: Transform } | "stretched-turn" => {
-  let below = turnAbout(frame.rot, frame.flipH, frame.flipV, frame.x + frame.cx / 2, frame.y + frame.cy / 2);
-  for (let i = levels.length - 1; i >= 0; i--) {
-    const level = levels[i]!;
+  let below = ownTurn(frame);
+  for (let levelIndex = levels.length - 1; levelIndex >= 0; levelIndex--) {
+    const level = levels[levelIndex]!;
     if (level.uneven && (below.b !== 0 || below.c !== 0)) return "stretched-turn";
     below = compose(level.map, below);
   }
@@ -257,8 +261,8 @@ export const placePicture = (
 
 /** A vertex on the slide, in integer EMU. */
 export interface Point {
-  x: number;
-  y: number;
+  readonly x: number;
+  readonly y: number;
 }
 
 /** A bent connector's vertices, from its start to its end, in the frame's
@@ -274,8 +278,13 @@ export interface Point {
  *  Every adj defaults to 50 000. An adj outside [0, 100 000] is kept: it puts
  *  the elbow outside the frame, which PowerPoint writes and draws.
  *  `undefined` for any other preset. */
-const bentVertices = (preset: string, w: number, h: number, adj: (name: string) => number): [number, number][] | undefined => {
-  const at = (size: number, name: string): number => (size * adj(name)) / 100_000;
+const bentVertices = (
+  preset: string,
+  w: number,
+  h: number,
+  adj: (name: string) => number,
+): [number, number][] | undefined => {
+  const guidePosition = (size: number, name: string): number => (size * adj(name)) / 100_000;
   switch (preset) {
     case "bentConnector2":
       return [
@@ -284,7 +293,7 @@ const bentVertices = (preset: string, w: number, h: number, adj: (name: string) 
         [w, h],
       ];
     case "bentConnector3": {
-      const x1 = at(w, "adj1");
+      const x1 = guidePosition(w, "adj1");
       return [
         [0, 0],
         [x1, 0],
@@ -293,8 +302,8 @@ const bentVertices = (preset: string, w: number, h: number, adj: (name: string) 
       ];
     }
     case "bentConnector4": {
-      const x1 = at(w, "adj1");
-      const y2 = at(h, "adj2");
+      const x1 = guidePosition(w, "adj1");
+      const y2 = guidePosition(h, "adj2");
       return [
         [0, 0],
         [x1, 0],
@@ -304,9 +313,9 @@ const bentVertices = (preset: string, w: number, h: number, adj: (name: string) 
       ];
     }
     case "bentConnector5": {
-      const x1 = at(w, "adj1");
-      const x3 = at(w, "adj3");
-      const y2 = at(h, "adj2");
+      const x1 = guidePosition(w, "adj1");
+      const x3 = guidePosition(w, "adj3");
+      const y2 = guidePosition(h, "adj2");
       return [
         [0, 0],
         [x1, 0],
@@ -338,9 +347,9 @@ export const bentPath = (
 ): Point[] | undefined => {
   const vertices = bentVertices(preset, frame.cx, frame.cy, (name) => adj[name] ?? DEFAULT_BENT_ADJ);
   if (vertices === undefined) return undefined;
-  const turn = compose(parent, turnAbout(frame.rot, frame.flipH, frame.flipV, frame.x + frame.cx / 2, frame.y + frame.cy / 2));
-  return vertices.map(([vx, vy]) => {
-    const [x, y] = apply(turn, frame.x + vx, frame.y + vy);
+  const turn = compose(parent, ownTurn(frame));
+  return vertices.map(([vertexX, vertexY]) => {
+    const [x, y] = apply(turn, frame.x + vertexX, frame.y + vertexY);
     return { x: round(x), y: round(y) };
   });
 };

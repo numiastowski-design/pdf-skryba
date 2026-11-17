@@ -45,21 +45,43 @@ import { NO_CAP, type ReaderLimits } from "doc-ir/lib/reader-limits";
 import type { PageLanguage } from "doc-ir/lib/reader-types";
 import { type PageLabelOverride, resolveLabels } from "doc-ir/lib/page-labels";
 import { isSymbolFont, symbolFontText } from "doc-ir/lib/symbol-font";
-import { addChartTable, emptyUnitStructure, excludedUnitsOf, guardedSourceAsync, unitOf, type ConservationSourceReadFailure, type ConservationUnit, type DeclaredFormatConservationSource, type UnitStructure } from "./conservation-source";
+import {
+  addChartTable,
+  emptyUnitStructure,
+  excludedUnitsOf,
+  guardedSourceAsync,
+  unitOf,
+  type ConservationSourceReadFailure,
+  type ConservationUnit,
+  type DeclaredFormatConservationSource,
+  type UnitStructure,
+} from "./conservation-source";
 import { createBulletReader } from "./source-structure-pptx";
 import { addHeading } from "./structure-counts";
 import { resolveTarget } from "../extractor/ooxml/package";
 import { chartReadOf, type ChartRead } from "./source-reading-chart";
 import { smartArtPieces, smartArtRelIds } from "./source-reading-smartart";
 import { placeRowCells, tableWithheld, type CoveredRange, type GridRow, type LayoutCell } from "./source-reading-table";
-import { attrOf, first, kidsOf, openSourceParts, pushAll, structureOnly, tagOf, textOf, type N } from "./source-reading-package";
+import {
+  attrOf,
+  first,
+  kidsOf,
+  openSourceParts,
+  pushAll,
+  structureOnly,
+  tagOf,
+  textOf,
+  type N,
+} from "./source-reading-package";
 
 /** A run's text, its Symbol-font private-use points translated when its `a:rPr` sets the Symbol font (`a:sym` or `a:latin`), like the
  *  page (`extractor/pptx-reader/text.ts#isSymbolRun`, 26/10/2026). */
 const symbolRunText = (run: N, text: string): string => {
   const rPr = first(run, "a:rPr");
   // A written a:sym decides alone, like the page.
-  return isSymbolFont(attrOf(first(rPr, "a:sym") ?? first(rPr, "a:latin") ?? {}, "typeface")) ? symbolFontText(text) : text;
+  return isSymbolFont(attrOf(first(rPr, "a:sym") ?? first(rPr, "a:latin") ?? {}, "typeface"))
+    ? symbolFontText(text)
+    : text;
 };
 
 /** Every descendant tagged `tag`, in document order; a match is not searched inside. */
@@ -88,7 +110,11 @@ const isHiddenAttr = (v: string | undefined): boolean => {
  *  this reading's own count: a cell is as wide as its `gridSpan` (clamped to the declared grid columns right of it), a cell absorbed by a merge (`hMerge`, `vMerge`) is no cell and the ones after it shift left, a cell starts right of the columns a `rowSpan` above still covers, and the first
  *  row is a header row only when `a:tblPr firstRow` is on. `cellTexts[row][cell]` holds the paragraphs of each `a:tc` (none when absorbed).
  *  Cost O(rows x live ranges + cells), whatever the spans (`source-reading-cost.test.ts`). */
-const tableIsWithheld = (tbl: N, cellTexts: readonly (readonly (readonly string[])[])[], limits: ReaderLimits | undefined): boolean => {
+const tableIsWithheld = (
+  tbl: N,
+  cellTexts: readonly (readonly (readonly string[])[])[],
+  limits: ReaderLimits | undefined,
+): boolean => {
   const headerRow = isOn(attrOf(first(tbl, "a:tblPr") ?? {}, "firstRow"));
   const rowSpanOf = (tc: N): number => {
     const n = Number.parseInt(attrOf(tc, "rowSpan") ?? "1", 10);
@@ -111,13 +137,22 @@ const tableIsWithheld = (tbl: N, cellTexts: readonly (readonly (readonly string[
       const span = Number.parseInt(attrOf(tc, "gridSpan") ?? "1", 10);
       const room = declaredColumns - c;
       const width = Number.isInteger(span) && span > 1 && room > 1 ? Math.min(span, room) : 1;
-      laidOut.push({ span: width, filled: (cellTexts[r]?.[c] ?? []).some((p) => p.trim() !== ""), rowspan: rowSpanOf(tc) });
+      laidOut.push({
+        span: width,
+        filled: (cellTexts[r]?.[c] ?? []).some((p) => p.trim() !== ""),
+        rowspan: rowSpanOf(tc),
+      });
     });
     const row = placeRowCells(covered, laidOut, r, trs.length);
     covered = row.covered;
     const cells = row.placed;
     const live = tcs.filter((tc) => !isOn(attrOf(tc, "hMerge")) && !isOn(attrOf(tc, "vMerge")));
-    const emptyHeader = headerRow && r === 0 && live.length > 0 && cells.every((cell) => !cell.filled) && live.every((tc) => rowSpanOf(tc) <= 1);
+    const emptyHeader =
+      headerRow &&
+      r === 0 &&
+      live.length > 0 &&
+      cells.every((cell) => !cell.filled) &&
+      live.every((tc) => rowSpanOf(tc) <= 1);
     return { cells, emptyHeader };
   });
   return tableWithheld(rows, limits);
@@ -214,7 +249,11 @@ export const readPptxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
       })
       .join("");
   const bodyText = (body: N | undefined, shownNumber: number): string[] =>
-    body ? kidsOf(body).filter((c) => tagOf(c) === "a:p").map((p) => paragraphText(p, shownNumber)) : [];
+    body
+      ? kidsOf(body)
+          .filter((c) => tagOf(c) === "a:p")
+          .map((p) => paragraphText(p, shownNumber))
+      : [];
 
   const chartRead = async (partPath: string): Promise<ChartRead> => {
     const chart = await xmlOf(partPath);
@@ -323,14 +362,20 @@ export const readPptxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
         .map((tr) =>
           kidsOf(tr)
             .filter((k) => tagOf(k) === "a:tc")
-            .map((tc) => (isOn(attrOf(tc, "hMerge")) || isOn(attrOf(tc, "vMerge")) ? [] : bodyText(first(tc, "a:txBody"), shownNumber))),
+            .map((tc) =>
+              isOn(attrOf(tc, "hMerge")) || isOn(attrOf(tc, "vMerge"))
+                ? []
+                : bodyText(first(tc, "a:txBody"), shownNumber),
+            ),
         );
       // A table the page does not publish expects none of its words (the same rule as the page: `source-reading-table.ts`).
       const withheld = tableIsWithheld(tbl, cellTexts, limits);
       if (!withheld) for (const texts of cellTexts.flat()) pushAll(own, texts);
       unit.declared.tables++;
       if (withheld) unit.withheld.tables++;
-      for (const tc of allOf(tbl, "a:tc")) if (!isOn(attrOf(tc, "hMerge")) && !isOn(attrOf(tc, "vMerge"))) countItems(undefined, first(tc, "a:txBody"), withheld);
+      for (const tc of allOf(tbl, "a:tc"))
+        if (!isOn(attrOf(tc, "hMerge")) && !isOn(attrOf(tc, "vMerge")))
+          countItems(undefined, first(tc, "a:txBody"), withheld);
     };
     /** A frame that is not a table: a chart (its words, and the table the page holds for it) or a SmartArt (its data model's words, which the page publishes in its diagram text). */
     const readObjectFrame = async (data: N | undefined): Promise<void> => {
@@ -351,7 +396,9 @@ export const readPptxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
     let titleSeen = false;
 
     const hidden = (el: N): boolean =>
-      kidsOf(el).some((nv) => tagOf(nv).startsWith("p:nv") && isHiddenAttr(attrOf(first(nv, "p:cNvPr") ?? {}, "hidden")));
+      kidsOf(el).some(
+        (nv) => tagOf(nv).startsWith("p:nv") && isHiddenAttr(attrOf(first(nv, "p:cNvPr") ?? {}, "hidden")),
+      );
 
     const walk = async (t: N, topLevel = true): Promise<void> => {
       for (const el of kidsOf(t)) {
@@ -371,7 +418,10 @@ export const readPptxSource = async (bytes: Uint8Array, limits?: ReaderLimits): 
           // The first shape declaring itself the title; a title WITH an idx is a column header.
           if (!titleSeen && ph && attrOf(ph, "idx") === undefined && (type === "title" || type === "ctrTitle")) {
             titleSeen = true;
-            const t2 = paragraphs.filter((p) => p.trim() !== "").join("\n").trim();
+            const t2 = paragraphs
+              .filter((p) => p.trim() !== "")
+              .join("\n")
+              .trim();
             title = t2 === "" ? undefined : t2;
           } else {
             pushAll(own, paragraphs);
@@ -422,8 +472,19 @@ export async function readPptxConservationSource(
 ): Promise<DeclaredFormatConservationSource | ConservationSourceReadFailure> {
   return guardedSourceAsync(async () => {
     const { slides, structureUnreadable } = await readPptxSource(bytes, limits);
-    const units: ConservationUnit[] = slides.map((slide) => unitOf(resolveLabels(language, labels).slideTabTitle(slide.number), slide.text));
+    const units: ConservationUnit[] = slides.map((slide) =>
+      unitOf(resolveLabels(language, labels).slideTabTitle(slide.number), slide.text),
+    );
     const excludedUnits = excludedUnitsOf(slides, (slide) => slide.overCap || slide.withheld);
-    return { units, deliberateRemovals: [], excludedUnits, structure: { units: slides.map((slide) => slide.structure), format: "pptx", ...(structureUnreadable === true ? { unreadable: true as const } : {}) } };
+    return {
+      units,
+      deliberateRemovals: [],
+      excludedUnits,
+      structure: {
+        units: slides.map((slide) => slide.structure),
+        format: "pptx",
+        ...(structureUnreadable === true ? { unreadable: true as const } : {}),
+      },
+    };
   });
 }

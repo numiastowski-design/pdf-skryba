@@ -27,7 +27,11 @@ export interface PositionGroup<T> {
  *  items chained, never a window around the centre. Sorted ascending by position (stable for equal positions).
  *  Other groupers differ on purpose: `pdf-bands.ts#columnEdge` and `pdf-line-breaks.ts#valueColumnStarts` ANCHOR on the
  *  first key seen, `slide-layout.ts#chainedGroups` and `gutter.ts` chain with their own tolerance. */
-export function clusterGroups<T>(items: readonly T[], positionOf: (item: T) => number, tolerance = CLUSTER_TOLERANCE): PositionGroup<T>[] {
+export function clusterGroups<T>(
+  items: readonly T[],
+  positionOf: (item: T) => number,
+  tolerance = CLUSTER_TOLERANCE,
+): PositionGroup<T>[] {
   if (items.length === 0) return [];
   const sorted = items.map((item) => ({ item, at: positionOf(item) })).sort((a, b) => a.at - b.at);
   const groups: { at: number[]; members: T[] }[] = [{ at: [sorted[0]!.at], members: [sorted[0]!.item] }];

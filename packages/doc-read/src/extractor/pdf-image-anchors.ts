@@ -128,7 +128,10 @@ const nearestAbove = (lines: readonly PlacedLine[], median: number): PlacedLine 
 const wantedCut = (anchor: ImageAnchor, lines: readonly PlacedLine[]): { cut: Cut; retreat: boolean } => {
   const median = anchor.bottom === undefined ? anchor.top : (anchor.top + anchor.bottom) / 2;
   const { bottom, xMax } = anchor;
-  const after = (l: PlacedLine): { cut: Cut; retreat: boolean } => ({ cut: { segment: l.segment, at: l.line + 1 }, retreat: false });
+  const after = (l: PlacedLine): { cut: Cut; retreat: boolean } => ({
+    cut: { segment: l.segment, at: l.line + 1 },
+    retreat: false,
+  });
   if (bottom !== undefined && xMax !== undefined) {
     const covered = lines.filter((l) => l.bottom >= bottom && l.top <= anchor.top);
     if (sharedImageFrontier(median, anchor.top, covered) !== median) {
@@ -186,12 +189,14 @@ const settle = (
     const key = `${cut.segment}:${at}`;
     const cached = boundaries.get(key);
     if (cached !== undefined) return cached;
-    const answer = JSON.stringify([...toBlocks(lines.slice(0, at)), ...toBlocks(lines.slice(at))]) === whole.get(cut.segment);
+    const answer =
+      JSON.stringify([...toBlocks(lines.slice(0, at)), ...toBlocks(lines.slice(at))]) === whole.get(cut.segment);
     boundaries.set(key, answer);
     return answer;
   };
   const step = retreat ? -1 : 1;
-  for (let at = cut.at; at > 0 && at < lines.length; at += step) if (isBoundary(at)) return { segment: cut.segment, at };
+  for (let at = cut.at; at > 0 && at < lines.length; at += step)
+    if (isBoundary(at)) return { segment: cut.segment, at };
   return retreat ? { segment: cut.segment, at: 0 } : { segment: cut.segment + 1, at: 0 };
 };
 
@@ -211,12 +216,17 @@ const readTaggedPage = (
     byPlace.set(key(place), [...(byPlace.get(key(place)) ?? []), imageRegion(anchor)]);
   }
   const imagesAt = (segment: number, at: number): IRBlock[] =>
-    readingOrder(byPlace.get(key({ segment, at })) ?? []).flat().flatMap((region) => region.blocks);
+    readingOrder(byPlace.get(key({ segment, at })) ?? [])
+      .flat()
+      .flatMap((region) => region.blocks);
   const out: IRBlock[] = [];
   read.forEach((linesOfSegment, segment) => {
-    const ats = [...new Set([0, ...[...byPlace.keys()].flatMap((k) => (k.startsWith(`${segment}:`) ? [Number(k.split(":")[1])] : []))])].sort(
-      (x, y) => x - y,
-    );
+    const ats = [
+      ...new Set([
+        0,
+        ...[...byPlace.keys()].flatMap((k) => (k.startsWith(`${segment}:`) ? [Number(k.split(":")[1])] : [])),
+      ]),
+    ].sort((x, y) => x - y);
     ats.forEach((at, i) => {
       out.push(...imagesAt(segment, at));
       out.push(...toBlocks(linesOfSegment.slice(at, ats[i + 1] ?? linesOfSegment.length)));
@@ -323,7 +333,10 @@ const centresOf = (cuts: readonly number[], left: number, right: number): number
  * a cell covers the grid columns from its band's left column to the next band's). An image that belongs to no row keeps
  * the 05/11 form: after the column block of its chunk (`liftedIn`). Several images under one table: highest first.
  */
-const figuresUnder = (bands: readonly PdfTextRun[][][], { cuts, centres, pending, figure }: FigureContext): IRBlock[] => {
+const figuresUnder = (
+  bands: readonly PdfTextRun[][][],
+  { cuts, centres, pending, figure }: FigureContext,
+): IRBlock[] => {
   const inks = bands.map(inkOf);
   if (inks.some((ink) => ink.length === 0)) return [];
   const extent = extentOf(inks.flat());
@@ -351,7 +364,9 @@ function blocksOfBands(
   extras: RowExtras,
 ): IRBlock[] {
   const runs = bandRuns(segments);
-  return bandLayout === "flow" ? runs.flatMap((run) => runBlocks(run, toBlocks)) : runs.flatMap((run) => rowBlocks(run, toBlocks, cuts, extras, bandLayout));
+  return bandLayout === "flow"
+    ? runs.flatMap((run) => runBlocks(run, toBlocks))
+    : runs.flatMap((run) => rowBlocks(run, toBlocks, cuts, extras, bandLayout));
 }
 
 /** The segments grouped: a run of neighbouring bands, or one full-width block. */
@@ -371,7 +386,8 @@ const bandRuns = <T>(segments: readonly ReadSegment<T>[]): BandRun<T>[] => {
 };
 
 /** The blocks of a run that is not a column. */
-const runBlocks = (run: BandRun<PdfTextRun>, toBlocks: (segment: PdfTextRun[][]) => IRBlock[]): IRBlock[] => run.bands.flatMap(toBlocks);
+const runBlocks = (run: BandRun<PdfTextRun>, toBlocks: (segment: PdfTextRun[][]) => IRBlock[]): IRBlock[] =>
+  run.bands.flatMap(toBlocks);
 
 /**
  * A BAND OF N >= 2 COLUMNS IS ONE TABLE OF ONE ROW x N CELLS, one column per cell, blocks in the order the bands are read
@@ -389,7 +405,11 @@ const runBlocks = (run: BandRun<PdfTextRun>, toBlocks: (segment: PdfTextRun[][])
  * block boundary by nature, so the paragraphs around it never cross it. `flat`, the product's default, reads the band
  * whole, as before the option existed.
  */
-const framedCell = (band: PdfTextRun[][], toBlocks: (segment: PdfTextRun[][]) => IRBlock[], { framed, frames }: RowExtras): { blocks: IRBlock[]; below: IRBlock[] } => {
+const framedCell = (
+  band: PdfTextRun[][],
+  toBlocks: (segment: PdfTextRun[][]) => IRBlock[],
+  { framed, frames }: RowExtras,
+): { blocks: IRBlock[]; below: IRBlock[] } => {
   if (framed === "flat" || frames.length === 0) return { blocks: toBlocks(band), below: [] };
   const { rest, groups } = splitFramed(band, frames);
   if (groups.length === 0) return { blocks: toBlocks(band), below: [] };
@@ -449,7 +469,11 @@ const itemsOf = (band: readonly PdfTextRun[][]): PdfTextRun[][][] | undefined =>
  * start 11 pt apart. A column with fewer items leaves its cells empty. Undefined when one column is not a column of
  * items (`itemsOf`).
  */
-const itemRows = (bands: readonly PdfTextRun[][][], toBlocks: (segment: PdfTextRun[][]) => IRBlock[], ownCell: boolean): IRTable | undefined => {
+const itemRows = (
+  bands: readonly PdfTextRun[][][],
+  toBlocks: (segment: PdfTextRun[][]) => IRBlock[],
+  ownCell: boolean,
+): IRTable | undefined => {
   const columns: PdfTextRun[][][][] = [];
   for (const band of bands) {
     const items = itemsOf(band);
@@ -513,7 +537,10 @@ const rowBlocks = (
   }
   return rows.flatMap((bands) => {
     if (bands.length < 2) return bands.flatMap(toBlocks);
-    const items = bandLayout === "items" || bandLayout === "item-cells" ? itemRows(bands, toBlocks, bandLayout === "item-cells") : undefined;
+    const items =
+      bandLayout === "items" || bandLayout === "item-cells"
+        ? itemRows(bands, toBlocks, bandLayout === "item-cells")
+        : undefined;
     if (items !== undefined) return [items, ...extras.figuresUnder(bands)];
     const read = bands.map((band) => framedCell(band, toBlocks, extras));
     const cells = read.map(({ blocks }) => ({ blocks }));
@@ -527,12 +554,21 @@ const rowBlocks = (
     // title, and it stays in its cell. ONE block only, never the whole cell.
     const first = cells[0]!.blocks[0];
     const neighbourFirst = cells[1]?.blocks[0];
-    const caps = first?.kind === "heading" && cells[0]!.blocks.length > 1 && neighbourFirst !== undefined && neighbourFirst.kind !== "heading";
+    const caps =
+      first?.kind === "heading" &&
+      cells[0]!.blocks.length > 1 &&
+      neighbourFirst !== undefined &&
+      neighbourFirst.kind !== "heading";
     const title = caps ? cells[0]!.blocks.shift() : undefined;
     // The figures that overflow a column of this row FOLLOW its table (`figuresUnder`), then the boxed blocks that left
     // their cell (`below`), cell after cell, each in its reading order.
     const table: IRTable = { kind: "table", rows: [{ cells }] };
-    return [...(title === undefined ? [] : [title]), table, ...extras.figuresUnder(bands), ...read.flatMap(({ below }) => below)];
+    return [
+      ...(title === undefined ? [] : [title]),
+      table,
+      ...extras.figuresUnder(bands),
+      ...read.flatMap(({ below }) => below),
+    ];
   });
 };
 
@@ -555,7 +591,13 @@ const rowBlocks = (
  */
 type ImagePlacement = "within" | "overflowing" | "spanning";
 
-const placementOf = (a: ImageAnchor, cuts: readonly number[], left: number, right: number, ink: readonly PdfTextRun[]): ImagePlacement => {
+const placementOf = (
+  a: ImageAnchor,
+  cuts: readonly number[],
+  left: number,
+  right: number,
+  ink: readonly PdfTextRun[],
+): ImagePlacement => {
   if (a.xMax === undefined || a.bottom === undefined || cuts.length === 0) return "spanning";
   // 🔴 NO TEXT AT ITS HEIGHT, NO COLUMN TO BELONG TO (10/11/2026, auction catalogue `sd-1026348`: its logo, across the cut
   // and above every line, was published last on the page). An image that no line of text meets in height stands where no
@@ -567,7 +609,8 @@ const placementOf = (a: ImageAnchor, cuts: readonly number[], left: number, righ
   return centresOf(cuts, left, right).every((centre) => xMin <= centre && xMax >= centre) ? "spanning" : "overflowing";
 };
 
-const inkOf = (lines: readonly (readonly PdfTextRun[])[]): PdfTextRun[] => lines.flat().filter((it) => it.text.trim() !== "");
+const inkOf = (lines: readonly (readonly PdfTextRun[])[]): PdfTextRun[] =>
+  lines.flat().filter((it) => it.text.trim() !== "");
 
 /** HOW FAR A CAPTION MAY STEP OUT OF ITS IMAGE'S WIDTH, on either side, as a share of that width (05/11/2026 :
  *  « mets genre 2 % de tolérance »). The caption of the newspaper's photo spans 317..550 under a photo 317..551 (0 and
@@ -584,7 +627,14 @@ const captionOf = (a: ImageAnchor, items: readonly PdfTextRun[], bodySize: numbe
   if (a.bottom === undefined || a.xMax === undefined) return [];
   const [bottom, xMin, xMax] = [a.bottom, a.xMin, a.xMax];
   const overhang = (xMax - xMin) * MAX_CAPTION_OVERHANG_RATIO;
-  const fragments = items.filter((it) => it.text.trim() !== "" && it.y >= floor && it.y + it.height <= bottom + it.fontSize && it.x >= xMin - overhang && it.x + it.width <= xMax + overhang);
+  const fragments = items.filter(
+    (it) =>
+      it.text.trim() !== "" &&
+      it.y >= floor &&
+      it.y + it.height <= bottom + it.fontSize &&
+      it.x >= xMin - overhang &&
+      it.x + it.width <= xMax + overhang,
+  );
   const under = groupItemsIntoLines(fragments)
     .map((line) => ({ line, ink: inkOf([line]) }))
     .filter(({ ink }) => ink.length > 0)
@@ -638,7 +688,38 @@ const oneCaption = (blocks: readonly IRBlock[]): IRBlock[] => {
   return [{ ...paragraphs[0]!, inlines }];
 };
 
-function readColumnsWithImages(items: readonly PdfTextRun[], anchors: readonly ImageAnchor[], { plan, rendering, toBlocks, figures }: ColumnReading): IRBlock[] {
+/** The caption of each overflowing image, and the runs no caption claimed (`rest`). */
+function captionsOf(
+  items: readonly PdfTextRun[],
+  anchors: readonly ImageAnchor[],
+  overflowing: readonly ImageAnchor[],
+  ink: readonly PdfTextRun[],
+): { captions: Map<ImageAnchor, PdfTextRun[][]>; rest: PdfTextRun[] } {
+  const charsBySize = new Map<number, number>();
+  for (const it of ink) charsBySize.set(it.fontSize, (charsBySize.get(it.fontSize) ?? 0) + it.text.trim().length);
+  const bodySize = bodySizeOf(charsBySize) ?? 0;
+  // Highest image first, so that a fragment claimed by one caption is not offered to the next: it belongs to ONE caption.
+  const claimed = new Set<PdfTextRun>();
+  const captions = new Map<ImageAnchor, PdfTextRun[][]>();
+  for (const a of [...overflowing].sort((p, q) => q.top - p.top)) {
+    const own = captionOf(
+      a,
+      items.filter((it) => !claimed.has(it)),
+      bodySize,
+      nextImageTop(a, anchors),
+    );
+    for (const it of own.flat()) claimed.add(it);
+    captions.set(a, own);
+  }
+  const captioned = claimed;
+  return { captions, rest: items.filter((it) => !captioned.has(it)) };
+}
+
+function readColumnsWithImages(
+  items: readonly PdfTextRun[],
+  anchors: readonly ImageAnchor[],
+  { plan, rendering, toBlocks, figures }: ColumnReading,
+): IRBlock[] {
   const { cuts } = plan;
   const ink = inkOf([items]);
   const left = minOf(ink, (it) => it.x);
@@ -648,19 +729,7 @@ function readColumnsWithImages(items: readonly PdfTextRun[], anchors: readonly I
   const overflowing = placed.filter((p) => p.placement === "overflowing").map((p) => p.a);
   const within = placed.filter((p) => p.placement === "within").map((p) => p.a);
 
-  const charsBySize = new Map<number, number>();
-  for (const it of ink) charsBySize.set(it.fontSize, (charsBySize.get(it.fontSize) ?? 0) + it.text.trim().length);
-  const bodySize = bodySizeOf(charsBySize) ?? 0;
-  // Highest image first, so that a fragment claimed by one caption is not offered to the next: it belongs to ONE caption.
-  const claimed = new Set<PdfTextRun>();
-  const captions = new Map<ImageAnchor, PdfTextRun[][]>();
-  for (const a of [...overflowing].sort((p, q) => q.top - p.top)) {
-    const own = captionOf(a, items.filter((it) => !claimed.has(it)), bodySize, nextImageTop(a, anchors));
-    for (const it of own.flat()) claimed.add(it);
-    captions.set(a, own);
-  }
-  const captioned = claimed;
-  const rest = items.filter((it) => !captioned.has(it));
+  const { captions, rest } = captionsOf(items, anchors, overflowing, ink);
 
   const emitted = new Set<ImageAnchor>();
   /** The image and its caption, and the anchor is placed. */
@@ -673,12 +742,20 @@ function readColumnsWithImages(items: readonly PdfTextRun[], anchors: readonly I
   // (`lib/ir.ts` `width: "image"`), so the caption wraps exactly under the photo (05/11/2026).
   const figure = (a: ImageAnchor): IRBlock[] => {
     const blocks = figureBlocks(a);
-    return blocks.some((b) => b.kind === "image") ? [{ kind: "table", width: "image", rows: [{ cells: [{ blocks }] }] }] : blocks;
+    return blocks.some((b) => b.kind === "image")
+      ? [{ kind: "table", width: "image", rows: [{ cells: [{ blocks }] }] }]
+      : blocks;
   };
   const extras: RowExtras = {
     framed: rendering.framed ?? DEFAULT_FRAMED_BLOCKS,
     frames: rendering.frames ?? [],
-    figuresUnder: (bands) => figuresUnder(bands, { cuts, centres: centresOf(cuts, left, right), pending: () => overflowing.filter((a) => !emitted.has(a)), figure }),
+    figuresUnder: (bands) =>
+      figuresUnder(bands, {
+        cuts,
+        centres: centresOf(cuts, left, right),
+        pending: () => overflowing.filter((a) => !emitted.has(a)),
+        figure,
+      }),
   };
   const bandOf = (x: number): number => cuts.filter((cut) => cut <= x).length;
   const overlaps = (a: ImageAnchor, lines: readonly (readonly PdfTextRun[])[]): boolean => {
@@ -698,7 +775,12 @@ function readColumnsWithImages(items: readonly PdfTextRun[], anchors: readonly I
   // An image within one column joins the flow of the band of that column it overlaps.
   const toBlocksWithImages = (lines: PdfTextRun[][]): IRBlock[] => {
     const bandInk = inkOf(lines);
-    const mine = bandInk.length === 0 ? [] : within.filter((a) => !emitted.has(a) && bandOf(a.xMin) === bandOf(minOf(bandInk, (it) => it.x)) && overlaps(a, lines));
+    const mine =
+      bandInk.length === 0
+        ? []
+        : within.filter(
+            (a) => !emitted.has(a) && bandOf(a.xMin) === bandOf(minOf(bandInk, (it) => it.x)) && overlaps(a, lines),
+          );
     if (mine.length === 0) return toBlocks(lines);
     for (const a of mine) emitted.add(a);
     return interleaveImages(lines.flat(), mine, (its) => toBlocks(groupItemsIntoLines(its)));
@@ -744,11 +826,16 @@ export function readPageWithImages(
   // second call, and the page that KEEPS its chunked reading — the common case — paid that twice for a byte-identical output.
   // The rewrite is the rare case, so it is the one that pays: its chunked blocks are built, then dropped.
   const chunkRanks: number[][] = [];
-  const chunked = interleaveImages(flow, free, (chunk) => {
-    const read = plan.declared(chunk, declaredRank);
-    chunkRanks.push(linesRanks(read, declaredRank));
-    return read.flatMap(toBlocks);
-  }, figures);
+  const chunked = interleaveImages(
+    flow,
+    free,
+    (chunk) => {
+      const read = plan.declared(chunk, declaredRank);
+      chunkRanks.push(linesRanks(read, declaredRank));
+      return read.flatMap(toBlocks);
+    },
+    figures,
+  );
   if (!chunksBreakDeclaredOrder(chunkRanks)) {
     return chunked;
   }
@@ -768,7 +855,9 @@ export function readPageWithImages(
 
 /** The extent of a line's inked items, by LOOP: a spread (`Math.max(...items)`) throws « Maximum call stack size exceeded »
  *  past ~100k arguments, and a hostile page may draw one line of that many items (revue 28/10/2026, tour 10). */
-const extentOf = (ink: readonly PdfTextRun[]): { middle: number; top: number; bottom: number; left: number; right: number } => {
+const extentOf = (
+  ink: readonly PdfTextRun[],
+): { middle: number; top: number; bottom: number; left: number; right: number } => {
   let middle = Number.NEGATIVE_INFINITY;
   let top = Number.NEGATIVE_INFINITY;
   let bottom = Number.POSITIVE_INFINITY;

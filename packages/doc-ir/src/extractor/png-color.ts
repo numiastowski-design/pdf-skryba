@@ -13,10 +13,13 @@ const COLOR_TYPES: readonly { readonly type: number; readonly channels: PngChann
 ];
 
 /** The channel count of a colour type, or `undefined` for one this code does not handle. */
-export const channelsOfColorType = (type: number): PngChannels | undefined => COLOR_TYPES.find((c) => c.type === type)?.channels;
+export const channelsOfColorType = (type: number): PngChannels | undefined =>
+  COLOR_TYPES.find((c) => c.type === type)?.channels;
 
 /** The colour type of a channel count. */
-export const colorTypeOfChannels = (channels: PngChannels): number => COLOR_TYPES.find((c) => c.channels === channels)!.type;
+export const colorTypeOfChannels = (channels: PngChannels): number =>
+  COLOR_TYPES.find((c) => c.channels === channels)!.type;
 
 /** The last channel is an alpha channel (grey + alpha, RGB + alpha). */
-export const hasAlphaChannel = (channels: PngChannels): boolean => COLOR_TYPES.find((c) => c.channels === channels)!.alpha;
+export const hasAlphaChannel = (channels: PngChannels): boolean =>
+  COLOR_TYPES.find((c) => c.channels === channels)!.alpha;

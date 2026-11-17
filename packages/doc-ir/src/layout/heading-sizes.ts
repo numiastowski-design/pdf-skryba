@@ -142,8 +142,13 @@ export function sizeClasses(
 
   const bodySize = bodySizeOf(charsBySize)!;
 
-  const body = new Set(sizes.map(([size]) => size).filter((size) => size >= bodySize / ratio && size < bodySize * ratio));
-  let headingSizes = sizes.map(([size]) => size).filter((size) => size >= bodySize * ratio).sort((a, b) => b - a);
+  const body = new Set(
+    sizes.map(([size]) => size).filter((size) => size >= bodySize / ratio && size < bodySize * ratio),
+  );
+  let headingSizes = sizes
+    .map(([size]) => size)
+    .filter((size) => size >= bodySize * ratio)
+    .sort((a, b) => b - a);
 
   const levels = new Map<number, HeadingLevel>();
   if (facts === undefined) {

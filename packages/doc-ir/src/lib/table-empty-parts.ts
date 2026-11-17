@@ -30,12 +30,7 @@ export const hasContent = (blocks: readonly IRBlock[]): boolean =>
     switch (b.kind) {
       case "paragraph":
       case "heading":
-        return b.inlines.some(
-          (i) =>
-            i.text.trim() !== "" ||
-            i.image !== undefined ||
-            i.anchor !== undefined,
-        );
+        return b.inlines.some((i) => i.text.trim() !== "" || i.image !== undefined || i.anchor !== undefined);
       case "list":
         return b.items.some(hasContent);
       case "table":
@@ -99,9 +94,7 @@ export const tableGridWidth = (table: TableBlock): number => anchorsOf(table).gr
 
 /** The table without its empty columns and empty header row, the same object when there is nothing to remove, `null` when
  *  nothing is left to publish. */
-export const withoutEmptyTableParts = (
-  table: TableBlock,
-): TableBlock | null => {
+export const withoutEmptyTableParts = (table: TableBlock): TableBlock | null => {
   if (table.rows.length === 0) return table;
 
   const { anchors, gridWidth } = anchorsOf(table);
@@ -115,10 +108,7 @@ export const withoutEmptyTableParts = (
   if (filled.size === 0) return null;
 
   const keptBefore: number[] = []; // keptBefore[c] = kept columns among 0..c-1
-  for (let c = 0; c <= gridWidth; c++)
-    keptBefore.push(
-      c === 0 ? 0 : keptBefore[c - 1]! + (filled.has(c - 1) ? 1 : 0),
-    );
+  for (let c = 0; c <= gridWidth; c++) keptBefore.push(c === 0 ? 0 : keptBefore[c - 1]! + (filled.has(c - 1) ? 1 : 0));
   const removedAny = filled.size < gridWidth;
 
   const narrowed: Row[] = table.rows.map((row, r) => ({
@@ -127,8 +117,7 @@ export const withoutEmptyTableParts = (
       if (!removedAny) return [cell];
       const start = anchors[r]![c]!;
       const span = spanOf(cell.colspan);
-      const kept =
-        keptBefore[Math.min(start + span, gridWidth)]! - keptBefore[start]!;
+      const kept = keptBefore[Math.min(start + span, gridWidth)]! - keptBefore[start]!;
       if (kept === 0) return [];
       if (kept === span) return [cell];
       const { colspan: _unused, ...rest } = cell;
@@ -147,12 +136,7 @@ export const withoutEmptyTableParts = (
       if (end > reach) reach = end;
     }
     if (row.cells.length === 0) return false;
-    if (
-      !row.cells.every(
-        (c) =>
-          c.header === true && c.rowspan === undefined && !hasContent(c.blocks),
-      )
-    ) {
+    if (!row.cells.every((c) => c.header === true && c.rowspan === undefined && !hasContent(c.blocks))) {
       return false;
     }
     return !crossed;
@@ -211,13 +195,15 @@ export const withoutLeadingBands = (table: TableBlock): TableBlock => {
 /** The last row of the group tied by spans from row 0: the running maximum of row + rowsBelow, clamped to the table. */
 const groupEnd = (rows: TableBlock["rows"]): number => {
   let end = 0;
-  for (let r = 0; r <= end && r < rows.length; r++) for (const c of rows[r]!.cells) end = Math.max(end, r + rowsBelow(c.rowspan));
+  for (let r = 0; r <= end && r < rows.length; r++)
+    for (const c of rows[r]!.cells) end = Math.max(end, r + rowsBelow(c.rowspan));
   return Math.min(end, rows.length - 1);
 };
 
 /** How many rows of 0..end hold a text cell that spans downward. */
 const spanningStarts = (rows: TableBlock["rows"], end: number): number =>
-  rows.slice(0, end + 1).filter((row) => row.cells.some((c) => hasContent(c.blocks) && rowsBelow(c.rowspan) > 0)).length;
+  rows.slice(0, end + 1).filter((row) => row.cells.some((c) => hasContent(c.blocks) && rowsBelow(c.rowspan) > 0))
+    .length;
 
 /** The cells of rows 0..end grouped by the grid column they are anchored on. */
 const chainsOf = (rows: TableBlock["rows"], anchors: number[][], end: number): Map<number, Cell[]> => {
@@ -249,7 +235,8 @@ const foldedCell = (chain: Cell[]): Cell => {
 const foldGroup = (table: TableBlock): TableBlock | undefined => {
   const rows = table.rows;
   const first = rows[0];
-  if (rows.length < 2 || first === undefined || first.cells.length === 0 || hasContent(first.cells[0]!.blocks)) return undefined;
+  if (rows.length < 2 || first === undefined || first.cells.length === 0 || hasContent(first.cells[0]!.blocks))
+    return undefined;
   const end = groupEnd(rows);
   if (end === 0 || end === rows.length - 1 || spanningStarts(rows, end) < 2) return undefined;
   const chains = chainsOf(rows, anchorsOf(table).anchors, end);

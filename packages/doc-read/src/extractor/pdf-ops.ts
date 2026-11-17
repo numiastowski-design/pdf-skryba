@@ -101,7 +101,7 @@ function numbersAt(source: unknown, n: number): number[] | undefined {
     const v = (source as Record<number, unknown> | undefined)?.[k];
     return typeof v === "number" ? v : undefined;
   });
-  return values.every((v): v is number => v !== undefined) ? (values as number[]) : undefined;
+  return values.every((v): v is number => v !== undefined) ? values : undefined;
 }
 
 /** Six numbers at indices 0..5 (a matrix); `undefined` when the shape carries fewer. */
@@ -196,7 +196,14 @@ export class HiddenLayerStack {
   }
 }
 
-const matrixOfSix = (m: readonly number[]): Matrix2D => ({ a: m[0]!, b: m[1]!, c: m[2]!, d: m[3]!, e: m[4]!, f: m[5]! });
+const matrixOfSix = (m: readonly number[]): Matrix2D => ({
+  a: m[0]!,
+  b: m[1]!,
+  c: m[2]!,
+  d: m[3]!,
+  e: m[4]!,
+  f: m[5]!,
+});
 
 /**
  * The numeric `fnArray` (shape inherited from pdf.js, which our reader reproduces) → named, unfolded operations.
@@ -225,7 +232,6 @@ export function decodeOps(
   }
   return out;
 }
-
 
 /** Empirically verified (04/09/2026) against the real operator list of the
  *  pdf.js then installed (removed 01/11/2026; our reader reproduces this encoding) — not documented upstream, so
@@ -317,7 +323,7 @@ export function readPathArg(args: unknown, OPS?: Record<string, number>): PdfPat
   if (typeof paintOp !== "number") {
     throw new ReaderError("EXTRACT_FAILED", "constructPath: unrecognized argument shape");
   }
-  const packed = Array.isArray(wrapper) && typeof wrapper[0] !== "number" ? wrapper[0] : wrapper;
+  const packed: unknown = Array.isArray(wrapper) && typeof wrapper[0] !== "number" ? wrapper[0] : wrapper;
   // `args[0]` lives in the SAME code space as `OPS` — its numeric value
   // is literally `OPS.stroke`, `OPS.fill`, etc. (verified on 04/09/2026 by
   // printing both side by side against a synthetic `drawLine`). Naming it

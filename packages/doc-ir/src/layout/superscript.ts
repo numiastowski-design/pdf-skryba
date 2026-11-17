@@ -121,7 +121,8 @@ const SUBSCRIPT_MAX_DROP_EM = 0.2;
 const MARKER_MAX_BASELINE_EM = 0.3;
 const MARKER_MAX_GAP_EM = 4;
 
-const isLoneMarker = (text: string | undefined): boolean => text !== undefined && text.trim() !== "" && text.replace(BULLET, "") === "";
+const isLoneMarker = (text: string | undefined): boolean =>
+  text !== undefined && text.trim() !== "" && text.replace(BULLET, "") === "";
 
 /** Moves each lone list marker onto the adjacent line whose first item starts to its right at nearly its baseline. */
 export const reseatListMarkers = <T extends SuperscriptReading>(groups: T[][], sizeOf: (item: T) => number): T[][] => {
@@ -153,7 +154,11 @@ export const reseatListMarkers = <T extends SuperscriptReading>(groups: T[][], s
 /** The DOMINANT size of a line's items: the size carrying the most characters, a tie going to the LARGER size (between two halves,
  *  the one that carries the title). The ONE reading of a line's host size, shared by the page flow (`extractor/pdf-lines.ts`) and
  *  the table cells (`layout/cell-text.ts#raisedCallsOf`). */
-export const dominantSizeByChars = <T>(items: readonly T[], textOf: (item: T) => string, sizeOf: (item: T) => number): number => {
+export const dominantSizeByChars = <T>(
+  items: readonly T[],
+  textOf: (item: T) => string,
+  sizeOf: (item: T) => number,
+): number => {
   const weights = new Map<number, number>();
   for (const it of items) weights.set(sizeOf(it), (weights.get(sizeOf(it)) ?? 0) + textOf(it).length);
   return modeOf(weights, "largest") ?? 0;

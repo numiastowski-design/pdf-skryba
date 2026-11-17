@@ -11,7 +11,10 @@ export const putU32be = (value: number): Uint8Array =>
   new Uint8Array([(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff]);
 
 /** The parts laid end to end in one fresh array. `total` is their summed length when the caller already knows it. */
-export const concatBytes = (parts: readonly Uint8Array[], total: number = parts.reduce((n, p) => n + p.length, 0)): Uint8Array => {
+export const concatBytes = (
+  parts: readonly Uint8Array[],
+  total: number = parts.reduce((n, p) => n + p.length, 0),
+): Uint8Array => {
   const out = new Uint8Array(total);
   let at = 0;
   for (const p of parts) {

@@ -38,7 +38,8 @@ import { canonicalizeEncodingLabel, xmlRefusal, type XmlSourceEncoding } from ".
  */
 export const decodeXmlPart = (bytes: Uint8Array): { text: string; encoding: XmlSourceEncoding } => {
   const detectedEncoding = detectEncoding(bytes);
-  if (detectedEncoding !== "windows-1252") return { text: decodeAs(bytes, detectedEncoding), encoding: detectedEncoding };
+  if (detectedEncoding !== "windows-1252")
+    return { text: decodeAs(bytes, detectedEncoding), encoding: detectedEncoding };
   // A Windows-1252 declaration whose bytes are ALSO legal UTF-8 with an accent: the text is read as UTF-8 (decision of the
   // maintainer, 26/10/2026) but the DECLARED name is returned, so the tokenizer's agreement check (declared name against the
   // encoding found here) still passes: returning "UTF-8" would refuse the part and the rule would never apply (review, 26/10/2026).
@@ -53,7 +54,10 @@ const hasUtf8Mark = (bytes: Uint8Array): boolean => bytes[0] === 0xef && bytes[1
 
 const detectEncoding = (bytes: Uint8Array): XmlSourceEncoding => {
   const [b0, b1, b2, b3] = bytes;
-  if ((b0 === 0x3c && b1 === 0x00 && b2 === 0x3f && b3 === 0x00) || (b0 === 0x00 && b1 === 0x3c && b2 === 0x00 && b3 === 0x3f)) {
+  if (
+    (b0 === 0x3c && b1 === 0x00 && b2 === 0x3f && b3 === 0x00) ||
+    (b0 === 0x00 && b1 === 0x3c && b2 === 0x00 && b3 === 0x3f)
+  ) {
     throw xmlRefusal("UTF-16 without a byte-order mark");
   }
   if (b0 === 0xff && b1 === 0xfe) return "UTF-16LE";
@@ -102,7 +106,9 @@ const decodeAs = (bytes: Uint8Array, encoding: XmlSourceEncoding): string => {
 const WINDOWS_1252_HIGH = "€\u0081‚ƒ„…†‡ˆ‰Š‹Œ\u008DŽ\u008F\u0090‘’“”•–—˜™š›œ\u009DžŸ";
 
 /** Each byte's UTF-16 code unit: its own value, but the 0x80-0x9F row from `WINDOWS_1252_HIGH`. */
-const WINDOWS_1252_UNITS = Uint16Array.from({ length: 256 }, (_, byteValue) => (byteValue >= 0x80 && byteValue <= 0x9f ? WINDOWS_1252_HIGH.charCodeAt(byteValue - 0x80) : byteValue));
+const WINDOWS_1252_UNITS = Uint16Array.from({ length: 256 }, (_, byteValue) =>
+  byteValue >= 0x80 && byteValue <= 0x9f ? WINDOWS_1252_HIGH.charCodeAt(byteValue - 0x80) : byteValue,
+);
 const UTF16LE = new TextDecoder("utf-16le");
 
 /** One table lookup per byte into UTF-16 code units, decoded once. Tried and dropped (review of 25/10/2026): a per-byte
@@ -123,7 +129,9 @@ const DECLARED_ENCODING = /^<\?xml\s[^>]*?\bencoding\s*=\s*(["'])([A-Za-z][\w.-]
 const findDeclaredLegacyEncoding = (bytes: Uint8Array): string | undefined => {
   const hasMark = hasUtf8Mark(bytes);
   const declarationStart = hasMark ? 3 : 0;
-  const declarationHead = new TextDecoder("latin1").decode(bytes.subarray(declarationStart, declarationStart + DECLARATION_MAX_BYTES));
+  const declarationHead = new TextDecoder("latin1").decode(
+    bytes.subarray(declarationStart, declarationStart + DECLARATION_MAX_BYTES),
+  );
   if (!/^<\?xml\s/.test(declarationHead)) return undefined;
   const declarationEnd = declarationHead.indexOf("?>");
   // Not closed: past our ceiling, our own refusal; a shorter part is merely cut, the tokenizer says « malformed ».

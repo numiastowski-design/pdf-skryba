@@ -64,7 +64,10 @@ const STRADDLE_TOLERANCE = SAME_LINE_PT;
  *  for — kept separate because the clustering fallback (stage 2, no
  *  vector grid) still wants logical rows before it has any column
  *  boundaries to build a full grid from). */
-export function groupFragmentsIntoRowBands(fragments: readonly Fragment[], rowBoundaries: readonly number[]): Fragment[][] {
+export function groupFragmentsIntoRowBands(
+  fragments: readonly Fragment[],
+  rowBoundaries: readonly number[],
+): Fragment[][] {
   const bands: Fragment[][] = rowBoundaries.slice(0, -1).map(() => []);
   for (const f of fragments) {
     const cy = f.y + f.height / 2;
@@ -89,7 +92,11 @@ export function groupFragmentsIntoRowBands(fragments: readonly Fragment[], rowBo
  *  (`GlyphFragment`, avec son `paintCount`) les récupère tels quels dans les
  *  cellules. Sans cela, l'assignation les aplatirait en `Fragment` et
  *  l'information du second signal se perdrait au milieu de la chaîne. */
-export function assignFragmentsToCells<T extends Fragment>(fragments: readonly T[], grid: TableGrid, merge?: MergeMap): CellAssignment<T> {
+export function assignFragmentsToCells<T extends Fragment>(
+  fragments: readonly T[],
+  grid: TableGrid,
+  merge?: MergeMap,
+): CellAssignment<T> {
   const { rowBoundaries, colBoundaries } = grid;
   const rows = rowBoundaries.length - 1;
   const cols = colBoundaries.length - 1;

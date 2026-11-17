@@ -26,7 +26,6 @@ export interface LayerConfig {
   isVisible(group: unknown): boolean;
 }
 
-
 type VisibleOf = (key: string) => boolean | undefined;
 
 /** The groups are the references of /OCGs; a direct dictionary has no key, so it is never named (pdf.js did the same). */
@@ -43,14 +42,22 @@ function namedGroupsOf(doc: PdfObjectsDocument, props: PdfDict): Map<string, Pdf
 }
 
 /** The keys, among the named groups, that an array of references lists. */
-function namedKeysIn(doc: PdfObjectsDocument, groupKeys: ReadonlyMap<string, PdfDict>, value: PdfValue | undefined): string[] {
+function namedKeysIn(
+  doc: PdfObjectsDocument,
+  groupKeys: ReadonlyMap<string, PdfDict>,
+  value: PdfValue | undefined,
+): string[] {
   const array = doc.resolve(value);
   if (array?.kind !== "array") return [];
   return array.items.flatMap((item) => (item.kind === "ref" && groupKeys.has(refKey(item)) ? [refKey(item)] : []));
 }
 
 /** §8.11.4.3: the default configuration starts from /BaseState (ON when absent), then /ON and /OFF switch groups. */
-function initialStatesOf(doc: PdfObjectsDocument, props: PdfDict, groupKeys: ReadonlyMap<string, PdfDict>): Map<string, boolean> {
+function initialStatesOf(
+  doc: PdfObjectsDocument,
+  props: PdfDict,
+  groupKeys: ReadonlyMap<string, PdfDict>,
+): Map<string, boolean> {
   const defaults = doc.dictOf(props.get("D"));
   const baseState = doc.resolve(defaults?.get("BaseState"));
   const initial = new Map<string, boolean>();
@@ -81,7 +88,7 @@ export function layerConfigOf(doc: PdfObjectsDocument): LayerConfig {
   return {
     isVisible: (group: unknown) => {
       if (groupVisible.size === 0 || group === null || group === undefined) return true;
-      return visibilityOf(group as LayerGroup, visibleOf);
+      return visibilityOf(group, visibleOf);
     },
   };
 }

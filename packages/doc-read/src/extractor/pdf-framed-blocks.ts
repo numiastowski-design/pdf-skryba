@@ -75,7 +75,12 @@ interface LineBox {
 /** The smallest box holding both; either may be absent. */
 const joinBoxes = (a: LineBox | undefined, b: LineBox | undefined): LineBox | undefined => {
   if (a === undefined || b === undefined) return a ?? b;
-  return { xMin: Math.min(a.xMin, b.xMin), xMax: Math.max(a.xMax, b.xMax), yMin: Math.min(a.yMin, b.yMin), yMax: Math.max(a.yMax, b.yMax) };
+  return {
+    xMin: Math.min(a.xMin, b.xMin),
+    xMax: Math.max(a.xMax, b.xMax),
+    yMin: Math.min(a.yMin, b.yMin),
+    yMax: Math.max(a.yMax, b.yMax),
+  };
 };
 
 const boxOfLine = (line: readonly PdfTextRun[]): LineBox | undefined => {
@@ -89,7 +94,12 @@ const boxOfLine = (line: readonly PdfTextRun[]): LineBox | undefined => {
 /** Every inked fragment's baseline inside the frame, each edge widened by `MAX_FRAME_OVERHANG_PT`. */
 const boxInside = (box: LineBox, frame: ContainerBox): boolean => {
   const t = MAX_FRAME_OVERHANG_PT;
-  return box.xMin >= frame.left - t && box.xMax <= frame.right + t && box.yMin >= frame.bottom - t && box.yMax <= frame.top + t;
+  return (
+    box.xMin >= frame.left - t &&
+    box.xMax <= frame.right + t &&
+    box.yMin >= frame.bottom - t &&
+    box.yMax <= frame.top + t
+  );
 };
 
 /** The frames of a page by growing area, SORTED ONCE per frames array (one page calls `splitFramed` for each of its bands). */
@@ -98,7 +108,9 @@ const sortedByArea = ((): ((frames: readonly ContainerBox[]) => ContainerBox[]) 
   return (frames) => {
     let sorted = memo.get(frames);
     if (sorted === undefined) {
-      sorted = [...frames].sort((p, q) => (p.right - p.left) * (p.top - p.bottom) - (q.right - q.left) * (q.top - q.bottom));
+      sorted = [...frames].sort(
+        (p, q) => (p.right - p.left) * (p.top - p.bottom) - (q.right - q.left) * (q.top - q.bottom),
+      );
       memo.set(frames, sorted);
     }
     return sorted;
@@ -122,10 +134,17 @@ export const splitFramed = (lines: readonly PdfTextRun[][], frames: readonly Con
   const reach = boxes.reduce<LineBox | undefined>(joinBoxes, undefined);
   const t = MAX_FRAME_OVERHANG_PT;
   const candidates = sortedByArea(frames).filter(
-    (f) => reach !== undefined && f.right + t >= reach.xMin && f.left - t <= reach.xMax && f.top + t >= reach.yMin && f.bottom - t <= reach.yMax,
+    (f) =>
+      reach !== undefined &&
+      f.right + t >= reach.xMin &&
+      f.left - t <= reach.xMax &&
+      f.top + t >= reach.yMin &&
+      f.bottom - t <= reach.yMax,
   );
   const owners = boxes.map((b) => (b === undefined ? undefined : candidates.find((f) => boxInside(b, f))));
-  const borders = new Set(candidates.filter((f) => inkedCount > 0 && owners.filter((o) => o === f).length === inkedCount));
+  const borders = new Set(
+    candidates.filter((f) => inkedCount > 0 && owners.filter((o) => o === f).length === inkedCount),
+  );
   const groups: FramedGroup[] = [];
   const rest: FramedSplit["rest"] = [];
   lines.forEach((line, at) => {

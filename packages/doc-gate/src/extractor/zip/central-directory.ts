@@ -122,7 +122,8 @@ function readZip64(view: DataView, eocdAt: number): Directory {
   const entries = u64(view, recordAt + 32);
   const size = u64(view, recordAt + 40);
   const offset = u64(view, recordAt + 48);
-  if (entriesOnDisk === undefined || entries === undefined) throw refuse("declared entry count exceeds the central directory");
+  if (entriesOnDisk === undefined || entries === undefined)
+    throw refuse("declared entry count exceeds the central directory");
   if (size === undefined || offset === undefined) throw refuse("central directory out of bounds");
   return {
     disk: view.getUint32(recordAt + 16, true),

@@ -30,8 +30,33 @@ const CHARTEX = ["cx", "cx1", "cx2", "cx3", "cx4", "cx5", "cx6", "cx7", "cx8"];
  *  compatibility) and the Office extensions Word reads (2010 and later:
  *  w14, w15, w16*, wp14, wpc canvas, wpi ink, wne, a14, chartex). */
 export const WORD_UNDERSTOOD: ReadonlySet<string> = new Set([
-  "w", "r", "wp", "a", "pic", "wps", "wpg", "m", "v", "mc",
-  ...unknown(["w14", "w15", "w16", "w16se", "w16cid", "w16cex", "w16sdtdh", "w16sdtfl", "w16du", "wp14", "wpc", "wpi", "wne", "a14", ...CHARTEX]),
+  "w",
+  "r",
+  "wp",
+  "a",
+  "pic",
+  "wps",
+  "wpg",
+  "m",
+  "v",
+  "mc",
+  ...unknown([
+    "w14",
+    "w15",
+    "w16",
+    "w16se",
+    "w16cid",
+    "w16cex",
+    "w16sdtdh",
+    "w16sdtfl",
+    "w16du",
+    "wp14",
+    "wpc",
+    "wpi",
+    "wne",
+    "a14",
+    ...CHARTEX,
+  ]),
 ]);
 
 /** What PowerPoint understands: PresentationML and DrawingML (canonical
@@ -39,7 +64,16 @@ export const WORD_UNDERSTOOD: ReadonlySet<string> = new Set([
  *  a14, a16, 3D models, ink, decorative marks, chartex). Not Excel's `x14`,
  *  nor Word's `w14`/`wps`: a Choice requiring those goes to the Fallback. */
 export const POWERPOINT_UNDERSTOOD: ReadonlySet<string> = new Set([
-  "p", "a", "r", "pic", "dgm", "dsp", "c", "m", "v", "mc",
+  "p",
+  "a",
+  "r",
+  "pic",
+  "dgm",
+  "dsp",
+  "c",
+  "m",
+  "v",
+  "mc",
   ...unknown(["p14", "p15", "p16", "p188", "a14", "a16", "am3d", "aink", "ahyp", "adec", ...CHARTEX]),
 ]);
 
@@ -94,7 +128,14 @@ export const fallbackPictureIds = (node: XNode): string[] => {
 };
 
 /** The tags that make a Word Fallback a TEXT one. */
-export const WORD_TEXT_TAGS: ReadonlySet<string> = new Set(["w:t", "w:txbxContent", "wps:txbx", "v:textbox", "m:t", "w:instrText"]);
+export const WORD_TEXT_TAGS: ReadonlySet<string> = new Set([
+  "w:t",
+  "w:txbxContent",
+  "wps:txbx",
+  "v:textbox",
+  "m:t",
+  "w:instrText",
+]);
 
 /** The tags that make a PowerPoint Fallback a TEXT one (a table holds text). */
 export const POWERPOINT_TEXT_TAGS: ReadonlySet<string> = new Set(["a:t", "p:txBody", "a:tbl", "a:fld"]);

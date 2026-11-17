@@ -80,7 +80,13 @@
 
 import { collapseBlanks } from "doc-ir/lib/blanks";
 import { markerOf } from "doc-ir/layout/list";
-import { conservationKey, type ConservationVerdict, type PageEdit, type PublishedPage, type SourceWordLink } from "doc-ir/pipeline/text-conservation";
+import {
+  conservationKey,
+  type ConservationVerdict,
+  type PageEdit,
+  type PublishedPage,
+  type SourceWordLink,
+} from "doc-ir/pipeline/text-conservation";
 
 /** How many words each side of the cut must bring, read in a row by the PDF
  *  (fewer when the paragraph has fewer). Simulated on 39 French and English
@@ -131,12 +137,17 @@ export const noWorse = (before: ConservationVerdict, after: ConservationVerdict)
  * that abstains (the tiling linking the words is not trusted), a unit the caller did not call `joinable`, or anything
  * of the page sitting between the two.
  */
-export function cutParagraphEdits(page: PublishedPage, verdict: ConservationVerdict): { edits: PageEdit[]; joined: number } {
+export function cutParagraphEdits(
+  page: PublishedPage,
+  verdict: ConservationVerdict,
+): { edits: PageEdit[]; joined: number } {
   const units = page.units;
   if (units === undefined || verdict.decision === "abstain") return { edits: [], joined: 0 };
 
   // Each unit's page words, as links to the source: the words of every block the unit holds, in order.
-  const links: (SourceWordLink | null)[][] = units.map((unit) => unit.blocks.flatMap((b) => verdict.sourceOfPageWords[b] ?? []));
+  const links: (SourceWordLink | null)[][] = units.map((unit) =>
+    unit.blocks.flatMap((b) => verdict.sourceOfPageWords[b] ?? []),
+  );
 
   const cutAfter = (u: number): boolean => {
     const first = units[u]!;

@@ -89,7 +89,14 @@ const runStart = (text: string, from: number, floor: number): number => {
   let start = from;
   while (start > floor) {
     let step = start - 1;
-    if (step > floor && text.charCodeAt(step) >= 0xdc00 && text.charCodeAt(step) <= 0xdfff && text.charCodeAt(step - 1) >= 0xd800 && text.charCodeAt(step - 1) <= 0xdbff) step--;
+    if (
+      step > floor &&
+      text.charCodeAt(step) >= 0xdc00 &&
+      text.charCodeAt(step) <= 0xdfff &&
+      text.charCodeAt(step - 1) >= 0xd800 &&
+      text.charCodeAt(step - 1) <= 0xdbff
+    )
+      step--;
     if (!LETTER_OR_MARK.test(text.slice(step, start))) break;
     start = step;
   }
@@ -100,7 +107,10 @@ const runStart = (text: string, from: number, floor: number): number => {
  *  It replaces the regex `([\p{L}\p{M}]+)<mark>([\p{L}\p{M}]+)`, which tried every start of a long run of letters and
  *  backtracked from its end each time (quadratic: 3 s on 60 000 letters, review 06/11/2026). `visit` gives the two halves
  *  and the index of the match; `true` removes the mark, anything else turns it into a hyphen. */
-const replaceCutWords = (text: string, visit: (left: string, right: string, at: number, length: number) => boolean): string => {
+const replaceCutWords = (
+  text: string,
+  visit: (left: string, right: string, at: number, length: number) => boolean,
+): string => {
   let out = "";
   let done = 0;
   for (let mark = text.indexOf(CUT_MARK); mark >= 0; mark = text.indexOf(CUT_MARK, mark + 1)) {
@@ -108,7 +118,10 @@ const replaceCutWords = (text: string, visit: (left: string, right: string, at: 
     // half of the first mark and the left half of the second. A mark with no letter on a side is just a hyphen.
     const start = runStart(text, mark, 0);
     const stop = runEnd(text, mark + 1);
-    const joined = start < mark && stop > mark + 1 && visit(text.slice(start, mark), text.slice(mark + 1, stop), start, stop - start);
+    const joined =
+      start < mark &&
+      stop > mark + 1 &&
+      visit(text.slice(start, mark), text.slice(mark + 1, stop), start, stop - start);
     out += text.slice(done, mark) + (joined ? "" : "-");
     done = mark + 1;
   }
@@ -119,7 +132,17 @@ const CAPITAL = /^\p{Lu}/u;
 /** THE FRENCH CONTRACTED RELATIVES, a CLOSED set of the grammar, always written as one word (10/11/2026): the two-words
  *  refusal below turned « auxquelles » into « aux-quelles » in two documents, « aux » and « quelles » being words of their
  *  own. A rule of the language, exhaustive, not a dictionary. */
-const FRENCH_CONTRACTED_RELATIVES = new Set(["auquel", "auxquels", "auxquelles", "duquel", "desquels", "desquelles", "lesquels", "lesquelles", "laquelle"]);
+const FRENCH_CONTRACTED_RELATIVES = new Set([
+  "auquel",
+  "auxquels",
+  "auxquelles",
+  "duquel",
+  "desquels",
+  "desquelles",
+  "lesquels",
+  "lesquelles",
+  "laquelle",
+]);
 /** AN ADDRESS IS NEVER TOUCHED (05/11/2026 : « on ne coupe jamais une URL ») : a scheme, a « www. », a domain
  *  followed by a slash, or a mail address, anywhere in the word run that holds the cut. */
 const ADDRESS = /:\/\/|^\W*www\.|@/iu;
@@ -132,7 +155,8 @@ const isAddress = (run: string): boolean => {
 };
 
 type Prose = Extract<IRBlock, { kind: "paragraph" | "heading" }>;
-const isProse = (block: IRBlock | undefined): block is Prose => block?.kind === "paragraph" || block?.kind === "heading";
+const isProse = (block: IRBlock | undefined): block is Prose =>
+  block?.kind === "paragraph" || block?.kind === "heading";
 /** Two paragraphs of one size, or two headings of one level: a heading never swallows a paragraph. */
 const sameProse = (a: Prose, b: Prose): boolean =>
   a.kind === "paragraph" ? b.kind === "paragraph" && a.size === b.size : b.kind === "heading" && a.level === b.level;
@@ -141,12 +165,17 @@ const LOWERCASE_START = /^\p{Ll}/u;
 
 type ProseInline = Prose["inlines"][number];
 /** Two pieces that differ by their text only (same marks, same link). */
-const sameStyle = (a: ProseInline, b: ProseInline): boolean => JSON.stringify({ ...a, text: "" }) === JSON.stringify({ ...b, text: "" });
+const sameStyle = (a: ProseInline, b: ProseInline): boolean =>
+  JSON.stringify({ ...a, text: "" }) === JSON.stringify({ ...b, text: "" });
 
 /** Whether `lower` goes on with the word cut at the end of `upper` — pairwise on the ORIGINAL blocks: the end of a merged
  *  block is the end of the last block merged into it, so a chain is decided pair by pair. */
 const continuesCut = (upper: IRBlock, upperText: string, lower: IRBlock, lowerText: string): boolean =>
-  isProse(upper) && isProse(lower) && sameProse(upper, lower) && LOWERCASE_START.test(lowerText) && cutAcrossLines(upperText, lowerText);
+  isProse(upper) &&
+  isProse(lower) &&
+  sameProse(upper, lower) &&
+  LOWERCASE_START.test(lowerText) &&
+  cutAcrossLines(upperText, lowerText);
 
 /** The inlines of a chain of blocks, in ONE pass (review 10/11/2026: rebuilding the growing block at each merge was
  *  quadratic on a hostile page of thousands of « a- » paragraphs). Every block but the last has its final hyphen turned
@@ -159,7 +188,10 @@ const chainInlines = (chain: readonly Prose[]): ProseInline[] => {
     if (k < chain.length - 1) while (last >= 0 && block.inlines[last]!.text === "") last--;
     for (let at = 0; at <= last; at++) {
       const original = block.inlines[at]!;
-      const inline = k < chain.length - 1 && at === last ? { ...original, text: `${original.text.slice(0, -1)}${CUT_MARK}` } : original;
+      const inline =
+        k < chain.length - 1 && at === last
+          ? { ...original, text: `${original.text.slice(0, -1)}${CUT_MARK}` }
+          : original;
       const tail = gathered[gathered.length - 1];
       if (at === 0 && k > 0 && tail !== undefined && sameStyle(tail.inline, inline)) tail.parts.push(inline.text);
       else gathered.push({ inline, parts: [inline.text] });
@@ -182,7 +214,7 @@ export const joinCutParagraphs = (blocks: readonly IRBlock[]): IRBlock[] => {
   const mapped = blocks.map((raw) => mapBlockChildren(raw, joinCutParagraphs));
   const textOf = mapped.map((block) => (isProse(block) ? proseText(block) : ""));
   const out: IRBlock[] = [];
-  for (let i = 0; i < mapped.length; ) {
+  for (let i = 0; i < mapped.length;) {
     const first = mapped[i]!;
     if (!isProse(first)) {
       out.push(first);
@@ -207,7 +239,10 @@ export const joinCutParagraphs = (blocks: readonly IRBlock[]): IRBlock[] => {
  *  the product's own (`doc-ir/pipeline/detect-language.ts`, local and deterministic). A language without a table gets
  *  NONE — the hyphen stays unless the document writes the whole word, ugly and visible rather than a wrong table
  *  deciding. A document too short or too mixed to tell keeps the page's language, the behaviour before this rule. */
-export const hyphenationLanguageOf = (pages: readonly IRBlock[][], pageLanguage: PageLanguage | undefined): PageLanguage | undefined => {
+export const hyphenationLanguageOf = (
+  pages: readonly IRBlock[][],
+  pageLanguage: PageLanguage | undefined,
+): PageLanguage | undefined => {
   const detected = detectLanguage({ blocks: pages.flat() });
   if (detected === undefined) return pageLanguage;
   return detected === "fr" || detected === "en" ? detected : undefined;
@@ -219,22 +254,23 @@ export const hyphenationLanguageOf = (pages: readonly IRBlock[][], pageLanguage:
 export const resolveCutHyphens = (pages: readonly IRBlock[][], lang?: PageLanguage): IRBlock[][] => {
   const words = new Set<string>();
   const hyphenated = new Set<string>();
-  for (const page of pages) walkInlines(page, (inline) => {
-    // Les deux moiti\u00E9s d'un mot marqu\u00E9 n'entrent pas au vocabulaire : un mot dont le bord touche une marque est
-    // saut\u00E9. Un seul parcours des mots, aucune regex libre (la forme `A*\u00AD A*` reculait, `sonarjs/super-linear-regex`).
-    const { text } = inline;
-    // One walk of the word runs serves both vocabularies; a dedicated `A+-A+` regex would be super-linear again.
-    let prevEnd = -2;
-    let prevWord = "";
-    for (const m of text.matchAll(WORD)) {
-      // The document's own mid-line hyphens: a junction that reads as one of them keeps its hyphen (the word's own).
-      if (m.index === prevEnd + 1 && text[prevEnd] === "-") hyphenated.add(`${prevWord}-${m[0]}`.toLowerCase());
-      prevEnd = m.index + m[0].length;
-      prevWord = m[0];
-      if (text[m.index - 1] === CUT_MARK || text[prevEnd] === CUT_MARK) continue;
-      words.add(m[0].toLowerCase());
-    }
-  });
+  for (const page of pages)
+    walkInlines(page, (inline) => {
+      // Les deux moiti\u00E9s d'un mot marqu\u00E9 n'entrent pas au vocabulaire : un mot dont le bord touche une marque est
+      // saut\u00E9. Un seul parcours des mots, aucune regex libre (la forme `A*\u00AD A*` reculait, `sonarjs/super-linear-regex`).
+      const { text } = inline;
+      // One walk of the word runs serves both vocabularies; a dedicated `A+-A+` regex would be super-linear again.
+      let prevEnd = -2;
+      let prevWord = "";
+      for (const m of text.matchAll(WORD)) {
+        // The document's own mid-line hyphens: a junction that reads as one of them keeps its hyphen (the word's own).
+        if (m.index === prevEnd + 1 && text[prevEnd] === "-") hyphenated.add(`${prevWord}-${m[0]}`.toLowerCase());
+        prevEnd = m.index + m[0].length;
+        prevWord = m[0];
+        if (text[m.index - 1] === CUT_MARK || text[prevEnd] === CUT_MARK) continue;
+        words.add(m[0].toLowerCase());
+      }
+    });
   const legal = lang === undefined ? undefined : legalCutOf(lang);
   const joins = (left: string, right: string): boolean => {
     if (words.has(`${left}${right}`.toLowerCase())) return true;
@@ -255,5 +291,9 @@ export const resolveCutHyphens = (pages: readonly IRBlock[][], lang?: PageLangua
     text.includes(CUT_MARK)
       ? replaceCutWords(text, (left, right, at, length) => !inChain(text, at, length) && joins(left, right))
       : text;
-  return pages.map((page) => mapInlines([...page], (inlines) => inlines.map((inline) => (inline.text.includes(CUT_MARK) ? { ...inline, text: resolve(inline.text) } : inline))));
+  return pages.map((page) =>
+    mapInlines([...page], (inlines) =>
+      inlines.map((inline) => (inline.text.includes(CUT_MARK) ? { ...inline, text: resolve(inline.text) } : inline)),
+    ),
+  );
 };

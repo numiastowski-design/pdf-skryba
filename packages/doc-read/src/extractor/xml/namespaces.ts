@@ -38,7 +38,13 @@ const XMLNS = "xmlns";
  *  A LocalPart may not start with one. */
 const isNameStartCharOfCheckedName = (part: string): boolean => {
   const firstCharCode = part.charCodeAt(0);
-  if (firstCharCode === 0x2d || firstCharCode === 0x2e || (firstCharCode >= 0x30 && firstCharCode <= 0x39) || firstCharCode === 0xb7) return false;
+  if (
+    firstCharCode === 0x2d ||
+    firstCharCode === 0x2e ||
+    (firstCharCode >= 0x30 && firstCharCode <= 0x39) ||
+    firstCharCode === 0xb7
+  )
+    return false;
   return !((firstCharCode >= 0x300 && firstCharCode <= 0x36f) || firstCharCode === 0x203f || firstCharCode === 0x2040);
 };
 
@@ -46,7 +52,8 @@ const isNameStartCharOfCheckedName = (part: string): boolean => {
 const splitQualifiedName = (name: string): readonly [string | undefined, string] => {
   const colon = name.indexOf(":");
   if (colon < 0) return [undefined, name];
-  if (colon === 0 || colon === name.length - 1 || name.includes(":", colon + 1)) throw xmlRefusal("malformed qualified name");
+  if (colon === 0 || colon === name.length - 1 || name.includes(":", colon + 1))
+    throw xmlRefusal("malformed qualified name");
   const localName = name.slice(colon + 1);
   if (!isNameStartCharOfCheckedName(localName)) throw xmlRefusal("malformed qualified name");
   return [name.slice(0, colon), localName];

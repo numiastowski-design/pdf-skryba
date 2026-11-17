@@ -39,7 +39,8 @@ const CLOSING_PAINTS = new Set(["s", "b", "b*"]);
 /** The path-construction and painting operators: the only ones a path builder takes. */
 export const PATH_OPS = new Set(["m", "l", "c", "v", "y", "h", "re", ...Object.keys(PAINT_NAME), "W", "W*"]);
 
-const numberOf = (value: PdfValue | undefined): number | undefined => (value?.kind === "number" ? value.value : undefined);
+const numberOf = (value: PdfValue | undefined): number | undefined =>
+  value?.kind === "number" ? value.value : undefined;
 
 /** One page's path under construction. `feed` takes each operator of the path family, in order, and returns the painted
  *  path when the operator paints (`f`, `S`, `n`…), `undefined` otherwise. Clipping (`W`, `W*`) only sets the clip flag:
@@ -84,7 +85,7 @@ export class PathBuilder {
   feed(op: string, operands: readonly PdfValue[]): PdfPathArg | undefined {
     const n = operands.map(numberOf);
     // An operator whose operands are not all numbers is read as having none: a painting still paints what it has.
-    const v = n.every((x): x is number => x !== undefined) ? n.map((x) => Math.fround(x as number)) : [];
+    const v = n.every((x): x is number => x !== undefined) ? n.map((x) => Math.fround(x)) : [];
     if (v.length !== n.length) return this.paint(op);
     switch (op) {
       case "m":
@@ -126,7 +127,7 @@ export class PathBuilder {
   /** As pdf.js did, the sides are added in double precision, from the operands as read, and only then stores each corner in a
    *  Float32 buffer: the sum is taken before the rounding, not after it. */
   private rectangle(raw: readonly number[]): void {
-    const [rx, ry, rw, rh] = [raw[0]!, raw[1]!, raw[2]!, raw[3]!];
+    const [rx, ry, rw, rh] = [raw[0], raw[1], raw[2], raw[3]];
     if (rx === undefined || ry === undefined || rw === undefined || rh === undefined) return;
     const x = Math.fround(rx);
     const y = Math.fround(ry);
@@ -145,7 +146,12 @@ export class PathBuilder {
     // `s`, `b` and `b*` close the path first (as pdf.js did: closePath, then the painting), so the close is packed too.
     if (CLOSING_PAINTS.has(op)) this.packed.push(CLOSE);
     const minMax = minMaxOf(this.packed);
-    const painted: PdfPathArg = { paintOp: 0, paint, subpaths: decodePathSubpaths(this.packed), ...(minMax === undefined ? {} : { minMax }) };
+    const painted: PdfPathArg = {
+      paintOp: 0,
+      paint,
+      subpaths: decodePathSubpaths(this.packed),
+      ...(minMax === undefined ? {} : { minMax }),
+    };
     this.packed = [];
     this.start = undefined;
     return painted;

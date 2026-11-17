@@ -53,7 +53,7 @@ const overlapFraction = (aMin: number, aMax: number, bMin: number, bMax: number)
   if (span <= 0) return 0;
   const overlap = Math.min(aMax, bMax) - Math.max(aMin, bMin);
   return Math.max(0, overlap) / span;
-}
+};
 
 /** Stage 1 of §8's detector: a real grid read from vector-drawn border
  *  lines. La PREMIÈRE région de la page — voir `buildGridsFromVectorLines`
@@ -100,10 +100,12 @@ const MIN_BOUNDARIES_AFTER_FAILED_VOTE = 2;
 const MIN_BOUNDARIES_TO_LICENSE_SEARCH = 2;
 
 const licensesSearch = (grid: TableGrid): boolean =>
-  grid.rowBoundaries.length >= MIN_BOUNDARIES_TO_LICENSE_SEARCH && grid.colBoundaries.length >= MIN_BOUNDARIES_TO_LICENSE_SEARCH;
+  grid.rowBoundaries.length >= MIN_BOUNDARIES_TO_LICENSE_SEARCH &&
+  grid.colBoundaries.length >= MIN_BOUNDARIES_TO_LICENSE_SEARCH;
 
 const isWeakRegion = (grid: TableGrid): boolean =>
-  grid.rowBoundaries.length < MIN_BOUNDARIES_AFTER_FAILED_VOTE || grid.colBoundaries.length < MIN_BOUNDARIES_AFTER_FAILED_VOTE;
+  grid.rowBoundaries.length < MIN_BOUNDARIES_AFTER_FAILED_VOTE ||
+  grid.colBoundaries.length < MIN_BOUNDARIES_AFTER_FAILED_VOTE;
 
 /** Merged verticals above which a page reads no vector grid at all: it abstains, and the text flows on (prose, or the
  *  gutter and alignment stages). A safety cap on COST, not a design limit: the vote is indexed, but a page of tens of
@@ -146,7 +148,9 @@ export function buildGridsFromVectorLines(lines: readonly ClassifiedLine[]): Tab
     verticals.map((v) => ({ at: v.x, lo: v.yMin, hi: v.yMax, thickness: v.thickness ?? 0 })),
     true,
   );
-  const mergedHorizontals = mergeCollinear(horizontals.map((h) => ({ at: h.y, lo: h.xMin, hi: h.xMax, thickness: h.thickness ?? 0 })));
+  const mergedHorizontals = mergeCollinear(
+    horizontals.map((h) => ({ at: h.y, lo: h.xMin, hi: h.xMax, thickness: h.thickness ?? 0 })),
+  );
 
   if (mergedVerticals.length > MAX_MERGED_VERTICALS_PER_PAGE) return [];
 
@@ -313,7 +317,9 @@ function buildOneRegion(
   // tableau quand il est confondu avec le cadre de page (mesuré : une seule
   // abscisse porte les deux), et les séparateurs qui s'arrêtent une ligne plus
   // tôt.
-  const gridVerticals = mergedVerticals.filter((v) => overlapFraction(v.lo, v.hi, rowExtent.lo, rowExtent.hi) >= MIN_SPAN_COVERAGE);
+  const gridVerticals = mergedVerticals.filter(
+    (v) => overlapFraction(v.lo, v.hi, rowExtent.lo, rowExtent.hi) >= MIN_SPAN_COVERAGE,
+  );
   const colBoundaries = clusterPositions(gridVerticals.map((v) => v.at)).sort((a, b) => a - b);
   if (colBoundaries.length < MIN_BOUNDARIES) return { grid: undefined, consumed };
 
@@ -400,7 +406,9 @@ export function withoutImageFrames(
     if (Math.abs(l.y - b.yMax) <= T) return "top";
     return undefined;
   };
-  const framed = images.filter((b) => new Set(lines.map((l) => sideOf(l, b)).filter((s) => s !== undefined)).size === 4);
+  const framed = images.filter(
+    (b) => new Set(lines.map((l) => sideOf(l, b)).filter((s) => s !== undefined)).size === 4,
+  );
   if (framed.length === 0) return [...lines];
   return lines.filter((l) => !framed.some((b) => sideOf(l, b) !== undefined));
 }
@@ -516,7 +524,9 @@ export function mergeCollinear(segments: readonly MergedLine[], cutUncrossedGaps
   // the asker's own abscissa can be set aside), answer it by binary search. The runs are never modified (the output
   // holds copies), so the index is built once. Two distinct abscissae are more than `CLUSTER_TOLERANCE` apart (cluster
   // centres of separated clusters), so « another abscissa » is « another index ».
-  const byStart = runsByPosition.flatMap((runs, group) => runs.map((run) => ({ run, group }))).sort((a, b) => a.run.lo - b.run.lo);
+  const byStart = runsByPosition
+    .flatMap((runs, group) => runs.map((run) => ({ run, group })))
+    .sort((a, b) => a.run.lo - b.run.lo);
   interface PrefixBest {
     hi: number;
     group: number;
@@ -571,7 +581,9 @@ const isLyingFillEnd = (v: MergedLine): boolean =>
  * therefore filtered out before this call, the thin underlines are not (step
  * 2 says why).
  */
-export function largestAgreeingExtent(lines: readonly MergedLine[]): { extent: MergedLine; members: MergedLine[] } | undefined {
+export function largestAgreeingExtent(
+  lines: readonly MergedLine[],
+): { extent: MergedLine; members: MergedLine[] } | undefined {
   // Indexed by `lo`: the lines agreeing with a seed all lie in its `lo` window, found by binary search, instead of a scan of every
   // line per seed. The members come back in the input order, as before.
   const order = lines.map((_, i) => i).sort((a, b) => lines[a]!.lo - lines[b]!.lo || a - b);
@@ -586,9 +598,10 @@ export function largestAgreeingExtent(lines: readonly MergedLine[]): { extent: M
     const better =
       best === undefined ||
       agreeing.length > bestCount ||
-      (agreeing.length === bestCount && (seed.hi > best.extent.hi || (seed.hi === best.extent.hi && seed.lo < best.extent.lo)));
+      (agreeing.length === bestCount &&
+        (seed.hi > best.extent.hi || (seed.hi === best.extent.hi && seed.lo < best.extent.lo)));
     if (better) {
-      best = { extent: seed, members: agreeing.sort((a, b) => a - b).map((i) => lines[i]!) };
+      best = { extent: seed, members: [...agreeing].sort((a, b) => a - b).map((i) => lines[i]!) };
       bestCount = agreeing.length;
     }
   }

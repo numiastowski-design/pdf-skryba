@@ -76,15 +76,24 @@ export const TOOL_TABLE: readonly ToolRule[] = [
 ];
 
 /** The tool a Producer/Creator pair names. Pure; both strings are read to classify and dropped. */
-export function classifyPdfTool(creator: string | undefined, producer: string | undefined): { tool?: PdfToolLabel; toolVersion?: string } {
+export function classifyPdfTool(
+  creator: string | undefined,
+  producer: string | undefined,
+): { tool?: PdfToolLabel; toolVersion?: string } {
   const strings = [creator, producer].map((s) => (typeof s === "string" ? s.trim() : "")).filter((s) => s.length > 0);
   if (strings.length === 0) return {};
   for (const rule of TOOL_TABLE) {
     const hit = strings.find((s) => rule.matches.test(s));
     if (hit === undefined) continue;
     // The version may sit in the other string (Creator « Microsoft Word », Producer « Microsoft Word 2016 »).
-    const version = rule.version === undefined ? undefined : strings.map((s) => rule.version!.exec(s)?.[1]).find((v) => v !== undefined);
-    return { tool: rule.label, ...(version !== undefined && version.length <= PDF_TOOL_VERSION_MAX_CHARS ? { toolVersion: version } : {}) };
+    const version =
+      rule.version === undefined
+        ? undefined
+        : strings.map((s) => rule.version!.exec(s)?.[1]).find((v) => v !== undefined);
+    return {
+      tool: rule.label,
+      ...(version !== undefined && version.length <= PDF_TOOL_VERSION_MAX_CHARS ? { toolVersion: version } : {}),
+    };
   }
   return { tool: "other" };
 }
@@ -117,7 +126,10 @@ export function declaredProducer(creator: string | undefined, producer: string |
 
 /** The facts of a document read once: the info `readPdfSource` kept, the tagging of its pages, and which pages the layout
  *  found to be scans or invisible text (known only after the pages are laid out: `pdf.ts` passes them). */
-export function describePdf(source: PdfSource, kinds: { scanned: readonly number[]; invisibleText: readonly number[] } = { scanned: [], invisibleText: [] }): PdfDocumentFacts {
+export function describePdf(
+  source: PdfSource,
+  kinds: { scanned: readonly number[]; invisibleText: readonly number[] } = { scanned: [], invisibleText: [] },
+): PdfDocumentFacts {
   const info: PdfDocumentInfo = source.info ?? {};
   const { tool, toolVersion } = source.info === undefined ? {} : classifyPdfTool(info.creator, info.producer);
   const producer = declaredProducer(info.creator, info.producer);

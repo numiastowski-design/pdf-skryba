@@ -22,7 +22,9 @@ import type { PdfTextRun } from "./pdf-source";
 import { renderTableRegion } from "./pdf-table-render";
 
 /** The top/bottom of the rendered regions that hold a table block (a region published flat carries no band). */
-const tableBandsOf = (rendered: readonly { top: number; bottom: number; blocks: readonly IRBlock[] }[]): { top: number; bottom: number }[] =>
+const tableBandsOf = (
+  rendered: readonly { top: number; bottom: number; blocks: readonly IRBlock[] }[],
+): { top: number; bottom: number }[] =>
   rendered.filter((r) => r.blocks.some((b) => b.kind === "table")).map((r) => ({ top: r.top, bottom: r.bottom }));
 
 /**
@@ -73,7 +75,6 @@ export function renderPageTables(
    *  Limit, written: a prose chunk the bounded cut splits into side-by-side blocks (`columns`) keeps its geometric order. */
   declaredRank?: (item: PdfTextRun) => number | undefined,
 ): IRBlock[] | undefined {
-  
   // AN IMAGE WHOSE CENTRE IS INSIDE A GRID'S BOX, ON BOTH AXES, goes into that
   // grid's cell if the grid renders (21/09/2026, O1 and O4). An image
   // beside a table — in its height, not its width — stays in the page flow: on
@@ -135,7 +136,9 @@ export function renderPageTables(
     const split = bandedSplit(items, cut?.cut, cut?.above);
     if (split === undefined) {
       const lines = groupItemsIntoLines(items);
-      return declaredRank === undefined ? asBlocks(lines) : segmentsInDeclaredOrder([lines], declaredRank).flatMap((segment) => asBlocks(segment));
+      return declaredRank === undefined
+        ? asBlocks(lines)
+        : segmentsInDeclaredOrder([lines], declaredRank).flatMap((segment) => asBlocks(segment));
     }
     // DEUX BLOCS CÔTE À CÔTE, PAS DEUX SUITES DE PROSE. Empilés, ils se lisent
     // dans le bon ordre mais perdent le fait qu'ils sont côte à côte ; en

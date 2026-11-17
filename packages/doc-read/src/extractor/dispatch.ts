@@ -116,7 +116,8 @@ export type ExtractionInput =
 export type { ExtractOptions };
 
 /** The `limits` option as an object to spread or to hand on: `{ limits }` when the caller gave some, `{}` when not. */
-const withLimits = (opts: { limits?: ReaderLimits } | undefined): { limits?: ReaderLimits } => (opts?.limits === undefined ? {} : { limits: opts.limits });
+const withLimits = (opts: { limits?: ReaderLimits } | undefined): { limits?: ReaderLimits } =>
+  opts?.limits === undefined ? {} : { limits: opts.limits };
 
 /** The PDF reading's own options: each field is PRESENT only when the caller gave it, because the reader's signature
  *  distinguishes an absent field from an `undefined` one (`exactOptionalPropertyTypes`). Built here rather than at the call
@@ -131,7 +132,11 @@ const pdfOptions = (pageLanguage: PageLanguage, opts: ExtractOptions | undefined
   ...withLimits(opts),
 });
 
-export async function extractDocument(input: ExtractionInput, vision: VisionPort, opts?: ExtractOptions): Promise<ExtractionResult> {
+export async function extractDocument(
+  input: ExtractionInput,
+  vision: VisionPort,
+  opts?: ExtractOptions,
+): Promise<ExtractionResult> {
   // The language the page labels and spreadsheet numbers are written in
   // (the connection's setting); English when absent.
   const pageLanguage = opts?.pageLanguage ?? "en";
@@ -156,14 +161,27 @@ export async function extractDocument(input: ExtractionInput, vision: VisionPort
       // never through this same `extractPptx` call above, so a bug in it
       // cannot pass its own check. A Google Slides deck reaches here as the
       // same exported .pptx bytes — same reader.
-      return { ...result, conservationSource: (language) => readPptxConservationSource(input.bytes, language, opts?.limits, opts?.labels) };
+      return {
+        ...result,
+        conservationSource: (language) => readPptxConservationSource(input.bytes, language, opts?.limits, opts?.labels),
+      };
     }
     case "pdf": {
       // `ocr: false` (the sync): the pages with no text layer are counted, never read.
-      const { doc, images, tableDetections, notices, scannedPages, pageCount, docFacts, conservationSource } = await extractPdfWithVision(input.bytes, vision, pdfOptions(pageLanguage, opts));
+      const { doc, images, tableDetections, notices, scannedPages, pageCount, docFacts, conservationSource } =
+        await extractPdfWithVision(input.bytes, vision, pdfOptions(pageLanguage, opts));
       // `images` porte les APLATS DE COULEUR rendus en SVG (écart 15) — le PDF
       // n'en produisait aucune jusqu'au 11/09/2026.
-      return { doc, images: images ?? [], ...(tableDetections ? { tableDetections } : {}), ...(notices ? { notices } : {}), ...(scannedPages !== undefined ? { scannedPages } : {}), pageCount, pdfFacts: docFacts, conservationSource: async () => conservationSource };
+      return {
+        doc,
+        images: images ?? [],
+        ...(tableDetections ? { tableDetections } : {}),
+        ...(notices ? { notices } : {}),
+        ...(scannedPages !== undefined ? { scannedPages } : {}),
+        pageCount,
+        pdfFacts: docFacts,
+        conservationSource: async () => conservationSource,
+      };
     }
     case "image":
       return extractImage(input.bytes, input.mimeType);
@@ -182,7 +200,8 @@ export async function extractDocument(input: ExtractionInput, vision: VisionPort
         doc,
         images: [],
         ...(notices.length > 0 ? { notices } : {}),
-        conservationSource: async () => readGoogleSheetConservationSource(input.meta, input.valuesByTitle, opts?.limits),
+        conservationSource: async () =>
+          readGoogleSheetConservationSource(input.meta, input.valuesByTitle, opts?.limits),
       };
     }
   }

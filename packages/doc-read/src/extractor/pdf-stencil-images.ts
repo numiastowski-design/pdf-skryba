@@ -21,13 +21,25 @@ import { singleFilterOf } from "./pdf-objects/document";
 import type { PdfObjectsDocument } from "./pdf-objects/document";
 import type { PdfDict, PdfStream } from "./pdf-objects/objects";
 import type { DecodedImageObject } from "./pdf-ccitt-images";
-import { objectRefOf, decodeArrayOf, nameOf, numberOf, pictureSizeOk, type PictureScope, unpackSamples } from "./pdf-image-pixels";
+import {
+  objectRefOf,
+  decodeArrayOf,
+  nameOf,
+  numberOf,
+  pictureSizeOk,
+  type PictureScope,
+  unpackSamples,
+} from "./pdf-image-pixels";
 
 /** The three bytes of a `#rrggbb` colour, or `undefined` for anything else. A stencil without a colour we can read is
  *  not guessed: black would be a colour the document never asked for. */
 function rgbOfHex(colour: string | undefined): readonly [number, number, number] | undefined {
   if (colour === undefined || !/^#[0-9a-f]{6}$/i.test(colour)) return undefined;
-  return [Number.parseInt(colour.slice(1, 3), 16), Number.parseInt(colour.slice(3, 5), 16), Number.parseInt(colour.slice(5, 7), 16)];
+  return [
+    Number.parseInt(colour.slice(1, 3), 16),
+    Number.parseInt(colour.slice(3, 5), 16),
+    Number.parseInt(colour.slice(5, 7), 16),
+  ];
 }
 
 /** Whether the dictionary is a stencil this module reads: an image mask of one bit, Flate-coded or uncoded. */
@@ -45,7 +57,12 @@ function stencilSupported(doc: PdfObjectsDocument, dict: PdfDict): boolean {
 }
 
 /** The RGBA pixels: the colour where the stencil paints, fully transparent where it does not. */
-function pixelsOf(samples: Uint8Array, rgb: readonly [number, number, number], paintsOn: number, pixels: number): Uint8Array {
+function pixelsOf(
+  samples: Uint8Array,
+  rgb: readonly [number, number, number],
+  paintsOn: number,
+  pixels: number,
+): Uint8Array {
   const data = new Uint8Array(pixels * 4);
   for (let i = 0; i < pixels; i += 1) {
     if (samples[i] !== paintsOn) continue;
@@ -59,7 +76,10 @@ function pixelsOf(samples: Uint8Array, rgb: readonly [number, number, number], p
 
 /** The size and the sample that PAINTS, or `undefined` when the stencil is not one we read. §8.9.5.2: the default
  *  `/Decode` of an image mask is [0 1], so a sample of 0 paints; [1 0] swaps them. */
-function stencilLayoutOf(doc: PdfObjectsDocument, dict: PdfDict): { width: number; height: number; paintsOn: number } | undefined {
+function stencilLayoutOf(
+  doc: PdfObjectsDocument,
+  dict: PdfDict,
+): { width: number; height: number; paintsOn: number } | undefined {
   if (!stencilSupported(doc, dict)) return undefined;
   const width = numberOf(doc.resolve(dict.get("Width")));
   const height = numberOf(doc.resolve(dict.get("Height")));
@@ -80,7 +100,13 @@ function samplesOf(doc: PdfObjectsDocument, stream: PdfStream, width: number, he
 
 /** The stencil `name` of the page, painted in `colour`, as the object the image reader takes (RGBA), or `undefined`
  *  when it is not one we read. */
-export function stencilImageObjectOf(doc: PdfObjectsDocument, scope: PictureScope, name: string, kinds: { rgba: number }, colour: string | undefined): DecodedImageObject | undefined {
+export function stencilImageObjectOf(
+  doc: PdfObjectsDocument,
+  scope: PictureScope,
+  name: string,
+  kinds: { rgba: number },
+  colour: string | undefined,
+): DecodedImageObject | undefined {
   const rgb = rgbOfHex(colour);
   if (rgb === undefined) return undefined;
   const declared = doc.dictOf(scope.resources?.get("XObject"))?.get(name);

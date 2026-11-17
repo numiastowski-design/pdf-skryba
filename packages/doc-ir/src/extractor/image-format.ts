@@ -53,7 +53,9 @@ export const imageHeader = (bytes: Uint8Array): ImageHeader | undefined => {
     width = (bytes[6] ?? 0) | ((bytes[7] ?? 0) << 8);
     height = (bytes[8] ?? 0) | ((bytes[9] ?? 0) << 8);
   }
-  return width > 0 && height > 0 && width <= MAX_DIMENSION && height <= MAX_DIMENSION ? { format, width, height } : undefined;
+  return width > 0 && height > 0 && width <= MAX_DIMENSION && height <= MAX_DIMENSION
+    ? { format, width, height }
+    : undefined;
 };
 
 export interface JpegHeader {
@@ -102,7 +104,8 @@ export const jpegHeader = (b: Uint8Array): JpegHeader | undefined => {
       continue;
     }
     const length = u16be(b, at + 2);
-    if (marker === 0xe1 && orientation === undefined) orientation = exifOrientationOf(b, at + 4, Math.min(b.length, at + 2 + length));
+    if (marker === 0xe1 && orientation === undefined)
+      orientation = exifOrientationOf(b, at + 4, Math.min(b.length, at + 2 + length));
     const isFrame = marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc;
     if (isFrame) {
       if (at + 8 >= b.length) return undefined;

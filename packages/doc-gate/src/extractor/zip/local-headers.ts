@@ -6,7 +6,13 @@
  *  Called by: `zip/zip-package.ts` (and so `ooxml/package.ts`),
  *  `zip/local-headers.test.ts` and the differential fuzz. */
 
-import { CD_RECORD_MIN_SIZE, readCentralDirectory, refuse, SAT32, type CentralDirectoryEntry } from "./central-directory";
+import {
+  CD_RECORD_MIN_SIZE,
+  readCentralDirectory,
+  refuse,
+  SAT32,
+  type CentralDirectoryEntry,
+} from "./central-directory";
 
 /**
  * WHAT IS READ, AND FROM WHERE (PKWARE APPNOTE 6.3.9). `readCentralDirectory`

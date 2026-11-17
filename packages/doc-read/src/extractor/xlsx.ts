@@ -27,7 +27,19 @@ import { selectBuiltinNumFmt14, formatNumberCell, isHiddenTextFormatCode } from 
 import { keptLinesOf, tableOfKept, type KeptLines } from "./sheet-grid";
 import { publishWorkbook, type SheetBody, type SheetSource } from "./sheet-workbook";
 import { drawingPartsOf, readWorkbookSheets, readDeclaredHeaderRows, type WorkbookSheet } from "./xlsx-parts";
-import { LANGUAGE_SAMPLE_CHARS, formatCellReference, isColumnHidden, findExternalHyperlinkTargetAt, parseCellReference, parseCellRangeReference, readWorksheetCells, readSharedStringsAndStyles, type WorksheetCell, type WorksheetCells, type SharedStringsAndStyles } from "./xlsx-cells";
+import {
+  LANGUAGE_SAMPLE_CHARS,
+  formatCellReference,
+  isColumnHidden,
+  findExternalHyperlinkTargetAt,
+  parseCellReference,
+  parseCellRangeReference,
+  readWorksheetCells,
+  readSharedStringsAndStyles,
+  type WorksheetCell,
+  type WorksheetCells,
+  type SharedStringsAndStyles,
+} from "./xlsx-cells";
 
 /** The word a boolean cell shows in the document's language. */
 const writeBooleanWord = (value: boolean, language: PageLanguage): string => {
@@ -96,7 +108,7 @@ export const keptGridOf = (sheet: WorksheetCells, date1904: boolean, language: P
     const text = writeCellText(cell, date1904, language);
     if (text.length === 0) continue;
     let row = texts.get(address.rowIndex);
-    if (row === undefined) texts.set(address.rowIndex, (row = new Map()));
+    if (row === undefined) texts.set(address.rowIndex, (row = new Map<number, string>()));
     row.set(address.columnIndex, text);
     if (cell.isBold) {
       let boldRow = bold.get(address.rowIndex);
@@ -110,7 +122,12 @@ export const keptGridOf = (sheet: WorksheetCells, date1904: boolean, language: P
     (rowIndex) => sheet.hiddenRows.has(rowIndex),
     (colIndex) => isColumnHidden(sheet, colIndex),
   );
-  return { ...lines, filledCells: filled, textAt: (rowIndex, colIndex) => texts.get(rowIndex)?.get(colIndex) ?? "", boldAt: (rowIndex, colIndex) => bold.get(rowIndex)?.has(colIndex) ?? false };
+  return {
+    ...lines,
+    filledCells: filled,
+    textAt: (rowIndex, colIndex) => texts.get(rowIndex)?.get(colIndex) ?? "",
+    boldAt: (rowIndex, colIndex) => bold.get(rowIndex)?.has(colIndex) ?? false,
+  };
 };
 
 /** The resolver a chart held by this sheet reads its values with when the file cached none (`xlsx-chart-reference.ts`): the published grid's
@@ -135,21 +152,37 @@ const filteredRowsOf = (sheet: WorksheetCells, sheetXml: XNode, date1904: boolea
   for (const [cellReference, cell] of sheet.cells) {
     const address = parseCellReference(cellReference);
     // `address` is undefined for the same keys as in `keptGridOf`.
-    if (!address || rowsWithText.has(address.rowIndex) || address.rowIndex <= range.start.rowIndex || address.rowIndex > range.end.rowIndex || !sheet.hiddenRows.has(address.rowIndex)) continue;
+    if (
+      !address ||
+      rowsWithText.has(address.rowIndex) ||
+      address.rowIndex <= range.start.rowIndex ||
+      address.rowIndex > range.end.rowIndex ||
+      !sheet.hiddenRows.has(address.rowIndex)
+    )
+      continue;
     if (writeCellText(cell, date1904, language).length > 0) rowsWithText.add(address.rowIndex);
   }
   return rowsWithText.size;
 };
 
 const buildSheetTable = (sheet: WorksheetCells, grid: KeptGrid): Extract<IRBlock, { kind: "table" }> => {
-  const merges = sheet.mergeCells.map((merge) => ({ startRow: merge.start.rowIndex, startCol: merge.start.columnIndex, endRow: merge.end.rowIndex, endCol: merge.end.columnIndex }));
+  const merges = sheet.mergeCells.map((merge) => ({
+    startRow: merge.start.rowIndex,
+    startCol: merge.start.columnIndex,
+    endRow: merge.end.rowIndex,
+    endCol: merge.end.columnIndex,
+  }));
   return tableOfKept(grid, merges, (rowIndex, colIndex): Inline => {
     const text = grid.textAt(rowIndex, colIndex);
     // Only `findExternalHyperlinkTargetAt` is used: a cell link's EXTERNAL target is published raw (the scheme filter lives in one
     // place, the renderer, and is not copied here), while a file's own internal form (`#'Sheet'!A1`) is refused: it must
     // never reach the renderer's internal link handling. A cross-sheet link becomes plain text (a written limit).
     const href = findExternalHyperlinkTargetAt(sheet, rowIndex, colIndex);
-    return { text, ...(href !== undefined ? { href } : {}), ...(grid.boldAt(rowIndex, colIndex) ? { marks: ["strong" as const] } : {}) };
+    return {
+      text,
+      ...(href !== undefined ? { href } : {}),
+      ...(grid.boldAt(rowIndex, colIndex) ? { marks: ["strong" as const] } : {}),
+    };
   });
 };
 
@@ -191,7 +224,10 @@ const addSheetTexts = (sheet: WorksheetCells, sample: LanguageSample): void => {
 // language. An omitted `pageLanguage` (direct callers) skips detection and keeps the English default.
 // The sample is the text of cells in visible sheets, rows and columns only (« Rien d'invisible »): no hidden sheet, row or column, no
 // unreferenced string. It is taken before the display caps and reads no format code.
-const documentLanguageOf = async (pageLanguage: PageLanguage | undefined, source: LanguageSource): Promise<PageLanguage> => {
+const documentLanguageOf = async (
+  pageLanguage: PageLanguage | undefined,
+  source: LanguageSource,
+): Promise<PageLanguage> => {
   if (pageLanguage === undefined) return "en";
   const { inventory, opcPackage, workbook, limits, readAhead } = source;
   const sample: LanguageSample = { texts: [], chars: 0 };
@@ -224,7 +260,11 @@ const documentLanguageOf = async (pageLanguage: PageLanguage | undefined, source
 };
 
 /** Reads a workbook into its tabs document, its pictures and the notices for the dashboard. */
-export const extractXlsx = async (bytes: Uint8Array, pageLanguage?: PageLanguage, limits?: ReaderLimits): Promise<{ doc: IRDoc; images: RawImage[]; notices: DocumentNotice[] }> => {
+export const extractXlsx = async (
+  bytes: Uint8Array,
+  pageLanguage?: PageLanguage,
+  limits?: ReaderLimits,
+): Promise<{ doc: IRDoc; images: RawImage[]; notices: DocumentNotice[] }> => {
   // The OPC inventory comes FIRST: opening the package is where a password-protected or legacy binary workbook is
   // refused with a named error, before any other read.
   const { pkg, sheets: inventory, workbookXml } = await readWorkbookSheets(bytes);
@@ -245,7 +285,13 @@ export const extractXlsx = async (bytes: Uint8Array, pageLanguage?: PageLanguage
     return ahead;
   };
 
-  const language = await documentLanguageOf(pageLanguage, { inventory, opcPackage: pkg, workbook, limits, readAhead: { preparsed, prebuilt } });
+  const language = await documentLanguageOf(pageLanguage, {
+    inventory,
+    opcPackage: pkg,
+    workbook,
+    limits,
+    readAhead: { preparsed, prebuilt },
+  });
 
   // ONE tabs block, a sheet being a native tab: the shape the presentations also deliver. The caps are DISPLAY caps counted
   // AFTER the trimming of hidden and empty lines; the sheets beyond the tab cap are named to the dashboard (`workbook-cap`
@@ -253,13 +299,20 @@ export const extractXlsx = async (bytes: Uint8Array, pageLanguage?: PageLanguage
   let chartsWithheld = 0;
   let imagesMissing = 0;
   let filteredRows = 0;
-  const chartBlocksOf = async (chartParts: readonly string[], unresolved = 0, resolver?: ChartResolver): Promise<IRBlock[]> => {
+  const chartBlocksOf = async (
+    chartParts: readonly string[],
+    unresolved = 0,
+    resolver?: ChartResolver,
+  ): Promise<IRBlock[]> => {
     const blocks: IRBlock[] = [];
     chartsWithheld += unresolved; // a chart frame with no resolvable relationship: said like a missing part
     for (const chartPart of chartParts) {
       // A damaged chart part is left out and the sheets stay published, as in the pptx reader (audit 07/10/2026).
-      const { block, withheld } = chartToIr(await readChartOrWithheld(pkg, chartPart, { picture: false, limits, resolver }));
-      if (withheld) chartsWithheld++; // kept out (damaged part or a bound): said, one folded notice
+      const { block, withheld } = chartToIr(
+        await readChartOrWithheld(pkg, chartPart, { picture: false, limits, resolver }),
+      );
+      if (withheld)
+        chartsWithheld++; // kept out (damaged part or a bound): said, one folded notice
       else if (block) blocks.push(block);
     }
     return blocks;
@@ -280,7 +333,10 @@ export const extractXlsx = async (bytes: Uint8Array, pageLanguage?: PageLanguage
       if (!readParts.has(picturePart)) {
         const raw = await readUnlessDamaged(() => pkg.readBytes(picturePart, imageBudget));
         if (raw !== undefined) imageBudget -= raw.byteLength;
-        readParts.set(picturePart, raw === undefined ? undefined : collector.collect(raw, listedMimeType(pkg.contentType(picturePart))));
+        readParts.set(
+          picturePart,
+          raw === undefined ? undefined : collector.collect(raw, listedMimeType(pkg.contentType(picturePart))),
+        );
       }
       const ref = readParts.get(picturePart);
       if (ref === undefined) {
@@ -300,10 +356,13 @@ export const extractXlsx = async (bytes: Uint8Array, pageLanguage?: PageLanguage
       visible: sheetInfo.state === "visible",
       open: async (): Promise<SheetBody | "part-missing" | undefined> => {
         // A chart-only tab (chartsheet) has no grid at all: its tab is its charts, and it COUNTS among the tab slots.
-        if (sheetInfo.kind === "chartsheet") return { extras: async () => {
-          const drawn = await drawingPartsOf(pkg, sheetInfo.partPath);
-          return chartBlocksOf(drawn.charts, drawn.unresolvedCharts);
-        } };
+        if (sheetInfo.kind === "chartsheet")
+          return {
+            extras: async () => {
+              const drawn = await drawingPartsOf(pkg, sheetInfo.partPath);
+              return chartBlocksOf(drawn.charts, drawn.unresolvedCharts);
+            },
+          };
         if (sheetInfo.kind !== "worksheet") return undefined; // an unrecognised relationship kind: nothing to publish, never guessed
         const partPath = sheetInfo.partPath;
         // ONE inflate and parse of the sheet's XML part, shared by every consumer below.
@@ -322,14 +381,26 @@ export const extractXlsx = async (bytes: Uint8Array, pageLanguage?: PageLanguage
             notices: () => {
               filteredRows += filteredRowsOf(sheet, sheetXml, workbook.date1904, language);
               // The formula notice counts only what the PUBLISHED grid shows.
-              const visibleNoValue = sheet.formulasWithoutValue.filter((formulaCell) => grid.keptRowSet.has(formulaCell.rowIndex) && grid.keptColSet.has(formulaCell.columnIndex)).length;
-              return visibleNoValue > 0 ? [{ kind: "formula-cells-empty", sheet: cutNoticeName(sheetInfo.name), count: visibleNoValue }] : [];
+              const visibleNoValue = sheet.formulasWithoutValue.filter(
+                (formulaCell) =>
+                  grid.keptRowSet.has(formulaCell.rowIndex) && grid.keptColSet.has(formulaCell.columnIndex),
+              ).length;
+              return visibleNoValue > 0
+                ? [{ kind: "formula-cells-empty", sheet: cutNoticeName(sheetInfo.name), count: visibleNoValue }]
+                : [];
             },
           },
           // ONE walk of the drawings for charts AND pictures: each drawing part is inflated once.
           extras: async () => {
             const drawn = await drawingPartsOf(pkg, partPath, sheetXml);
-            return [...(await chartBlocksOf(drawn.charts, drawn.unresolvedCharts, chartResolverOf(sheetInfo.name, sheet, grid))), ...(await imageBlocksOf(drawn.pictures, drawn.unresolvedPictures))];
+            return [
+              ...(await chartBlocksOf(
+                drawn.charts,
+                drawn.unresolvedCharts,
+                chartResolverOf(sheetInfo.name, sheet, grid),
+              )),
+              ...(await imageBlocksOf(drawn.pictures, drawn.unresolvedPictures)),
+            ];
           },
         };
       },

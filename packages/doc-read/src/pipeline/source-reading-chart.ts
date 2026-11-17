@@ -15,7 +15,13 @@
  *  chart table (`extractor/pptx-reader/chart.ts`), the addresses and the cells (`source-chart-reference.ts`).
  *  Called by: `source-reading-docx.ts` (Word charts), `source-reading-pptx.ts` (slide charts) and `source-structure-sheet.ts` (workbook charts). */
 
-import { MAX_CHART_CELLS, MAX_CHART_LEVELS, MAX_CHART_POINTS, MAX_CHART_SERIES, type ReaderLimits } from "doc-ir/lib/reader-limits";
+import {
+  MAX_CHART_CELLS,
+  MAX_CHART_LEVELS,
+  MAX_CHART_POINTS,
+  MAX_CHART_SERIES,
+  type ReaderLimits,
+} from "doc-ir/lib/reader-limits";
 import { formatNumberCell } from "../extractor/xlsx-number-format";
 import type { SheetCell, SheetCells, SheetCellsResolver } from "./source-chart-reference";
 import { attrOf, first, kidsOf, tagOf, textOf, type N } from "./source-reading-package";
@@ -29,23 +35,15 @@ const allOf = (n: N, tag: string, out: N[] = []): N[] => {
   return out;
 };
 
-/** The format a series' values are shown with: not-linked data-label format, else the cache's, else General (`undefined`). */
-const shownFormatOf = (ser: N, numCache: N | undefined): string | undefined => {
-  const label = first(first(ser, "c:dLbls"), "c:numFmt");
-  const labelCode = label ? attrOf(label, "formatCode") : undefined;
-  const linked = label ? attrOf(label, "sourceLinked") : undefined;
-  if (labelCode !== undefined && labelCode !== "" && linked !== "1" && linked !== "true") return labelCode;
-  const cached = numCache ? textOf(first(numCache, "c:formatCode") ?? {}) : "";
-  return cached === "" ? undefined : cached;
-};
-
 const shown = (stored: string, code: string | undefined): string => {
   const n = stored.trim() === "" ? Number.NaN : Number(stored);
   return Number.isFinite(n) ? (formatNumberCell(n, code, false) ?? stored) : stored;
 };
 
 /** The bounds of a chart: points, category levels, series and cells: the limits given, else the product's. */
-const boundsOf = (limits: ReaderLimits | undefined): { series: number; cells: number; points: number; levels: number } => ({
+const boundsOf = (
+  limits: ReaderLimits | undefined,
+): { series: number; cells: number; points: number; levels: number } => ({
   series: limits?.chartSeries ?? MAX_CHART_SERIES,
   cells: limits?.chartCells ?? MAX_CHART_CELLS,
   points: limits?.chartPoints ?? MAX_CHART_POINTS,
@@ -55,8 +53,16 @@ const boundsOf = (limits: ReaderLimits | undefined): { series: number; cells: nu
 /** One cache as the extractor's table would hold it: the cells written (index to text) and the array length they imply (last kept idx + 1).
  *  `"over"`: a point PRESENT at or past `MAX_CHART_POINTS`, checked before the declared count filters anything. A written `c:ptCount`
  *  (an explicit 0 included) drops the points at or past it; an absent or unreadable one drops nothing. */
-interface Cache { length: number; cells: Map<number, string> }
-const readCache = (countNode: N | undefined, ptsNode: N | undefined, display: (v: string) => string, limits: ReaderLimits | undefined): Cache | "over" => {
+interface Cache {
+  length: number;
+  cells: Map<number, string>;
+}
+const readCache = (
+  countNode: N | undefined,
+  ptsNode: N | undefined,
+  display: (v: string) => string,
+  limits: ReaderLimits | undefined,
+): Cache | "over" => {
   const raw = attrOf(first(countNode, "c:ptCount") ?? {}, "val");
   const parsed = raw === undefined ? Number.NaN : Number.parseInt(raw, 10);
   const declared = Number.isInteger(parsed) && parsed >= 0 ? parsed : undefined;
@@ -71,7 +77,12 @@ function* cachedPoints(ptsNode: N | undefined): Generator<{ idx: number; value: 
   }
 }
 
-const cacheFrom = (points: Iterable<{ idx: number; value: string }>, declared: number | undefined, display: (v: string) => string, limits: ReaderLimits | undefined): Cache | "over" => {
+const cacheFrom = (
+  points: Iterable<{ idx: number; value: string }>,
+  declared: number | undefined,
+  display: (v: string) => string,
+  limits: ReaderLimits | undefined,
+): Cache | "over" => {
   const cache: Cache = { length: 0, cells: new Map() };
   const pointCap = boundsOf(limits).points;
   for (const { idx, value } of points) {
@@ -98,7 +109,11 @@ const multiLevels = (multi: N, limits: ReaderLimits | undefined): Cache[] | "ove
 };
 /** The category levels of a series' `c:cat`, leaf first: a multi-level cache gives one per `c:lvl`, a plain reference one, none written gives
  *  one empty level. `"over"`: a cache past the point cap, or a ninth level. */
-const levelsOf = (cat: N | undefined, limits: ReaderLimits | undefined, sheet: SheetPoints | undefined): Cache[] | "over" => {
+const levelsOf = (
+  cat: N | undefined,
+  limits: ReaderLimits | undefined,
+  sheet: SheetPoints | undefined,
+): Cache[] | "over" => {
   const multi = first(first(cat, "c:multiLvlStrRef"), "c:multiLvlStrCache");
   const levels = multi ? multiLevels(multi, limits) : [];
   if (levels === "over" || levels.length > 0) return levels;
@@ -107,7 +122,15 @@ const levelsOf = (cat: N | undefined, limits: ReaderLimits | undefined, sheet: S
   if (!str && !num) return [emptyCache()];
   const read = sheet?.get((str ?? num)!);
   const cache = str ? first(str, "c:strCache") : first(num, "c:numCache");
-  const one = read === undefined ? readCache(cache, cache, verbatim, limits) : cacheFrom(read.map((cell) => ({ idx: cell.index, value: cell.text })), undefined, verbatim, limits);
+  const one =
+    read === undefined
+      ? readCache(cache, cache, verbatim, limits)
+      : cacheFrom(
+          read.map((cell) => ({ idx: cell.index, value: cell.text })),
+          undefined,
+          verbatim,
+          limits,
+        );
   return one === "over" ? "over" : [one];
 };
 
@@ -128,11 +151,23 @@ const cacheFormatOf = (numCache: N | undefined): string | undefined => {
 
 /** The cache of a `c:xVal`, `c:yVal` or `c:bubbleSize`: a string reference as written, a number reference shown with `codeOf`'s format; none
  *  written (or literal data, not read: written limit) gives an empty cache. `"over"`: past the point cap. */
-const xyCacheOf = (parent: N | undefined, codeOf: (numCache: N | undefined) => string | undefined, limits: ReaderLimits | undefined, sheet: SheetPoints | undefined, labelCode: string | undefined): Cache | "over" => {
+const xyCacheOf = (
+  parent: N | undefined,
+  codeOf: (numCache: N | undefined) => string | undefined,
+  limits: ReaderLimits | undefined,
+  sheet: SheetPoints | undefined,
+  labelCode: string | undefined,
+): Cache | "over" => {
   const strRef = first(parent, "c:strRef");
   const str = first(strRef, "c:strCache");
   const strRead = strRef === undefined ? undefined : sheet?.get(strRef);
-  if (strRead !== undefined) return cacheFrom(strRead.map((cell) => ({ idx: cell.index, value: cell.text })), undefined, verbatim, limits);
+  if (strRead !== undefined)
+    return cacheFrom(
+      strRead.map((cell) => ({ idx: cell.index, value: cell.text })),
+      undefined,
+      verbatim,
+      limits,
+    );
   if (str) return readCache(str, str, verbatim, limits);
   const numRef = first(parent, "c:numRef");
   const numRead = numRef === undefined ? undefined : sheet?.get(numRef);
@@ -144,7 +179,8 @@ const xyCacheOf = (parent: N | undefined, codeOf: (numCache: N | undefined) => s
 };
 
 const sameCells = (a: Cache, b: Cache): boolean => {
-  for (let i = 0; i < Math.max(a.length, b.length); i++) if ((a.cells.get(i) ?? "") !== (b.cells.get(i) ?? "")) return false;
+  for (let i = 0; i < Math.max(a.length, b.length); i++)
+    if ((a.cells.get(i) ?? "") !== (b.cells.get(i) ?? "")) return false;
   return true;
 };
 const isBlank = (cache: Cache): boolean => occupiedRows([cache]) === 0;
@@ -165,39 +201,46 @@ const upToCap = (found: Iterable<SheetCell>, cap: number): SheetCell[] => {
   return kept;
 };
 
-/** How many cells a reference can yield: its `extent`, or, from a resolver that cannot tell (a test's fixed cells), the cells read up to the
- *  bound, which are then kept. A series name counts one cell: only its first is read. */
-const cellsOf = (found: SheetCells, name: boolean, cap: number): { cells: number; read?: SheetCell[] } => {
-  if (name) return { cells: 1 };
-  if (found.extent !== undefined) return { cells: found.extent };
-  const read = upToCap(found, cap);
-  return { cells: read.length === 0 ? 0 : read[read.length - 1]!.index + 1, read };
-};
-
-/** The sheet's points for the series references of a chart, or `undefined` when the chart keeps its cache: some reference of the chart carries a
+/** The sheet's points for the series references of a chart; `undefined` when the chart keeps its cache: some reference of the chart carries a
  *  point, it holds literal data, there is no series reference, a reference is not read (another sheet, an address outside the grammar, a
- *  multi-level category), the chart has more series than the bound (its cache then withholds it in `publishedTable`), or its references can
- *  yield more cells than the bounds allow. That last decision is ARITHMETIC on the parsed addresses, before any cell is read, written here on
- *  its own and the same as the page's (`extractor/pptx-reader/chart.ts#sheetPointsOf`): one reference whose extent (the length of the cache
- *  Excel would write) is over MAX_CHART_POINTS, or all the references of the chart together over MAX_CHART_CELLS, a series name counting one
- *  cell. Points held for one chart: at most MAX_CHART_CELLS, decided before the first cell is read. */
-const sheetPointsOf = (chart: N, series: readonly N[], resolver: SheetCellsResolver, limits: ReaderLimits | undefined): SheetPoints | undefined => {
+ *  multi-level category), or the chart has more series than the bound (its cache then withholds it in `publishedTable`). `"withheld"`: its
+ *  references can yield more cells than the bounds allow, and the page withholds the chart whole. That decision is ARITHMETIC on the parsed
+ *  addresses, before any cell is read, written here on its own and the same as the page's (`extractor/pptx-reader/chart.ts#sheetPointsOf`):
+ *  one reference whose extent (our dense length up to its last shown cell) is over MAX_CHART_POINTS, or all the references of the chart
+ *  together over MAX_CHART_CELLS, an address counted once however many series name it, a series name one cell each. Points held for one
+ *  chart: at most MAX_CHART_CELLS, decided before the first cell is read. */
+const sheetPointsOf = (
+  chart: N,
+  series: readonly N[],
+  resolver: SheetCellsResolver,
+  limits: ReaderLimits | undefined,
+): SheetPoints | "withheld" | undefined => {
   if (REFERENCES.some((tag) => allOf(chart, tag).some((ref) => allOf(ref, "c:pt").length > 0))) return undefined;
   // Literal data is values the file wrote and this reading does not read: the chart keeps its cache whole.
   if (["c:numLit", "c:strLit"].some((tag) => allOf(chart, tag).length > 0)) return undefined;
   if (series.length > boundsOf(limits).series) return undefined;
   const plan = planOf(series, resolver, limits);
-  return plan === undefined ? undefined : cellsOfPlan(plan, limits);
+  return plan === undefined || plan === "withheld" ? plan : cellsOfPlan(plan, limits);
 };
 
-interface Planned { ref: N; found: SheetCells; name: boolean; read?: SheetCell[] }
+interface Planned {
+  ref: N;
+  found: SheetCells;
+  name: boolean;
+}
 
-/** Every series reference parsed and its cells counted against the bounds, before any cell is read. `undefined`: a multi-level category, a
- *  refused address, or a bound passed. */
-const planOf = (series: readonly N[], resolver: SheetCellsResolver, limits: ReaderLimits | undefined): Planned[] | undefined => {
+/** Every series reference parsed and its cells counted against the bounds, before any cell is read. `undefined`: a multi-level category or a
+ *  refused address (the chart keeps its cache); `"withheld"`: a bound passed. */
+const planOf = (
+  series: readonly N[],
+  resolver: SheetCellsResolver,
+  limits: ReaderLimits | undefined,
+): Planned[] | "withheld" | undefined => {
   const bounds = boundsOf(limits);
   // A parse memo by address text: a repeated address is parsed and read once.
   const answers = new Map<string, SheetCells | undefined>();
+  // A range address is read once, so it is counted once; a series name counts one cell each time.
+  const counted = new Set<string>();
   const plan: Planned[] = [];
   let total = 0;
   for (const { ref, name } of series.flatMap(seriesReferences)) {
@@ -206,10 +249,13 @@ const planOf = (series: readonly N[], resolver: SheetCellsResolver, limits: Read
     if (!answers.has(address)) answers.set(address, resolver(address));
     const found = answers.get(address);
     if (found === undefined) return undefined;
-    const { cells, read } = cellsOf(found, name, bounds.points);
-    total += cells;
-    if ((!name && cells > bounds.points) || total > bounds.cells) return undefined;
-    plan.push({ ref, found, name, ...(read === undefined ? {} : { read }) });
+    if (name) total += 1;
+    else if (!counted.has(address)) {
+      counted.add(address);
+      total += found.extent;
+    }
+    if ((!name && found.extent > bounds.points) || total > bounds.cells) return "withheld";
+    plan.push({ ref, found, name });
   }
   return plan;
 };
@@ -219,12 +265,12 @@ const cellsOfPlan = (plan: readonly Planned[], limits: ReaderLimits | undefined)
   const bounds = boundsOf(limits);
   const readOnce = new Map<SheetCells, SheetCell[]>();
   const resolved = new Map<N, SheetCell[]>();
-  for (const { ref, found, name, read } of plan) {
+  for (const { ref, found, name } of plan) {
     if (name) {
       const firstCell = found[Symbol.iterator]().next();
       resolved.set(ref, firstCell.done === true ? [] : [firstCell.value]);
     } else {
-      if (!readOnce.has(found)) readOnce.set(found, read ?? upToCap(found, bounds.points));
+      if (!readOnce.has(found)) readOnce.set(found, upToCap(found, bounds.points));
       resolved.set(ref, readOnce.get(found)!);
     }
   }
@@ -234,10 +280,12 @@ const cellsOfPlan = (plan: readonly Planned[], limits: ReaderLimits | undefined)
 /** The reference nodes a series reads (name, categories, values, X, Y, sizes), in document order of the tags above, each with whether it is the
  *  series' name (`c:tx`). */
 const seriesReferences = (ser: N): { ref: N; name: boolean }[] =>
-  SERIES_DATA.flatMap((dataTag) => REFERENCES.flatMap((referenceTag): { ref: N; name: boolean }[] => {
-    const ref = first(first(ser, dataTag), referenceTag);
-    return ref === undefined ? [] : [{ ref, name: dataTag === "c:tx" }];
-  }));
+  SERIES_DATA.flatMap((dataTag) =>
+    REFERENCES.flatMap((referenceTag): { ref: N; name: boolean }[] => {
+      const ref = first(first(ser, dataTag), referenceTag);
+      return ref === undefined ? [] : [{ ref, name: dataTag === "c:tx" }];
+    }),
+  );
 
 /** The data-label format of a series when it does not follow the source (§21.2.2.121), else `undefined`. */
 const labelFormatOf = (ser: N): string | undefined => {
@@ -247,16 +295,40 @@ const labelFormatOf = (ser: N): string | undefined => {
   return code !== undefined && code !== "" && linked !== "1" && linked !== "true" ? code : undefined;
 };
 
-/** The cache a number reference makes from the sheet: its numeric cells only, shown with the data labels' format when they decide it. */
-const numbersFromSheet = (read: readonly SheetCell[], labelCode: string | undefined, limits: ReaderLimits | undefined): Cache | "over" =>
-  cacheFrom(read.filter((cell) => cell.numeric).map((cell) => ({ idx: cell.index, value: cell.text })), undefined, (v) => shown(v, labelCode), limits);
+/** The format a series' values are shown with: not-linked data-label format, else the cache's, else General (`undefined`). */
+const shownFormatOf = (ser: N, numCache: N | undefined): string | undefined =>
+  labelFormatOf(ser) ?? cacheFormatOf(numCache);
 
-interface Building { levels: Cache[]; columns: Cache[]; publishedX: Cache[]; longest: number }
+/** The cache a number reference makes from the sheet: its numeric cells only, shown with the data labels' format when they decide it. */
+const numbersFromSheet = (
+  read: readonly SheetCell[],
+  labelCode: string | undefined,
+  limits: ReaderLimits | undefined,
+): Cache | "over" =>
+  cacheFrom(
+    read.filter((cell) => cell.numeric).map((cell) => ({ idx: cell.index, value: cell.text })),
+    undefined,
+    (v) => shown(v, labelCode),
+    limits,
+  );
+
+interface Building {
+  levels: Cache[];
+  columns: Cache[];
+  publishedX: Cache[];
+  longest: number;
+}
 
 /** What a scatter series adds to the table: its X column (unless it is blank, or the same as displayed as the label column or an X column
  *  already added: the page shares it; the label column itself when no series writes categories), its Y column, and its bubble sizes column
  *  (unless blank). Updates the label columns, the X columns and the longest array of `state`. `"over"`: a cache past the point cap. */
-const xySeries = (ser: N, state: Building, categorised: boolean, limits: ReaderLimits | undefined, sheet: SheetPoints | undefined): Cache[] | "over" => {
+const xySeries = (
+  ser: N,
+  state: Building,
+  categorised: boolean,
+  limits: ReaderLimits | undefined,
+  sheet: SheetPoints | undefined,
+): Cache[] | "over" => {
   const xs = xyCacheOf(first(ser, "c:xVal"), cacheFormatOf, limits, sheet, undefined);
   const ys = xyCacheOf(first(ser, "c:yVal"), (cache) => shownFormatOf(ser, cache), limits, sheet, labelFormatOf(ser));
   const sizes = xyCacheOf(first(ser, "c:bubbleSize"), cacheFormatOf, limits, sheet, undefined);
@@ -264,7 +336,10 @@ const xySeries = (ser: N, state: Building, categorised: boolean, limits: ReaderL
   const added: Cache[] = [];
   if (!isBlank(xs)) {
     if (!categorised && state.levels.every((l) => l.length === 0)) state.levels = [xs];
-    else if (!(state.levels.length === 1 && sameCells(xs, state.levels[0]!)) && !state.publishedX.some((p) => sameCells(xs, p))) {
+    else if (
+      !(state.levels.length === 1 && sameCells(xs, state.levels[0]!)) &&
+      !state.publishedX.some((p) => sameCells(xs, p))
+    ) {
       added.push(xs);
       state.publishedX.push(xs);
     }
@@ -276,7 +351,12 @@ const xySeries = (ser: N, state: Building, categorised: boolean, limits: ReaderL
 };
 
 /** What a bar-, column- or line-shaped series adds: its categories when no earlier series gave some, then its values. */
-const valueSeries = (ser: N, state: Building, limits: ReaderLimits | undefined, sheet: SheetPoints | undefined): Cache[] | "over" => {
+const valueSeries = (
+  ser: N,
+  state: Building,
+  limits: ReaderLimits | undefined,
+  sheet: SheetPoints | undefined,
+): Cache[] | "over" => {
   if (state.levels.every((l) => l.length === 0)) {
     const found = levelsOf(first(ser, "c:cat"), limits, sheet);
     if (found === "over") return "over";
@@ -287,7 +367,10 @@ const valueSeries = (ser: N, state: Building, limits: ReaderLimits | undefined, 
   const read = numRef === undefined ? undefined : sheet?.get(numRef);
   const numCache = first(numRef, "c:numCache");
   const code = shownFormatOf(ser, numCache);
-  const values = read === undefined ? readCache(numCache, numCache, (v) => shown(v, code), limits) : numbersFromSheet(read, labelFormatOf(ser), limits);
+  const values =
+    read === undefined
+      ? readCache(numCache, numCache, (v) => shown(v, code), limits)
+      : numbersFromSheet(read, labelFormatOf(ser), limits);
   if (values === "over") return "over";
   state.longest = Math.max(state.longest, values.length);
   return [values];
@@ -297,12 +380,20 @@ const valueSeries = (ser: N, state: Building, limits: ReaderLimits | undefined, 
  *  values of the first scatter series that writes some) and its other columns, in order. `"withheld"`: a 256th series, a point at or past
  *  the point cap, a ninth category level, `(levels + columns so far + this series' columns) x longest array` over the cell cap while
  *  reading, or (occupied rows x (levels + columns)) over it at the end. */
-const publishedTable = (series: readonly N[], limits: ReaderLimits | undefined, sheet: SheetPoints | undefined): { levels: Cache[]; columns: Cache[] } | "withheld" => {
+const publishedTable = (
+  series: readonly N[],
+  limits: ReaderLimits | undefined,
+  sheet: SheetPoints | undefined,
+): { levels: Cache[]; columns: Cache[] } | "withheld" => {
   const state: Building = { levels: [emptyCache()], columns: [], publishedX: [], longest: 0 };
   const categorised = series.some((ser) => {
     const cat = first(ser, "c:cat");
     if (isXy(ser) || cat === undefined) return false;
-    return sheet === undefined ? allOf(cat, "c:pt").length > 0 : [first(cat, "c:strRef"), first(cat, "c:numRef")].some((ref) => ref !== undefined && (sheet.get(ref)?.length ?? 0) > 0);
+    return sheet === undefined
+      ? allOf(cat, "c:pt").length > 0
+      : [first(cat, "c:strRef"), first(cat, "c:numRef")].some(
+          (ref) => ref !== undefined && (sheet.get(ref)?.length ?? 0) > 0,
+        );
   });
   const bounds = boundsOf(limits);
   let seen = 0;
@@ -315,7 +406,9 @@ const publishedTable = (series: readonly N[], limits: ReaderLimits | undefined, 
     state.columns.push(...added);
   }
   const { levels, columns } = state;
-  return occupiedRows([...levels, ...columns]) * (levels.length + columns.length) > bounds.cells ? "withheld" : { levels, columns };
+  return occupiedRows([...levels, ...columns]) * (levels.length + columns.length) > bounds.cells
+    ? "withheld"
+    : { levels, columns };
 };
 
 /** An axis the chart deletes (`c:delete`, CT_Boolean: no `val` is true). */
@@ -328,7 +421,13 @@ const isDeleted = (axis: N): boolean => {
 
 /** The `c:title` nodes of the deleted axes: they show nothing, so none of their words is expected. */
 const hiddenTitlesOf = (chart: N): Set<N> =>
-  new Set(["c:catAx", "c:valAx", "c:dateAx", "c:serAx"].flatMap((tag) => allOf(chart, tag).filter(isDeleted).flatMap((axis) => allOf(axis, "c:title"))));
+  new Set(
+    ["c:catAx", "c:valAx", "c:dateAx", "c:serAx"].flatMap((tag) =>
+      allOf(chart, tag)
+        .filter(isDeleted)
+        .flatMap((axis) => allOf(axis, "c:title")),
+    ),
+  );
 
 /** What a `c:title` shows, read here on its own: the lines of its rich text (one per `a:p`, and a new one at each `a:br`, never welded), or,
  *  for a title linked to a cell (`c:tx/c:strRef`), the points of its `c:strCache`. Each piece is a text the bag of words splits. */
@@ -380,9 +479,16 @@ export interface ChartShape {
 
 export const chartReadOf = (chart: N, limits?: ReaderLimits, resolver?: SheetCellsResolver): ChartRead => {
   const series = allOf(chart, "c:ser");
-  const table = publishedTable(series, limits, resolver === undefined ? undefined : sheetPointsOf(chart, series, resolver, limits));
+  const sheet = resolver === undefined ? undefined : sheetPointsOf(chart, series, resolver, limits);
+  const table = sheet === "withheld" ? sheet : publishedTable(series, limits, sheet);
   if (table === "withheld") return { words: [], shape: undefined };
-  return { words: shownTextOf(chart, table), shape: { rows: occupiedRows([...table.levels, ...table.columns]) + 1, columns: table.levels.length + table.columns.length } };
+  return {
+    words: shownTextOf(chart, table),
+    shape: {
+      rows: occupiedRows([...table.levels, ...table.columns]) + 1,
+      columns: table.levels.length + table.columns.length,
+    },
+  };
 };
 
 /** The words the page shows of a chart part: none when the extractor withholds the chart whole. */

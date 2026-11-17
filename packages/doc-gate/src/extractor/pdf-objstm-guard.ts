@@ -70,7 +70,8 @@ function streamKeywordFinder(text: string): (from: number) => { dictEnd: number;
   };
 }
 
-const decodeNameEscapes = (text: string): string => text.replace(/#([0-9a-fA-F]{2})/g, (_, hex: string) => String.fromCharCode(Number.parseInt(hex, 16)));
+const decodeNameEscapes = (text: string): string =>
+  text.replace(/#([0-9a-fA-F]{2})/g, (_, hex: string) => String.fromCharCode(Number.parseInt(hex, 16)));
 
 /** A stream `pdf-lib` inflates when it loads a file, or whose kind we cannot tell: some `/Type` of the region names `/ObjStm` or `/XRef`,
  *  or is not a plain name (an indirect reference, `/Type 7 0 R` or `/Type 7 0R`, which `pdf-lib` follows and we do not). The key must END
@@ -89,7 +90,8 @@ function isLoadTimeStream(region: string): boolean {
 function assertLoneFlate(region: string, source: ObjectStreamSource): void {
   for (const found of region.matchAll(/\/Filter[\s\0]*(\[[^\]]{0,1000}\]|\/[A-Za-z0-9]+)?/g)) {
     const names = found[1]?.match(/\/[A-Za-z0-9]+/g) ?? [];
-    if (names.length !== 1 || !/^\/(?:FlateDecode|Fl|Standard)$/.test(names[0]!)) throw source.refuse("filter-unsupported");
+    if (names.length !== 1 || !/^\/(?:FlateDecode|Fl|Standard)$/.test(names[0]))
+      throw source.refuse("filter-unsupported");
   }
 }
 
@@ -107,7 +109,10 @@ function dataStartOf(text: string, at: number): number | undefined {
 function dataEndOf(text: string, region: string, start: number): number {
   const end = text.indexOf("endstream", start);
   const declared = /\/Length[\s\0]+(\d+)(?![\s\0]+\d+[\s\0]+R)/.exec(region)?.[1];
-  return Math.min(text.length, Math.max(end < 0 ? text.length : end, declared === undefined ? 0 : start + Number(declared)));
+  return Math.min(
+    text.length,
+    Math.max(end < 0 ? text.length : end, declared === undefined ? 0 : start + Number(declared)),
+  );
 }
 
 /** How many bytes `data` inflates to, counted and not kept, stopping as soon as the count passes `limit` (then it is above `limit`). A

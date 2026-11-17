@@ -63,10 +63,15 @@ export const keptLinesOf = (
  *  cell is already an anchor or already covered is ignored whole, and an
  *  accepted one covers only cells not yet covered, never an earlier anchor.
  *  `pipeline/source-reading-table.ts#coveredByMerges` writes the same rule independently. */
-export const tableOfKept = (lines: KeptLines, merges: readonly GridMerge[], cellAt: (rowIndex: number, colIndex: number) => Inline | undefined): Table => {
+export const tableOfKept = (
+  lines: KeptLines,
+  merges: readonly GridMerge[],
+  cellAt: (rowIndex: number, colIndex: number) => Inline | undefined,
+): Table => {
   const layout = mergeLayoutOf(lines, merges);
   const rows: Table["rows"] = [];
-  for (const rowIndex of lines.keptRows) rows.push({ cells: buildTableRowCells(rowIndex, lines.keptCols, layout, cellAt) });
+  for (const rowIndex of lines.keptRows)
+    rows.push({ cells: buildTableRowCells(rowIndex, lines.keptCols, layout, cellAt) });
   return { kind: "table", rows };
 };
 

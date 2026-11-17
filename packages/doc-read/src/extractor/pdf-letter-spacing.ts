@@ -41,7 +41,6 @@ import type { PdfTextRun } from "./pdf-source";
  *  « P a g e »), not calibrated: only the concordance below decides. */
 const LETTER_SPACED = /(?:(?<![\p{L}\p{N}])[\p{L}\p{N}’'] ){3,}[\p{L}\p{N}’'](?![\p{L}\p{N}])/u;
 
-
 const withoutSpaces = (s: string): string => s.replace(/\s+/gu, "");
 
 /** `respacedText` over glyphs sorted by `y` lazily: `byY` is only called once a run passes the guards, so only a page

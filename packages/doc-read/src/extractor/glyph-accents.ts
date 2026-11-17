@@ -60,7 +60,8 @@ export const RAISE_EM = 0.5;
 const SAME_RELATIVE = 1e-3;
 
 /** Upright text: the matrix turns nothing. Read with a tolerance, never against an exact zero. */
-const isUpright = (g: GlyphFragment): boolean => Math.abs(g.matrix.b) < SAME_RELATIVE && Math.abs(g.matrix.c) < SAME_RELATIVE;
+const isUpright = (g: GlyphFragment): boolean =>
+  Math.abs(g.matrix.b) < SAME_RELATIVE && Math.abs(g.matrix.c) < SAME_RELATIVE;
 
 const centre = (g: GlyphFragment): number => g.x + g.width / 2;
 

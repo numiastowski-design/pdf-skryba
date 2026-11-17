@@ -346,7 +346,14 @@ function unpredict(data: Uint8Array, parms: PdfDict | undefined): Uint8Array {
 /** §7.4: the filters whose output is PIXELS, with their abbreviations of Table 6 (`CCF`, `DCT`). None of them is ever
  *  applied here — the image decoders read those bytes themselves — but a chain may END with one, and then the filters
  *  BEFORE it are ours to undo (`decodeToImageFilter`). */
-export const IMAGE_FILTERS: ReadonlySet<string> = new Set(["DCTDecode", "DCT", "JPXDecode", "JBIG2Decode", "CCITTFaxDecode", "CCF"]);
+export const IMAGE_FILTERS: ReadonlySet<string> = new Set([
+  "DCTDecode",
+  "DCT",
+  "JPXDecode",
+  "JBIG2Decode",
+  "CCITTFaxDecode",
+  "CCF",
+]);
 
 /** One filter of §7.4, with its own parameters. The abbreviations of Table 6 (`Fl`, `LZW`, `AHx`, `A85`, `RL`)
  *  belong to inline images; serving them here costs nothing. An IMAGE filter (`DCTDecode`, `JPXDecode`,
@@ -425,7 +432,10 @@ export const chainRefusal = (dict: PdfDict): "filters" | undefined => {
  *  REFUSED, and written: an image filter that is NOT the last of the chain (nothing is applied to pixels), and a second
  *  image filter. The chain's bound and the decoded ceiling are `decodeStream`'s own.
  *  `data` is given decrypted (`rawStreamBytes`), because decryption comes before any filter (§7.6.2). */
-export const decodeToImageFilter = (data: Uint8Array, dict: PdfDict): { readonly imageFilter: string | undefined; readonly data: Uint8Array } => {
+export const decodeToImageFilter = (
+  data: Uint8Array,
+  dict: PdfDict,
+): { readonly imageFilter: string | undefined; readonly data: Uint8Array } => {
   const filters = filtersOf(dict);
   if (filters.length > MAX_FILTER_CHAIN) throw new PdfObjectsRefusal("filter-unsupported");
   const predicted = filters.findIndex((filter) => filter === FLATE || filter === LZW);

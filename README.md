@@ -1,4 +1,4 @@
-# skryba
+# pdf-skryba
 
 Reads a PDF into a structured representation, and checks that no word was lost on the way.
 
@@ -6,13 +6,13 @@ The PDF reader of [Miksumia Publisher](https://miksumia.com), the Atlassian Mark
 [app](https://marketplace.atlassian.com/apps/2647582831/miksumia-publisher-for-confluence) that turns
 uploaded files into Confluence pages.
 
-Published on npm as [`skryba`](https://www.npmjs.com/package/skryba): `npm i skryba`.
+Published on npm as [`pdf-skryba`](https://www.npmjs.com/package/pdf-skryba): `npm i pdf-skryba`.
 
 ## Read a PDF
 
 ```js
 import { readFileSync } from "node:fs";
-import { extractPdf } from "skryba";
+import { extractPdf } from "pdf-skryba";
 
 const bytes = new Uint8Array(readFileSync("report.pdf"));
 const { doc, pageCount, notices } = await extractPdf(bytes, vision, { ocr: false });
@@ -55,7 +55,7 @@ await extractPdf(bytes, vision, {
 ## Refusals carry a code
 
 ```js
-import { ReaderError } from "skryba/light";
+import { ReaderError } from "pdf-skryba/light";
 
 try {
   await extractPdf(bytes, vision, { ocr: false });
@@ -69,11 +69,11 @@ try {
 
 ## Check what you published
 
-`skryba/light` loads no reader. Hand it the text you published, block by block, and it tells you what
+`pdf-skryba/light` loads no reader. Hand it the text you published, block by block, and it tells you what
 the page lost, invented, glued or split — in YOUR coordinates, never your markup.
 
 ```js
-import { textConservation } from "skryba/light";
+import { textConservation } from "pdf-skryba/light";
 
 const { conservationSource } = await extractPdf(bytes, vision);
 const verdict = textConservation(conservationSource.runs, { blocks: myPublishedTexts });
@@ -90,7 +90,12 @@ verdict.pages;         // the pages concerned
 - **It abstains instead of inventing.** A glyph nothing identifies — `g03`, a composite font with no
   `/ToUnicode` — publishes nothing. Reading its number as a character puts stray letters into real sentences.
 - **Silence is never an answer.** Every ceiling hit and every part it could not read comes back as a `notice`.
-- **It can check itself.** Hand it the text you published, block by block (`skryba/light`, which loads no
+  Since 0.7.0 a `pdf-text-unread` notice names the pages published without their text, and those where a font
+  could not be read (reason `font`): no stand-in table is tried, its words are missing and said so. Text a viewer
+  would not show raises none.
+- **Unreadable is not scanned.** Since 0.7.0 a page whose text could not be read never counts as a scan, and a
+  file none of whose pages gave text is refused (`EXTRACT_FAILED`) instead of being published empty.
+- **It can check itself.** Hand it the text you published, block by block (`pdf-skryba/light`, which loads no
   reader): it names what was lost, invented, glued or split, and returns repairs in YOUR coordinates.
 - **Deterministic.** Same bytes, same document.
 - **Every input is hostile.** Bytes, cross-references, reference hops, page-tree depth, operators, glyphs:
@@ -107,7 +112,8 @@ reader exists: the extraction path, not the model, decides what a language model
 ## Licence
 
 AGPL-3.0-or-later: run a modified version as a network service and its source must be available to its
-users. This repository is that source — a snapshot of the packages the npm bundle is built from, taken
-from the development monorepo at version 0.6.2 (16 November 2026). The entry points are
+users. Named `skryba` until 0.6.2. Since 0.7.0 the code comes readable (`dist/index.js`), with the same code minified beside
+it (`pdf-skryba/min`). This repository is that source — a snapshot of the packages the npm bundle is built from, taken
+from the development monorepo at version 0.7.0 (17 November 2026). The entry points are
 `packages/doc-read/src/lib/pdf.ts` and `packages/doc-read/src/lib/pdf-light.ts`; the npm package ships
 the bundle built from them. Questions: <contact@miksumia.com>.

@@ -10,8 +10,8 @@
 import { attributeOf, findChild, type XNode } from "../ooxml/xml";
 
 export interface PptxPlaceholder {
-  type?: string;
-  idx?: string;
+  readonly type?: string;
+  readonly idx?: string;
 }
 
 export const placeholderOf = (sp: XNode): PptxPlaceholder | undefined => {

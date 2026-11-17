@@ -35,15 +35,24 @@ import { MAX_AC_SIZE, MAX_DC_CATEGORY, ZIGZAG, type ComponentCoefficients } from
  * DC category over 11, an AC size over 10.
  */
 
-
 /** Decodes one progressive scan into `coefficients` (from `allocateCoefficients`). */
-export const decodeProgressiveScan = (frame: JpegFrame, scan: JpegScan, coefficients: readonly ComponentCoefficients[]): void => {
+export const decodeProgressiveScan = (
+  frame: JpegFrame,
+  scan: JpegScan,
+  coefficients: readonly ComponentCoefficients[],
+): void => {
   const { ss, se, ah, al } = scan;
   const reader = new BitReader(scan.data);
   const prediction = new Int32Array(frame.components.length);
   let eobrun = 0;
 
-  type BlockDecoder = (out: Int32Array, at: number, ci: number, dc: HuffmanTable | undefined, ac: HuffmanTable | undefined) => void;
+  type BlockDecoder = (
+    out: Int32Array,
+    at: number,
+    ci: number,
+    dc: HuffmanTable | undefined,
+    ac: HuffmanTable | undefined,
+  ) => void;
 
   const dcFirst: BlockDecoder = (out, at, ci, dc) => {
     const t = reader.decode(dc!);
@@ -134,7 +143,9 @@ export const decodeProgressiveScan = (frame: JpegFrame, scan: JpegScan, coeffici
     ac: ss > 0 ? tableOf(scan.acTables[sc.ta]) : undefined,
   }));
   const single = parts.length === 1 ? parts[0]! : undefined;
-  const mcuCount = single ? single.grid.blocksPerLine * single.grid.blocksPerColumn : frame.mcusPerLine * frame.mcusPerColumn;
+  const mcuCount = single
+    ? single.grid.blocksPerLine * single.grid.blocksPerColumn
+    : frame.mcusPerLine * frame.mcusPerColumn;
   let restarts = 0;
   for (let mcu = 0; mcu < mcuCount; mcu++) {
     if (scan.restartInterval > 0 && mcu > 0 && mcu % scan.restartInterval === 0) {

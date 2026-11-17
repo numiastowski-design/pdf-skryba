@@ -43,7 +43,8 @@ export interface OurGlyph {
    *    `/Encoding` is an Adobe PREDEFINED CMap, which only the resources embedded in pdf.js decoded.
    *    This is not a verdict on the file, it is an ignorance on our side. `pdf-glyph-swap.ts` (deleted, see git history) used to leave
    *    pdf.js's glyph intact then; pdf.js being removed (01/11/2026), the glyph has neither text nor advance. Without this
-   *    third value, 1 050 words of a real safedocs file fell to 72. */
+   *    third value, 1 050 words of a real safedocs file fell to 72. A font whose tables threw (`stateOf`) reads the same.
+   *    Since 17/11/2026 a page showing such a glyph carries a `pdf-text-unread` notice of reason `font`. */
   readonly read: "ours" | "default-font" | "not-ours";
 }
 
@@ -185,7 +186,9 @@ export function stateOf(doc: PdfObjectsDocument, declared: PdfDict | undefined, 
   } catch (error) {
     // A refusal of the document (budget exhausted, unreadable stream) stays a refusal: we do not turn it into an abstention.
     if (error instanceof PdfObjectsRefusal) throw error;
-    // A font we cannot read does not fail the page: it abstains.
+    // A font we cannot read does not fail the page, and gets NO stand-in table (17/11/2026): its glyphs carry
+    // `read: "not-ours"`, neither text nor advance, and the page says its words are missing when the filter of the published text would have kept them
+    // (`glyph-positions.ts#unreadFontKept`).
     state = UNKNOWN;
   }
   memo.fonts.set(font, state);
@@ -211,8 +214,10 @@ export function chargeFormCall(budget: Pick<GlyphBudget, "forms">): void {
   if (budget.forms > MAX_FORM_CALLS_PER_PAGE) throw new PdfObjectsRefusal("forms-too-many");
 }
 
-const isHighSurrogate = (text: string | undefined): boolean => text?.length === 1 && text.charCodeAt(0) >= 0xd800 && text.charCodeAt(0) <= 0xdbff;
-const isLowSurrogate = (text: string | undefined): boolean => text?.length === 1 && text.charCodeAt(0) >= 0xdc00 && text.charCodeAt(0) <= 0xdfff;
+const isHighSurrogate = (text: string | undefined): boolean =>
+  text?.length === 1 && text.charCodeAt(0) >= 0xd800 && text.charCodeAt(0) <= 0xdbff;
+const isLowSurrogate = (text: string | undefined): boolean =>
+  text?.length === 1 && text.charCodeAt(0) >= 0xdc00 && text.charCodeAt(0) <= 0xdfff;
 
 /** The glyphs of a painted string, cut according to the font's code width.
  *  🔴 THE PAIRING OF HALF-PAIRS IS DONE HERE (31/10/2026: "we have to do it ourselves", for
@@ -270,7 +275,12 @@ function afterGraphicsState(op: string, state: TextState, saved: TextState[]): T
 }
 
 /** The glyphs one show operator paints, or `undefined` when the operator shows nothing. */
-function shownGlyphs(op: string, operands: readonly PdfValue[], state: TextState, budget: GlyphBudget): OurGlyph[] | undefined {
+function shownGlyphs(
+  op: string,
+  operands: readonly PdfValue[],
+  state: TextState,
+  budget: GlyphBudget,
+): OurGlyph[] | undefined {
   const glyphs: OurGlyph[] = [];
   if (op === "Tj" || op === "'" || op === '"') {
     const shown = operands[operands.length - 1];
@@ -312,7 +322,13 @@ function walkForm(
 }
 
 /** The text operators of a stream, in order, forms unrolled as pdf.js unrolled them. */
-function walk(walking: Walking, ops: readonly ContentOp[], resources: PdfDict | undefined, depth: number, inherited: TextState): void {
+function walk(
+  walking: Walking,
+  ops: readonly ContentOp[],
+  resources: PdfDict | undefined,
+  depth: number,
+  inherited: TextState,
+): void {
   const fonts = walking.doc.dictOf(resources?.get("Font"));
   const xobjects = walking.doc.dictOf(resources?.get("XObject"));
   let state = inherited;
@@ -368,7 +384,13 @@ export function openOurGlyphs(bytes: Uint8Array): OurGlyphSource {
       const page = pages[index];
       if (page === undefined) throw new PdfObjectsRefusal("page-missing");
       const into: ShownGlyphs[] = [];
-      walk({ doc, into, memo, budget: { painted: 0, forms: 0 } }, readContentOps(pageContentOf(doc, page)), page.resources, 0, UNKNOWN);
+      walk(
+        { doc, into, memo, budget: { painted: 0, forms: 0 } },
+        readContentOps(pageContentOf(doc, page)),
+        page.resources,
+        0,
+        UNKNOWN,
+      );
       return into;
     },
   };

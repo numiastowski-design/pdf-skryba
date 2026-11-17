@@ -18,7 +18,12 @@ import { attrOf, kidsOf, tagOf, type N } from "./source-reading-package";
 /** The structure of a sheet that has a tab. `rows`: kept rows; `shownColumns`: kept columns where some uncovered cell shows a text; `covered`: the
  *  cells of those columns a merge covers (published as no `td`); `absorbed`: the cells the page does not write because a row publishes as ONE
  *  cell (`absorbedCells`). */
-export const sheetStructure = (grid: { rows: number; shownColumns: number; covered: number; absorbed?: number }): UnitStructure => {
+export const sheetStructure = (grid: {
+  rows: number;
+  shownColumns: number;
+  covered: number;
+  absorbed?: number;
+}): UnitStructure => {
   const unit = emptyUnitStructure();
   if (grid.rows === 0 || grid.shownColumns === 0) return unit;
   unit.declared.rows = grid.rows;
@@ -50,7 +55,9 @@ export interface SingleFirstGrid {
  *  its first kept cell has text and no other uncovered cell does, it is not a declared header row, and no vertical merge covers or anchors it. */
 /** What the merges of a grid say, per row: how many cells they cover, how many of those sit in a SHOWN column, and which rows
  *  a VERTICAL merge touches (covered or anchoring) — those rows are never collapsed. */
-const mergeTally = (grid: SingleFirstGrid): { coveredInRow: Map<number, number>; coveredShownInRow: Map<number, number>; verticalRows: Set<number> } => {
+const mergeTally = (
+  grid: SingleFirstGrid,
+): { coveredInRow: Map<number, number>; coveredShownInRow: Map<number, number>; verticalRows: Set<number> } => {
   const coveredInRow = new Map<number, number>();
   const coveredShownInRow = new Map<number, number>();
   const verticalRows = new Set<number>();
@@ -75,7 +82,14 @@ export const absorbedCells = (grid: SingleFirstGrid): number => {
   for (const t of grid.texts) (t.col === firstCol ? first : others).add(t.row);
   let absorbed = 0;
   for (const row of grid.keptRows) {
-    if (!first.has(row) || others.has(row) || grid.headerRows.has(row) || verticalRows.has(row) || nCols - (coveredInRow.get(row) ?? 0) < 2) continue;
+    if (
+      !first.has(row) ||
+      others.has(row) ||
+      grid.headerRows.has(row) ||
+      verticalRows.has(row) ||
+      nCols - (coveredInRow.get(row) ?? 0) < 2
+    )
+      continue;
     absorbed += Math.max(0, grid.shownCols.size - (coveredShownInRow.get(row) ?? 0) - 1);
   }
   return absorbed;
@@ -91,9 +105,14 @@ export interface HeaderDeclaration {
  *  frozen pane, §18.5.1.2 for a table's `headerRowCount`; the Sheets API's `frozenRowCount`). A table span marks the kept rows inside it. A frozen pane
  *  marks the LAST KEPT row at or above its last frozen row, and ABSTAINS when a hidden row lies between that row and the frozen one (the hidden row
  *  may be the header the file means). `keptRows` ascending; only those and the hidden rows are visited, never the row numbers a file declares. */
-export const declaredHeaderRowsOf = (keptRows: readonly number[], hiddenRows: ReadonlySet<number>, declared: HeaderDeclaration): Set<number> => {
+export const declaredHeaderRowsOf = (
+  keptRows: readonly number[],
+  hiddenRows: ReadonlySet<number>,
+  declared: HeaderDeclaration,
+): Set<number> => {
   const out = new Set<number>();
-  for (const row of keptRows) if (declared.tableSpans.some((span) => row >= span.start && row < span.start + span.count)) out.add(row);
+  for (const row of keptRows)
+    if (declared.tableSpans.some((span) => row >= span.start && row < span.start + span.count)) out.add(row);
   const frozen = declared.frozenRow;
   if (frozen === undefined) return out;
   let last: number | undefined;
@@ -126,7 +145,8 @@ const targetsOf = async (xmlOf: XmlOf, part: string): Promise<Map<string, string
   for (const rel of rels ? kidsOf(rels) : []) {
     const id = attrOf(rel, "Id");
     const target = attrOf(rel, "Target");
-    if (id !== undefined && target !== undefined && attrOf(rel, "TargetMode") !== "External") out.set(id, resolveTarget(part, target));
+    if (id !== undefined && target !== undefined && attrOf(rel, "TargetMode") !== "External")
+      out.set(id, resolveTarget(part, target));
   }
   return out;
 };
@@ -150,7 +170,11 @@ export interface ChartCache {
   limits: ReaderLimits | undefined;
 }
 
-export const createChartCache = (limits?: ReaderLimits): ChartCache => ({ charts: new Map(), drawings: new Map(), limits });
+export const createChartCache = (limits?: ReaderLimits): ChartCache => ({
+  charts: new Map(),
+  drawings: new Map(),
+  limits,
+});
 
 /** A sheet anchors more chart frames than `MAX_SHEET_CHART_FRAMES`: the structure of the document is not read (never a wrong count). Stays
  *  `EXTRACT_FAILED`, not `FILE_UNSAFE` (25/10/2026): this is the second reading, which abstains on any error (`guardedSourceAsync`), so the
@@ -162,7 +186,12 @@ export class ChartFramesOverBound extends ReaderError {
 }
 
 /** The table of `chartPart` as anchored on the sheet `sheetPath`: keyed by both, as a cache-less chart reads the cells of the sheet that holds it. */
-const chartShapeOf = async (xmlOf: XmlOf, at: { sheetPath: string; chartPart: string }, cache: ChartCache, resolver: SheetCellsResolver | undefined): Promise<ChartShape | undefined> => {
+const chartShapeOf = async (
+  xmlOf: XmlOf,
+  at: { sheetPath: string; chartPart: string },
+  cache: ChartCache,
+  resolver: SheetCellsResolver | undefined,
+): Promise<ChartShape | undefined> => {
   const key = JSON.stringify([at.sheetPath, at.chartPart]);
   if (!cache.charts.has(key)) {
     const chart = await xmlOf(at.chartPart);
@@ -172,12 +201,18 @@ const chartShapeOf = async (xmlOf: XmlOf, at: { sheetPath: string; chartPart: st
 };
 
 /** The chart part each `c:chart` frame of a drawing points at, through the drawing's own relationships. Nothing of a chart is read here. */
-const frameTargetsOf = async (xmlOf: XmlOf, drawingPart: string, cache: ChartCache): Promise<(string | undefined)[]> => {
+const frameTargetsOf = async (
+  xmlOf: XmlOf,
+  drawingPart: string,
+  cache: ChartCache,
+): Promise<(string | undefined)[]> => {
   const known = cache.drawings.get(drawingPart);
   if (known !== undefined) return known;
   const drawingXml = await xmlOf(drawingPart);
   const targets = drawingXml === undefined ? new Map<string, string>() : await targetsOf(xmlOf, drawingPart);
-  const refs = (drawingXml === undefined ? [] : allOf(drawingXml, "c:chart")).map((frame) => targets.get(attrOf(frame, "r:id") ?? ""));
+  const refs = (drawingXml === undefined ? [] : allOf(drawingXml, "c:chart")).map((frame) =>
+    targets.get(attrOf(frame, "r:id") ?? ""),
+  );
   cache.drawings.set(drawingPart, refs);
   return refs;
 };
@@ -186,7 +221,13 @@ const frameTargetsOf = async (xmlOf: XmlOf, drawingPart: string, cache: ChartCac
  *  frames. A frame whose relationship does not resolve, a chart the page withholds whole, and a damaged part publish no table. The frames of the
  *  sheet are COUNTED before any chart part is read: more than `MAX_SHEET_CHART_FRAMES` throw `ChartFramesOverBound`. `resolver` reads the cells
  *  of the sheet for a chart whose file cached no value (`source-chart-reference.ts`); a chartsheet has none. */
-export const chartShapesOf = async (xmlOf: XmlOf, sheetPath: string, sheet: N, cache: ChartCache, resolver?: SheetCellsResolver): Promise<ChartShape[]> => {
+export const chartShapesOf = async (
+  xmlOf: XmlOf,
+  sheetPath: string,
+  sheet: N,
+  cache: ChartCache,
+  resolver?: SheetCellsResolver,
+): Promise<ChartShape[]> => {
   const drawings = kidsOf(sheet).filter((c) => tagOf(c) === "drawing");
   if (drawings.length === 0) return [];
   const sheetTargets = await targetsOf(xmlOf, sheetPath);
@@ -199,7 +240,8 @@ export const chartShapesOf = async (xmlOf: XmlOf, sheetPath: string, sheet: N, c
   }
   const shapes: ChartShape[] = [];
   for (const target of frameTargets) {
-    const shape = target === undefined ? undefined : await chartShapeOf(xmlOf, { sheetPath, chartPart: target }, cache, resolver);
+    const shape =
+      target === undefined ? undefined : await chartShapeOf(xmlOf, { sheetPath, chartPart: target }, cache, resolver);
     if (shape !== undefined) shapes.push(shape);
   }
   return shapes;

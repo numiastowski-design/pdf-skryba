@@ -7,7 +7,7 @@
  * words the page lacks, grouped by cause. It never repairs: a word missing from a page built out of declared text is a
  * defect of OUR reader, not a render accident to paper over (MIKSUDOC « Spécification technique » T11). The PDF's
  * check is the opposite: nothing declares its text, so it tiles words and letters, and it DOES repair what it can
- * prove — that half lives in `skryba/light`.
+ * prove — that half lives in `pdf-skryba/light`.
  *
  * NOT here: the readers (`lib/docs.ts`, the package's main entry), the PDF's check, nor anything that reads a RENDERED
  * page — knowing a markup belongs to whoever owns it, and this check takes the page as TEXT, block by block.
@@ -15,7 +15,11 @@
  * the package, and `tools/build-library.ts`, which builds it and holds what it may reach.
  */
 
-export { conservationFromMissingWordGroups, missingWordGroups, pageWords } from "../pipeline/declared-format-conservation";
+export {
+  conservationFromMissingWordGroups,
+  missingWordGroups,
+  pageWords,
+} from "../pipeline/declared-format-conservation";
 export { isDeclaredFormatSource, isReadFailure } from "../pipeline/conservation-source";
 export type {
   ConservationNumericCell,
@@ -36,7 +40,14 @@ export { addCounts, emptyCounts, isZeroCounts, subtractCounts } from "../pipelin
 
 /** The document the readers hand back, and what they could not publish. */
 export type { ChartDrawing, IRBlock, IRDoc, IRTab, ImageRef, Inline, InlineMark, TableData } from "doc-ir/lib/ir";
-export type { DocumentConservation, DocumentNotice, DocumentStructure, MissingWordCause, PageLanguage, StructureCounts } from "doc-ir/lib/reader-types";
+export type {
+  DocumentConservation,
+  DocumentNotice,
+  DocumentStructure,
+  MissingWordCause,
+  PageLanguage,
+  StructureCounts,
+} from "doc-ir/lib/reader-types";
 export { ReaderError } from "doc-ir/lib/reader-error";
 export type { ReaderCountDetail } from "doc-ir/lib/reader-error";
 export type { ReaderLimits } from "doc-ir/lib/reader-limits";

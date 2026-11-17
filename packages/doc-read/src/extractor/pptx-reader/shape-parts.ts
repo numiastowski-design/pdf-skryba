@@ -14,7 +14,8 @@ import { attributeOf, findChild, findChildren, type XNode } from "../ooxml/xml";
 import { bentPath, type Frame, lineEnds, turnsOrMirrors, type Transform, visibleBox } from "./geometry";
 import type { PptxConnectorShape, PptxShape } from "./shapes";
 
-export const presetOf = (spPr: XNode | undefined): string | undefined => attributeOf(findChild(spPr ?? {}, "a:prstGeom") ?? {}, "prst");
+export const presetOf = (spPr: XNode | undefined): string | undefined =>
+  attributeOf(findChild(spPr ?? {}, "a:prstGeom") ?? {}, "prst");
 
 /** A line end draws an arrow head: `type` present and not "none". */
 export const arrowAt = (ln: XNode | undefined, end: "a:headEnd" | "a:tailEnd"): boolean => {
@@ -29,8 +30,8 @@ export const guidesOf = (spPr: XNode | undefined): Record<string, number> => {
   const guides: Record<string, number> = {};
   for (const gd of findChildren(avLst ?? {}, "a:gd")) {
     const name = attributeOf(gd, "name");
-    const m = /^val (-?\d+)$/.exec(attributeOf(gd, "fmla") ?? "");
-    if (name !== undefined && m) guides[name] = Number(m[1]);
+    const fmlaMatch = /^val (-?\d+)$/.exec(attributeOf(gd, "fmla") ?? "");
+    if (name !== undefined && fmlaMatch) guides[name] = Number(fmlaMatch[1]);
   }
   return guides;
 };
@@ -47,7 +48,8 @@ export const shapeBase = (spTreeIndex: number, frame: Frame | undefined, transfo
 
 /** A text shape inside a group that turns or mirrors it: its own box is not
  *  a faithful frame for the words (set on text shapes only). */
-export const groupTurnedOf = (transform: Transform): { groupTurned?: true } => (turnsOrMirrors(transform) ? { groupTurned: true as const } : {});
+export const groupTurnedOf = (transform: Transform): { groupTurned?: true } =>
+  turnsOrMirrors(transform) ? { groupTurned: true as const } : {};
 
 /** A connector's own fields: arrow heads, geometry, line ends and the bent
  *  path. Whether its line shows (`visibleLine`) is the caller's rule. */
@@ -59,7 +61,8 @@ export const connectorBody = (
 ): Pick<PptxConnectorShape, "startArrow" | "endArrow" | "geometry" | "visibleLine" | "ends" | "path"> => {
   const ln = findChild(spPr ?? {}, "a:ln");
   const geometry = presetOf(spPr);
-  const path = frame === undefined || geometry === undefined ? undefined : bentPath(frame, transform, geometry, guidesOf(spPr));
+  const path =
+    frame === undefined || geometry === undefined ? undefined : bentPath(frame, transform, geometry, guidesOf(spPr));
   return {
     startArrow: arrowAt(ln, "a:headEnd"),
     endArrow: arrowAt(ln, "a:tailEnd"),
@@ -76,5 +79,5 @@ export const isNotLabel = (turned: boolean, geometry: string | undefined): boole
   turned || (geometry !== undefined && ARROW_GEOMETRIES.has(geometry));
 
 /** `isNotLabel` of a shape the pptx reader read. */
-export const shapeIsNotLabel = (s: PptxShape): boolean =>
-  s.rot !== undefined || (s.kind === "text" && isNotLabel(s.groupTurned === true, s.geometry));
+export const shapeIsNotLabel = (shape: PptxShape): boolean =>
+  shape.rot !== undefined || (shape.kind === "text" && isNotLabel(shape.groupTurned === true, shape.geometry));

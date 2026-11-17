@@ -32,7 +32,6 @@ export interface HuffmanTable {
   readonly values: Uint8Array;
 }
 
-
 export const buildHuffmanTable = (spec: HuffmanSpec): HuffmanTable => {
   const maxCode = new Int32Array(17).fill(-1);
   const offset = new Int32Array(17);
@@ -131,7 +130,8 @@ export class BitReader {
   endOfScan(): void {
     const data = this.#data;
     for (let at = this.#at; at + 1 < data.length; at++) {
-      if (data[at] === 0xff && data[at + 1]! >= 0xd0 && data[at + 1]! <= 0xd7) throw refuse("scan data past the last mcu");
+      if (data[at] === 0xff && data[at + 1]! >= 0xd0 && data[at + 1]! <= 0xd7)
+        throw refuse("scan data past the last mcu");
     }
   }
 

@@ -63,9 +63,13 @@ const ALREADY_KNOWN = /^(?:[-–—•·▪*]|[a-zA-Z0-9][.)]|[IVXivx]{1,4}[.)])
 export const leadingMarkerToken = (text: string): { token: string; length: number } | undefined => {
   const found = LEADING_TOKEN.exec(text.trimStart());
   const token = found?.[1];
-  if (found === null || token === undefined || token.length > MAX_MARKER_CHARS || ALREADY_KNOWN.test(token)) return undefined;
+  if (found === null || token === undefined || token.length > MAX_MARKER_CHARS || ALREADY_KNOWN.test(token))
+    return undefined;
   return { token, length: found[0].length - 1 };
 };
+
+/** The order `Array.prototype.sort` gives strings with no comparator (UTF-16 code units), written out; never `localeCompare`. */
+const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : Number(a > b));
 
 const median = (values: readonly number[]): number => {
   const sorted = [...values].sort((a, b) => a - b);
@@ -93,5 +97,5 @@ export function inducedMarkers(lines: readonly MarkerLine[]): string[] {
     const column = median(xs);
     if (xs.every((x) => Math.abs(x - column) <= SAME_INDENT_PT)) kept.push(token);
   }
-  return kept.sort();
+  return kept.sort(byCodeUnit);
 }

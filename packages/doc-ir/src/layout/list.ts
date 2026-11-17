@@ -379,8 +379,18 @@ export function blockReading(lines: readonly BlockLine[]): { geometry?: BlockGeo
     ...(pitches.length > 0 ? { pitch: maxOf(pitches, (p) => p) } : {}),
   };
   const opener = first.lead?.text.trim();
-  if (first.lead === undefined || opener === undefined || !BULLET_LEAD_CHARS.has(opener) || !first.text.trimStart().startsWith(opener)) return { geometry };
-  const afterOpener = lines.map((line) => line.text).join(" ").trimStart().slice(opener.length);
+  if (
+    first.lead === undefined ||
+    opener === undefined ||
+    !BULLET_LEAD_CHARS.has(opener) ||
+    !first.text.trimStart().startsWith(opener)
+  )
+    return { geometry };
+  const afterOpener = lines
+    .map((line) => line.text)
+    .join(" ")
+    .trimStart()
+    .slice(opener.length);
   return {
     geometry,
     bullet: {
@@ -436,7 +446,13 @@ const checkBulletRun = (candidates: readonly ListCandidate[], start: number, end
   if (!simple) return undefined;
 
   const next = candidates[end + 1];
-  if (next?.geometry === undefined || next.marker !== undefined || next.bullet !== undefined || !near(next.geometry.firstLeft, textLeft)) return { start, end };
+  if (
+    next?.geometry === undefined ||
+    next.marker !== undefined ||
+    next.bullet !== undefined ||
+    !near(next.geometry.firstLeft, textLeft)
+  )
+    return { start, end };
   const pitches = candidates.slice(start, end + 1).flatMap((c) => c.geometry?.pitch ?? []);
   // ITEMS WITHOUT A WRAPPED LINE STILL HAVE A LINE SPACING: the pitch between two consecutive one-line items
   // (05/11/2026, fixture 29 : cinq questions d'une ligne suivies d'un bloc au x du texte — l'ancien rejet en bloc
@@ -446,7 +462,8 @@ const checkBulletRun = (candidates: readonly ListCandidate[], start: number, end
     const own = c.geometry;
     return own === undefined || below === undefined ? [] : [own.lastY - below.firstY].filter((d) => d > 0);
   });
-  const spacing = pitches.length > 0 ? maxOf(pitches, (p) => p) : itemPitches.length > 0 ? maxOf(itemPitches, (p) => p) : undefined;
+  const spacing =
+    pitches.length > 0 ? maxOf(pitches, (p) => p) : itemPitches.length > 0 ? maxOf(itemPitches, (p) => p) : undefined;
   if (spacing === undefined) return undefined;
   const gap = candidates[end]!.geometry!.lastY - next.geometry.firstY;
   // The tail lies BELOW the last item: a block read after a jump up the page (another column) is never one (review of 14/10/2026).
@@ -473,7 +490,10 @@ const ITEM_ALIGN_TOLERANCE_PT = SAME_LINE_PT;
  * (a hanging indent). Both present, they must agree, or this abstains; one
  * present, it stands alone. Abstaining means no block can continue the item.
  */
-export function itemTextLeft(readings: { afterMarker?: number | undefined; secondLine?: number | undefined }): number | undefined {
+export function itemTextLeft(readings: {
+  afterMarker?: number | undefined;
+  secondLine?: number | undefined;
+}): number | undefined {
   const { afterMarker, secondLine } = readings;
   if (afterMarker !== undefined && secondLine !== undefined)
     return Math.abs(afterMarker - secondLine) <= ITEM_ALIGN_TOLERANCE_PT ? afterMarker : undefined;

@@ -97,7 +97,8 @@ export const placeRowCells = (
       next++;
     }
     if (column > before) placed.push({ span: column - before, filled: false });
-    if (cell.rowspan > 1) added.push({ start: column, end: column + cell.span, until: Math.min(r + cell.rowspan - 1, rowCount - 1) });
+    if (cell.rowspan > 1)
+      added.push({ start: column, end: column + cell.span, until: Math.min(r + cell.rowspan - 1, rowCount - 1) });
     placed.push({ span: cell.span, filled: cell.filled });
     column += cell.span;
   }

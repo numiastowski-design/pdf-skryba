@@ -51,7 +51,12 @@ const lstStyleOf = (sp: N | undefined): N | undefined => first(first(sp, "p:txBo
 /** What a `a:pPr` or `a:lvlNpPr` says of the bullet: `true` a bullet, `false` none, `undefined` nothing written. */
 const writtenBullet = (props: N | undefined): boolean | undefined => {
   if (props === undefined) return undefined;
-  if (first(props, "a:buChar") !== undefined || first(props, "a:buBlip") !== undefined || first(props, "a:buAutoNum") !== undefined) return true;
+  if (
+    first(props, "a:buChar") !== undefined ||
+    first(props, "a:buBlip") !== undefined ||
+    first(props, "a:buAutoNum") !== undefined
+  )
+    return true;
   return first(props, "a:buNone") !== undefined ? false : undefined;
 };
 
@@ -67,7 +72,12 @@ const relatedPart = async (xmlOf: XmlOf, partPath: string, type: string): Promis
   const rels = await xmlOf(`${partPath.slice(0, cut)}/_rels/${partPath.slice(cut + 1)}.rels`);
   for (const rel of rels ? kidsOf(rels) : []) {
     const target = attrOf(rel, "Target");
-    if (target !== undefined && attrOf(rel, "TargetMode") !== "External" && (attrOf(rel, "Type") ?? "").endsWith(`/${type}`)) return resolveTarget(partPath, target);
+    if (
+      target !== undefined &&
+      attrOf(rel, "TargetMode") !== "External" &&
+      (attrOf(rel, "Type") ?? "").endsWith(`/${type}`)
+    )
+      return resolveTarget(partPath, target);
   }
   return undefined;
 };
@@ -95,7 +105,9 @@ export const createBulletReader = (xmlOf: XmlOf): { forSlide: (slidePath: string
       // The list styles a placeholder inherits, nearest first: its layout placeholder (by idx, else by type), the master's, the master's txStyles.
       const inheritedStyles = (ph: Placeholder): (N | undefined)[] => {
         const type = ph.type ?? "obj";
-        const onLayout = (ph.idx === undefined ? undefined : layoutPhs.find((p) => p.ph.idx === ph.idx)) ?? layoutPhs.find((p) => (p.ph.type ?? "obj") === type);
+        const onLayout =
+          (ph.idx === undefined ? undefined : layoutPhs.find((p) => p.ph.idx === ph.idx)) ??
+          layoutPhs.find((p) => (p.ph.type ?? "obj") === type);
         const kind = onLayout?.ph.type ?? ph.type;
         const onMaster = masterPhs.find((p) => masterKind(p.ph.type) === masterKind(kind));
         return [lstStyleOf(onLayout?.sp), lstStyleOf(onMaster?.sp), first(txStyles, txStyleTag(kind))];

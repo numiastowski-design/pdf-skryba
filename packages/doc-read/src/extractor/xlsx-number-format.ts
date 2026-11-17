@@ -70,7 +70,8 @@ const MAX_DECIMALS = 30;
  *  code answers `undefined`, the raw value is published, no text is lost. */
 const MAX_FORMAT_CODE_CHARS = 1024;
 
-const isSecond = (token: Token | undefined): boolean => token?.kind === "second" || (token?.kind === "elapsed" && token.unit === "s");
+const isSecond = (token: Token | undefined): boolean =>
+  token?.kind === "second" || (token?.kind === "elapsed" && token.unit === "s");
 
 /** What a reader of one token answers: the position after it, or `undefined`
  *  when the whole section is a shape we do not treat. Each reader pushes its
@@ -126,7 +127,8 @@ const readBracket = (section: string, position: number, tokens: Token[]): TokenR
 /** `_x` and `*x` are alignment padding (a space the width of x; x repeated). We have no column to align: published as
  *  nothing (choice of 29/09/2026: no stray padding around the words; a text cell under the same format is published as
  *  its bare text too). */
-const skipAlignment = (section: string, position: number): TokenRead => (position + 1 >= section.length ? undefined : position + 2);
+const skipAlignment = (section: string, position: number): TokenRead =>
+  position + 1 >= section.length ? undefined : position + 2;
 
 /** A run of digit placeholders and separators (`#,##0.00`). */
 const readMask = (section: string, position: number, tokens: Token[]): TokenRead => {
@@ -187,7 +189,8 @@ const MASK_OPENERS = new Set(["#", "0", "?"]);
 /** What is left once the structural characters and the letters are ruled out:
  *  fractions of a second, characters shown as themselves, bare separators. */
 const readPunctuation = (section: string, position: number, character: string, tokens: Token[]): TokenRead => {
-  if (character === "." && /^\.0/.test(section.slice(position)) && isSecond(tokens.at(-1))) return readSubsecond(section, position, tokens);
+  if (character === "." && /^\.0/.test(section.slice(position)) && isSecond(tokens.at(-1)))
+    return readSubsecond(section, position, tokens);
   if (SHOWN_AS_THEMSELVES.has(character)) {
     tokens.push({ kind: "literal", text: character });
     return position + 1;
@@ -222,7 +225,9 @@ const readToken = (section: string, position: number, tokens: Token[]): TokenRea
 
 /** The token before (`step` -1) or after (+1) `from`, literals and locales skipped. */
 const findMeaningfulNeighbour = (tokens: readonly Token[], from: number, step: 1 | -1): Token | undefined => {
-  for (let neighbourIndex = from + step; neighbourIndex >= 0 && neighbourIndex < tokens.length; neighbourIndex += step) if (tokens[neighbourIndex]!.kind !== "literal" && tokens[neighbourIndex]!.kind !== "locale") return tokens[neighbourIndex];
+  for (let neighbourIndex = from + step; neighbourIndex >= 0 && neighbourIndex < tokens.length; neighbourIndex += step)
+    if (tokens[neighbourIndex]!.kind !== "literal" && tokens[neighbourIndex]!.kind !== "locale")
+      return tokens[neighbourIndex];
   return undefined;
 };
 
@@ -278,7 +283,7 @@ const groupThousands = (integer: string, separator: string): string => {
   const digits = integer.slice(from);
   const groups: string[] = [];
   for (let end = digits.length; end > 0; end -= 3) groups.push(digits.slice(Math.max(0, end - 3), end));
-  return integer.slice(0, from) + groups.reverse().join(separator);
+  return integer.slice(0, from) + [...groups].reverse().join(separator);
 };
 
 /** A run of decimal digits plus one, carrying right to left; a carry out of the leftmost digit adds a leading `1`. */
@@ -346,12 +351,23 @@ const writeNumber = (value: number, signedMask: string, language: PageLanguage):
   // left of the integer and for the trailing zeros of the decimals.
   const placeholders = integerMask.replaceAll(",", "");
   if (integer.length < placeholders.length) {
-    integer = placeholders.slice(0, placeholders.length - integer.length).replaceAll("#", "").replaceAll("?", " ") + integer;
+    integer =
+      placeholders
+        .slice(0, placeholders.length - integer.length)
+        .replaceAll("#", "")
+        .replaceAll("?", " ") + integer;
   }
   const decimalsOut = fraction.split("");
-  for (let decimalIndex = decimalsOut.length - 1; decimalIndex >= 0 && decimalsOut[decimalIndex] === "0" && fractionMask[decimalIndex] !== "0"; decimalIndex--) decimalsOut[decimalIndex] = fractionMask[decimalIndex] === "?" ? " " : "";
+  for (
+    let decimalIndex = decimalsOut.length - 1;
+    decimalIndex >= 0 && decimalsOut[decimalIndex] === "0" && fractionMask[decimalIndex] !== "0";
+    decimalIndex--
+  )
+    decimalsOut[decimalIndex] = fractionMask[decimalIndex] === "?" ? " " : "";
   const { thousands, decimal } = SEPARATORS[language];
-  const written = (isGrouped ? groupThousands(integer, thousands) : integer) + (decimals > 0 ? `${decimal}${decimalsOut.join("")}` : "");
+  const written =
+    (isGrouped ? groupThousands(integer, thousands) : integer) +
+    (decimals > 0 ? `${decimal}${decimalsOut.join("")}` : "");
   return scaledValue < 0 ? `-${written}` : written;
 };
 
@@ -360,8 +376,18 @@ const writeNumber = (value: number, signedMask: string, language: PageLanguage):
  *  regrouping). Decided 06/11/2026: the cell is written, no longer left as its raw value. Integer placeholders only; any
  *  other shape answers `undefined`. */
 const writeSplitIntegerMask = (tokens: readonly Token[], value: number, language: PageLanguage): string | undefined => {
-  if (!tokens.every((token) => token.kind === "locale" || token.kind === "literal" || (token.kind === "mask" && /^[#0?]+$/.test(token.text)))) return undefined;
-  const whole = writeNumber(Math.abs(value), tokens.map((token) => (token.kind === "mask" ? token.text : "")).join(""), language);
+  if (
+    !tokens.every(
+      (token) =>
+        token.kind === "locale" || token.kind === "literal" || (token.kind === "mask" && /^[#0?]+$/.test(token.text)),
+    )
+  )
+    return undefined;
+  const whole = writeNumber(
+    Math.abs(value),
+    tokens.map((token) => (token.kind === "mask" ? token.text : "")).join(""),
+    language,
+  );
   if (whole === undefined) return undefined;
   let digits = whole;
   let written = "";
@@ -381,7 +407,12 @@ const writeSplitIntegerMask = (tokens: readonly Token[], value: number, language
 /** `0.00E+00`, and engineering `##0.0E+0` (built-in id 48, §18.8.30): n integer placeholders make the exponent a
  *  multiple of n and the mantissa 1 to n digits (`#0.0E+0` on 12,200,000 → `12.2E+6`). Zeros only after the point. Same
  *  decimal rounding. */
-const writeScientific = (value: number, mask: string, exponent: Extract<Token, { kind: "exponent" }>, language: PageLanguage): string | undefined => {
+const writeScientific = (
+  value: number,
+  mask: string,
+  exponent: Extract<Token, { kind: "exponent" }>,
+  language: PageLanguage,
+): string | undefined => {
   if (!Number.isFinite(value)) return undefined; // same reason as in `writeNumber`: never « NaN » in a cell
   if (!/^[#0]+(\.0*)?$/.test(mask)) return undefined;
   const dot = mask.indexOf(".");
@@ -487,13 +518,39 @@ interface Names {
 }
 const NAMES: Record<PageLanguage, Names> = {
   en: {
-    months: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    months: [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ],
     monthsShort: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
     days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
     daysShort: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
   },
   fr: {
-    months: ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"],
+    months: [
+      "janvier",
+      "février",
+      "mars",
+      "avril",
+      "mai",
+      "juin",
+      "juillet",
+      "août",
+      "septembre",
+      "octobre",
+      "novembre",
+      "décembre",
+    ],
     monthsShort: ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."],
     days: ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"],
     daysShort: ["dim.", "lun.", "mar.", "mer.", "jeu.", "ven.", "sam."],
@@ -528,10 +585,17 @@ interface DateTimeContext {
  *  date (before day 1 or past the last date we write, 9999-12-31), or a time too
  *  large to count. Huge elapsed `[h]` values: past 2^53 ticks the value cannot
  *  be counted exactly, so the raw value is kept. */
-const dateTimeContextOf = (tokens: readonly Token[], value: number, date1904: boolean, names: Names, language: PageLanguage): DateTimeContext | undefined => {
+const dateTimeContextOf = (
+  tokens: readonly Token[],
+  value: number,
+  date1904: boolean,
+  names: Names,
+  language: PageLanguage,
+): DateTimeContext | undefined => {
   const serial = date1904 ? value + 1462 : value;
   const hasTime = tokens.some((token) => TIME_KINDS.has(token.kind));
-  const subsecondDigits = tokens.find((token): token is Extract<Token, { kind: "subsecond" }> => token.kind === "subsecond")?.digits ?? 0;
+  const subsecondDigits =
+    tokens.find((token): token is Extract<Token, { kind: "subsecond" }> => token.kind === "subsecond")?.digits ?? 0;
   if (subsecondDigits > 3) return undefined;
   const ticksPerSecond = 10 ** subsecondDigits;
   const totalTicks = hasTime ? Math.round(value * 86_400 * ticksPerSecond) : 0;
@@ -545,11 +609,22 @@ const dateTimeContextOf = (tokens: readonly Token[], value: number, date1904: bo
   const hasDateToken = tokens.some((token) => token.kind === "date");
   const date = hasDateToken ? dateOfDays(days) : undefined;
   if (hasDateToken && date === undefined) return undefined;
-  return { days, secondOfDay, hour: Math.floor(secondOfDay / 3600), totalSeconds, subsecond, isTwelveHour, date, names, language };
+  return {
+    days,
+    secondOfDay,
+    hour: Math.floor(secondOfDay / 3600),
+    totalSeconds,
+    subsecond,
+    isTwelveHour,
+    date,
+    names,
+    language,
+  };
 };
 
 /** A clock number: two digits when the token is two letters wide. */
-const writeClockNumber = (text: string, value: number): string => (text.length === 2 ? padToTwoDigits(value) : String(value));
+const writeClockNumber = (text: string, value: number): string =>
+  text.length === 2 ? padToTwoDigits(value) : String(value);
 
 const writeElapsed = (token: Extract<Token, { kind: "elapsed" }>, totalSeconds: number): string => {
   let total = totalSeconds;
@@ -580,7 +655,10 @@ const writeDay = (date: Date, days: number, letterCount: number, names: Names): 
 const writeDateToken = (text: string, date: Date, days: number, names: Names): string => {
   const letter = text[0];
   const letterCount = text.length;
-  if (letter === "y") return letterCount <= 2 ? padToTwoDigits(date.getUTCFullYear() % 100) : String(date.getUTCFullYear() % 10_000).padStart(4, "0");
+  if (letter === "y")
+    return letterCount <= 2
+      ? padToTwoDigits(date.getUTCFullYear() % 100)
+      : String(date.getUTCFullYear() % 10_000).padStart(4, "0");
   if (letter === "m") return writeMonth(date.getUTCMonth(), letterCount, names);
   return writeDay(date, days, letterCount, names);
 };
@@ -619,7 +697,12 @@ const writeDateTimeToken = (token: Token, context: DateTimeContext): string | nu
 
 /** Dates and times. A negative value is not written as a date or time, in either date system: `undefined` keeps the raw
  *  value, our rule for what we cannot write faithfully. */
-const writeDateTime = (tokens: readonly Token[], value: number, date1904: boolean, language: PageLanguage): string | undefined => {
+const writeDateTime = (
+  tokens: readonly Token[],
+  value: number,
+  date1904: boolean,
+  language: PageLanguage,
+): string | undefined => {
   if (value < 0) return undefined;
   // The words follow a locale written in the code, else the page language.
   const locale = tokens.filter((token): token is Extract<Token, { kind: "locale" }> => token.kind === "locale").at(-1);
@@ -636,10 +719,15 @@ const writeDateTime = (tokens: readonly Token[], value: number, date1904: boolea
 };
 
 /** A decimal text without its trailing zeros (`1.500` → `1.5`, `2.000` → `2`). */
-const trimDecimal = (text: string): string => (text.includes(".") ? text.replace(/(?:\.0*|(\.\d*[1-9])0+)$/, "$1") : text);
+const trimDecimal = (text: string): string =>
+  text.includes(".") ? text.replace(/(?:\.0*|(\.\d*[1-9])0+)$/, "$1") : text;
 /** An `E` form with its mantissa trimmed and its exponent written with at least two digits. */
 const normalizeExponent = (text: string): string =>
-  text.includes("E") ? text.replace(/(?:\.0*|(\.\d*[1-9])0+)E/, "$1E").replace(/(E[+-])(\d)$/, "$10$2") : text;
+  text.includes("E")
+    ? text
+        .replace(/(?:\.0*|(\.\d*[1-9])0+)E/, "$1E")
+        .replace(/(E[+-])(\d)$/, (_whole, sign: string, digit: string) => `${sign}0${digit}`)
+    : text;
 /** « General » for a number: at most 11 characters (12 with a minus sign), trailing zeros trimmed, scientific notation
  *  past that width (`String(v)` would publish 0.30000000000000004 and 1e+21). Ported from SheetJS SSF's
  *  `SSF_general_num` (Apache-2.0): 1/3 gives 0.333333333, 123456789012 gives 1.23457E+11. */
@@ -743,7 +831,8 @@ const selectSection = (sections: readonly string[], value: number): number => {
 const BUILTIN_FORMAT_14_SHORT_DATE = "m/d/yy";
 /** The French short date of id 14, `dd/mm/yyyy` in a code. */
 const BUILTIN_FORMAT_14_SHORT_DATE_FR = "dd/mm/yyyy";
-export const selectBuiltinNumFmt14 = (language: PageLanguage): string => (language === "fr" ? BUILTIN_FORMAT_14_SHORT_DATE_FR : BUILTIN_FORMAT_14_SHORT_DATE);
+export const selectBuiltinNumFmt14 = (language: PageLanguage): string =>
+  language === "fr" ? BUILTIN_FORMAT_14_SHORT_DATE_FR : BUILTIN_FORMAT_14_SHORT_DATE;
 
 /** A code read once: its NUMBER sections — a trailing « @ » section of a two- or three-section code is the TEXT section,
  *  dropped, so `0.00;@` writes a negative with section 0 — and, per section, its colour-stripped text and tokens,
@@ -777,7 +866,8 @@ const parseSections = (code: string): ParsedCode | undefined => {
   const allSections = splitSections(code);
   const hasSeveralSections = allSections.length > 1;
   if (allSections.length > 4) return undefined;
-  const hasTextSection = (allSections.length === 2 || allSections.length === 3) && hasTextPlaceholder(allSections.at(-1)!);
+  const hasTextSection =
+    (allSections.length === 2 || allSections.length === 3) && hasTextPlaceholder(allSections.at(-1)!);
   const sections = hasTextSection ? allSections.slice(0, -1) : allSections;
   return { sections, hasSeveralSections, stripped: sections.map(() => undefined), tokens: sections.map(() => null) };
 };
@@ -787,7 +877,12 @@ const LONG_DATE: Record<PageLanguage, string> = { en: "dddd, mmmm d, yyyy", fr: 
 
 /** The cell's display text, or `undefined` when the code is outside what
  *  we write (caller falls back to the raw value). */
-export function formatNumberCell(value: number, code: string | undefined, date1904: boolean, language: PageLanguage = "en"): string | undefined {
+export function formatNumberCell(
+  value: number,
+  code: string | undefined,
+  date1904: boolean,
+  language: PageLanguage = "en",
+): string | undefined {
   // A number under the text format « @ » is written as General.
   if (code === undefined || code === "General" || code === "@") return formatGeneralNumber(value, language);
   const parsed = parseCode(code);
@@ -810,8 +905,10 @@ export function formatNumberCell(value: number, code: string | undefined, date19
   // tokenise (a « G » is not ours) and the cell came out as its raw value.
   if (/^general$/i.test(section.replace(/\[[^\][]*\]/g, "").trim())) return formatGeneralNumber(signed, language);
 
-  parsed.stripped[index] ??= section.replace(/\[[^\][]*\]/g, (bracket) => (COLOUR.test(bracket.slice(1, -1)) ? "" : bracket));
-  const fraction = writeFraction(Math.abs(signed), signed < 0 ? "-" : "", parsed.stripped[index]!);
+  parsed.stripped[index] ??= section.replace(/\[[^\][]*\]/g, (bracket) =>
+    COLOUR.test(bracket.slice(1, -1)) ? "" : bracket,
+  );
+  const fraction = writeFraction(Math.abs(signed), signed < 0 ? "-" : "", parsed.stripped[index]);
   if (fraction !== undefined) return fraction;
 
   // `[$-F800]`: « the long date of the machine opening the file », unknowable here. DECIDED 06/11/2026, RETURNING the
@@ -829,12 +926,20 @@ export function formatNumberCell(value: number, code: string | undefined, date19
 }
 
 /** The text of a number written by the tokens of its section; `value` is the stored number, `signed` the number the section shows (unsigned when the section carries its own minus). */
-const writeTokens = (tokens: readonly Token[], value: number, signed: number, date1904: boolean, language: PageLanguage): string | undefined => {
+const writeTokens = (
+  tokens: readonly Token[],
+  value: number,
+  signed: number,
+  date1904: boolean,
+  language: PageLanguage,
+): string | undefined => {
   if (tokens.every((token) => token.kind === "locale")) return undefined;
-  if (tokens.some((token) => token.kind === "date" || TIME_KINDS.has(token.kind))) return writeDateTime(tokens, value, date1904, language);
+  if (tokens.some((token) => token.kind === "date" || TIME_KINDS.has(token.kind)))
+    return writeDateTime(tokens, value, date1904, language);
 
   // A literal-only section (« "zéro" », « \- ») shows its text whatever the number.
-  if (tokens.every((token) => token.kind === "literal" || token.kind === "locale")) return tokens.map((token) => (token.kind === "literal" ? token.text : "")).join("");
+  if (tokens.every((token) => token.kind === "literal" || token.kind === "locale"))
+    return tokens.map((token) => (token.kind === "literal" ? token.text : "")).join("");
   if (tokens.some((token) => token.kind === "literal" && token.isBare === true)) return undefined;
   const masks = tokens.filter((token) => token.kind === "mask");
   if (masks.length > 1) return writeSplitIntegerMask(tokens, signed, language);
@@ -842,7 +947,10 @@ const writeTokens = (tokens: readonly Token[], value: number, signed: number, da
   const exponent = tokens.find((token): token is Extract<Token, { kind: "exponent" }> => token.kind === "exponent");
   const percentCount = tokens.filter((token) => token.kind === "percent").length;
   if (exponent !== undefined && percentCount > 0) return undefined;
-  const written = exponent !== undefined ? writeScientific(signed, masks[0]!.text, exponent, language) : writeNumber(signed * 100 ** percentCount, masks[0]!.text, language);
+  const written =
+    exponent !== undefined
+      ? writeScientific(signed, masks[0]!.text, exponent, language)
+      : writeNumber(signed * 100 ** percentCount, masks[0]!.text, language);
   if (written === undefined) return undefined;
   let text = "";
   for (const token of tokens) {

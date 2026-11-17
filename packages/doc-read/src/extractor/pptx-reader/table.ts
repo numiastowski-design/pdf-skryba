@@ -15,22 +15,22 @@ import { isTrue, type PptxParagraph, readParagraph } from "./text";
 
 interface PptxTableCell {
   /** One entry per `a:p` of the cell's `a:txBody`, empty paragraphs included. */
-  paragraphs: PptxParagraph[];
+  readonly paragraphs: PptxParagraph[];
   /** `gridSpan`, only when above 1; never past the declared grid's columns. */
-  colspan?: number;
+  readonly colspan?: number;
   /** `rowSpan`, only when above 1; never past the table's rows. */
-  rowspan?: number;
+  readonly rowspan?: number;
   /** Only `true`, on every cell of the first row when `a:tblPr firstRow` is
    *  on: that is what the file declares a header row to be. */
-  header?: true;
+  readonly header?: true;
 }
 
 export interface PptxTable {
   /** `a:gridCol w` in EMU, one per grid column; its length is the column count. */
-  columnWidths: number[];
+  readonly columnWidths: number[];
   /** One per `a:tr`, a row whose cells are all absorbed included (with no
    *  cell): the rowspans above count it. */
-  rows: { cells: PptxTableCell[] }[];
+  readonly rows: { readonly cells: PptxTableCell[] }[];
 }
 
 /** A span attribute above 1, clamped to `room` (what the declared grid
@@ -38,13 +38,17 @@ export interface PptxTable {
  *  An EXACT clamp, no threshold of its own: a written rowSpan="999999999"
  *  crossed into the page as a rowspan. */
 const spanOf = (value: string | undefined, room: number): number | undefined => {
-  const n = Number.parseInt(value ?? "", 10);
-  return Number.isInteger(n) && n > 1 && room > 1 ? Math.min(n, room) : undefined;
+  const span = Number.parseInt(value ?? "", 10);
+  return Number.isInteger(span) && span > 1 && room > 1 ? Math.min(span, room) : undefined;
 };
 
-export const readTable = (tbl: XNode, rels: ReadonlyMap<string, Relationship>, slideNumber?: number): PptxTable => {
-  const columnWidths = findChildren(findChild(tbl, "a:tblGrid") ?? {}, "a:gridCol").map((col) => {
-    const w = Number.parseInt(attributeOf(col, "w") ?? "", 10);
+export const readTable = (
+  tbl: XNode,
+  relationships: ReadonlyMap<string, Relationship>,
+  slideNumber?: number,
+): PptxTable => {
+  const columnWidths = findChildren(findChild(tbl, "a:tblGrid") ?? {}, "a:gridCol").map((gridCol) => {
+    const w = Number.parseInt(attributeOf(gridCol, "w") ?? "", 10);
     return Number.isInteger(w) && w > 0 ? w : 0;
   });
   const headerRow = isTrue(attributeOf(findChild(tbl, "a:tblPr") ?? {}, "firstRow"));
@@ -59,7 +63,9 @@ export const readTable = (tbl: XNode, rels: ReadonlyMap<string, Relationship>, s
       const rowspan = spanOf(attributeOf(tc, "rowSpan"), trs.length - rowIndex);
       return [
         {
-          paragraphs: findChildren(findChild(tc, "a:txBody") ?? {}, "a:p").map((p) => readParagraph(p, rels, slideNumber === undefined ? {} : { slideNumber })),
+          paragraphs: findChildren(findChild(tc, "a:txBody") ?? {}, "a:p").map((paragraph) =>
+            readParagraph(paragraph, relationships, slideNumber === undefined ? {} : { slideNumber }),
+          ),
           ...(colspan === undefined ? {} : { colspan }),
           ...(rowspan === undefined ? {} : { rowspan }),
           ...(headerRow && rowIndex === 0 ? { header: true as const } : {}),

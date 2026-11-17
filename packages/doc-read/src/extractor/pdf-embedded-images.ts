@@ -30,7 +30,14 @@ import { encodePngDeflate } from "doc-ir/extractor/png";
 import { unfilterPngRows } from "doc-ir/extractor/png-decode";
 import { imageFilterOf, openPdfObjects, singleFilterOf, type PdfObjectsDocument } from "./pdf-objects/document";
 import type { PdfDict, PdfStream, PdfValue } from "./pdf-objects/objects";
-import { componentsOfSpace, entryOf, MAX_EMBEDDED_IMAGE_PIXELS, nameOf, numberOf, pictureSizeOk } from "./pdf-image-pixels";
+import {
+  componentsOfSpace,
+  entryOf,
+  MAX_EMBEDDED_IMAGE_PIXELS,
+  nameOf,
+  numberOf,
+  pictureSizeOk,
+} from "./pdf-image-pixels";
 import { MAX_DOCUMENT_BYTES } from "./pdf-objects/bounds";
 import { documentCacheOf, type DocumentCache } from "./document-cache";
 
@@ -58,9 +65,18 @@ function channelsOf(doc: PdfObjectsDocument, space: PdfValue | undefined): 1 | 3
 
 /** The pixels of an 8-bit FlateDecode stream, PNG predictor undone if there is one. The raw bytes come from the object reader, which
  *  decrypts them: a compressed stream of an encrypted document is encrypted THEN compressed, so it is decrypted BEFORE being inflated. */
-function flatePixels(doc: PdfObjectsDocument, stream: PdfStream, shape: { width: number; height: number; channels: number }, spent: { bytes: number }): Uint8Array | undefined {
+function flatePixels(
+  doc: PdfObjectsDocument,
+  stream: PdfStream,
+  shape: { width: number; height: number; channels: number },
+  spent: { bytes: number },
+): Uint8Array | undefined {
   const { width, height, channels } = shape;
-  if (singleFilterOf(doc, stream.dict) !== "FlateDecode" || numberOf(doc.resolve(stream.dict.get("BitsPerComponent"))) !== 8) return undefined;
+  if (
+    singleFilterOf(doc, stream.dict) !== "FlateDecode" ||
+    numberOf(doc.resolve(stream.dict.get("BitsPerComponent"))) !== 8
+  )
+    return undefined;
   let contents: Uint8Array;
   try {
     contents = doc.rawStreamBytes(stream);
@@ -76,7 +92,13 @@ function flatePixels(doc: PdfObjectsDocument, stream: PdfStream, shape: { width:
   const expected = predictorOf >= 10 ? height * (width * channels + 1) : width * height * channels;
   // Width x height test (`MAX_EMBEDDED_IMAGE_PIXELS`): the largest buffer held is that cap x 4 channels at most.
   // The same size judgement as every other picture reader, and the running total of what this reader has inflated (`MAX_DOCUMENT_BYTES`).
-  if (!pictureSizeOk(width, height) || !Number.isSafeInteger(expected) || expected <= 0 || spent.bytes + expected > MAX_DOCUMENT_BYTES) return undefined;
+  if (
+    !pictureSizeOk(width, height) ||
+    !Number.isSafeInteger(expected) ||
+    expected <= 0 ||
+    spent.bytes + expected > MAX_DOCUMENT_BYTES
+  )
+    return undefined;
   let raw: Uint8Array;
   try {
     const inflated = inflateSync(contents, { maxOutputLength: expected });
@@ -103,13 +125,27 @@ function flatePixels(doc: PdfObjectsDocument, stream: PdfStream, shape: { width:
 }
 
 /** The alpha of a soft mask of the same size as the picture, one byte per pixel, or `undefined` when we do not read it. */
-function maskAlpha(doc: PdfObjectsDocument, mask: PdfValue | undefined, size: { width: number; height: number }, state: { spent: { bytes: number }; cache: DocumentCache }): Uint8Array | undefined {
+function maskAlpha(
+  doc: PdfObjectsDocument,
+  mask: PdfValue | undefined,
+  size: { width: number; height: number },
+  state: { spent: { bytes: number }; cache: DocumentCache },
+): Uint8Array | undefined {
   const { width, height } = size;
   if (mask?.kind !== "stream") return undefined;
-  if (numberOf(doc.resolve(mask.dict.get("Width"))) !== width || numberOf(doc.resolve(mask.dict.get("Height"))) !== height) return undefined;
+  if (
+    numberOf(doc.resolve(mask.dict.get("Width"))) !== width ||
+    numberOf(doc.resolve(mask.dict.get("Height"))) !== height
+  )
+    return undefined;
   if (channelsOf(doc, mask.dict.get("ColorSpace")) !== 1) return undefined;
   // A soft mask shared by several pictures is inflated and charged once.
-  return state.cache.getOrCompute<Uint8Array | undefined>(MASK, mask, (alpha) => alpha?.length ?? 0, () => flatePixels(doc, mask, { width, height, channels: 1 }, state.spent));
+  return state.cache.getOrCompute<Uint8Array | undefined>(
+    MASK,
+    mask,
+    (alpha) => alpha?.length ?? 0,
+    () => flatePixels(doc, mask, { width, height, channels: 1 }, state.spent),
+  );
 }
 
 /** Opens the document with OUR reader; it throws what that reader throws (a refusal), which the caller turns into "no embedded images". */
@@ -129,7 +165,12 @@ export async function openEmbeddedImages(source: Uint8Array | PdfObjectsDocument
   // generation is ignored): `5R`, `5R0` and `5R1` are one.
   const readOnce = (ref: string): EmbeddedImage | undefined => {
     const m = /^(\d+)R(\d*)$/.exec(ref);
-    return cache.getOrCompute<EmbeddedImage | undefined>(EMBEDDED, m === null ? `raw:${ref}` : `${Number(m[1])}`, (image) => (image === undefined || image.viewOfFile === true ? 0 : image.bytes.length), () => readImage(ref));
+    return cache.getOrCompute<EmbeddedImage | undefined>(
+      EMBEDDED,
+      m === null ? `raw:${ref}` : `${Number(m[1])}`,
+      (image) => (image === undefined || image.viewOfFile === true ? 0 : image.bytes.length),
+      () => readImage(ref),
+    );
   };
 
   const readImage = (ref: string): EmbeddedImage | undefined => {

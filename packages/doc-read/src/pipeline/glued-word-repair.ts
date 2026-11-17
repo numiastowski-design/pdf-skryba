@@ -82,7 +82,7 @@ const edge = (raw: string, side: "lead" | "trail"): string => {
     if (conservationKey(c).length > 0) break;
     out.push(c);
   }
-  return (side === "lead" ? out : out.reverse()).join("");
+  return (side === "lead" ? out : [...out].reverse()).join("");
 };
 
 /** The renderer's zero-width space before a superscript glued to a word (`renderer/storage.ts#renderInlines`, PLATFORM-STATUS §81)
@@ -109,7 +109,8 @@ const insertionsFor = (blocks: readonly string[], r: Respacing): number[] | unde
   for (let i = 0; i < keys.length - 1; i++) {
     const boundary = letters + keys[i]!.length;
     // The unit carrying the first word's last letter must end exactly there.
-    while (u < word.length && letters + word[u]!.key.length <= boundary && letters < boundary) letters += word[u++]!.key.length;
+    while (u < word.length && letters + word[u]!.key.length <= boundary && letters < boundary)
+      letters += word[u++]!.key.length;
     if (letters !== boundary) return undefined;
     // Non-letters up to the next word's first letter, split as the source says.
     let next = u;
@@ -129,7 +130,10 @@ const insertionsFor = (blocks: readonly string[], r: Respacing): number[] | unde
 
 /** The spaces this check PROVES, as edits for the caller to apply to its own page; `repaired` counts the glued tokens
  *  that got all of theirs. Writes nothing: composing a page is the caller's job (`PageEdit`). */
-export function gluedWordEdits(page: PublishedPage, respacings: readonly Respacing[]): { edits: PageEdit[]; repaired: number } {
+export function gluedWordEdits(
+  page: PublishedPage,
+  respacings: readonly Respacing[],
+): { edits: PageEdit[]; repaired: number } {
   const glued = respacings.filter((r) => r.kind === "glued");
   if (glued.length === 0) return { edits: [], repaired: 0 };
   const taken = new Set<string>();
@@ -157,4 +161,5 @@ export const noWorse = (before: ConservationVerdict, after: ConservationVerdict,
   after.decision !== "abstain" &&
   after.gluedWords <= before.gluedWords - repaired &&
   after.unmatchedPageWords <= before.unmatchedPageWords &&
-  after.respacings.filter((r) => r.kind === "split").length <= before.respacings.filter((r) => r.kind === "split").length;
+  after.respacings.filter((r) => r.kind === "split").length <=
+    before.respacings.filter((r) => r.kind === "split").length;

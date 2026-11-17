@@ -6,7 +6,7 @@
  *  Called by: `extractor/pdf.ts` and the stages it wires together. */
 
 import type { ImageRef, IRBlock } from "doc-ir/lib/ir";
-import type { DocumentNotice, PictureRefusal } from "doc-ir/lib/reader-types";
+import type { DocumentNotice, PdfTextUnreadReason, PictureRefusal } from "doc-ir/lib/reader-types";
 import type { PdfTableDetection } from "doc-ir/layout/geometry";
 import type { RawImage } from "doc-ir/extractor/raw-image";
 import type { ExtractionCost } from "./extraction-cost";
@@ -15,7 +15,13 @@ import type { PdfDocumentFacts } from "./pdf-facts";
 import type { PdfReferenceCycle, PdfTextRun } from "./pdf-source";
 
 /** The geometry-only view of a text run: what the layout rules (grids, gutters) read. */
-export const toFragment = (r: PdfTextRun): Fragment => ({ text: r.text, x: r.x, y: r.y, width: r.width, height: r.height });
+export const toFragment = (r: PdfTextRun): Fragment => ({
+  text: r.text,
+  x: r.x,
+  y: r.y,
+  width: r.width,
+  height: r.height,
+});
 
 /** Un item positionné : ce que tout le chemin PDF mesure, et le minimum qu'une
  *  ligne demande. */
@@ -179,11 +185,16 @@ export interface PdfExtractResult {
    *  the right pages without losing overall page order. */
   pages: IRBlock[][];
   scannedPageIndices: number[];
-  /** Exactly one `pdf-image-unread` notice when at least one placed image could not be obtained; absent otherwise. */
+  /** At most one `pdf-image-unread` notice (a placed image could not be obtained), one `pdf-text-unread` notice per reason
+   *  (a page's text could not be read), one `table-withheld`; absent when there is none. */
   notices?: DocumentNotice[];
   /** Per page, the placed images no reader could obtain, by cause: `extractPdfWithVision` leaves out the pages the
    *  AI's text replaced and composes the notice again (`pdfImageUnreadNotices`). */
   imageLossByPage: ReadonlyMap<number, { slow: number; unreadable: number; places: readonly LostPlace[] }>;
+  /** 0-based page -> why its glyphs could not be built (`pdf-source.ts#textUnreadReasonOf`): the page is published WITHOUT
+   *  its text; or `font` (17/11/2026), a page that shows glyphs of a font we could not read and lost those words only. `extractPdfWithVision` leaves out the pages the AI's text replaced and composes the notice again
+   *  (`pdfTextUnreadNotices`). Empty when every page was read. */
+  textUnreadByPage: ReadonlyMap<number, PdfTextUnreadReason>;
   /** What the file says about itself, reduced (`pdf-facts.ts`): tool from our table, versions, tagging, page count. */
   docFacts: PdfDocumentFacts;
   /** Ce que cette extraction a COÛTÉ en travail — appels et volumes, jamais du

@@ -58,7 +58,8 @@ export const decodePng = (bytes: Uint8Array, maxPixels: number): DecodedPng | un
       height = u32(data, 4);
       const [depth, colorType, compression, filter, interlace] = [data[8], data[9], data[10], data[11], data[12]];
       channels = colorType === undefined ? undefined : channelsOfColorType(colorType);
-      if (depth !== 8 || channels === undefined || compression !== 0 || filter !== 0 || interlace !== 0) return undefined;
+      if (depth !== 8 || channels === undefined || compression !== 0 || filter !== 0 || interlace !== 0)
+        return undefined;
     } else if (type === "tRNS") {
       // A transparent colour on a grey or RGB image: dropping it would make
       // the transparent areas opaque.
@@ -70,7 +71,8 @@ export const decodePng = (bytes: Uint8Array, maxPixels: number): DecodedPng | un
     }
     at += 12 + length; // length, type, data, CRC
   }
-  if (channels === undefined || width === 0 || height === 0 || width * height > maxPixels || idat.length === 0) return undefined;
+  if (channels === undefined || width === 0 || height === 0 || width * height > maxPixels || idat.length === 0)
+    return undefined;
 
   const stride = width * channels;
   const expected = height * (stride + 1);
@@ -88,7 +90,12 @@ export const decodePng = (bytes: Uint8Array, maxPixels: number): DecodedPng | un
 
 /** Undoes the PNG row filters (None, Sub, Up, Average, Paeth), 8 bits per channel. `data` is `height` rows of a
  *  filter byte then `width × channels` bytes; any other length, or a filter type above 4, gives `undefined`. */
-export function unfilterPngRows(data: Uint8Array, width: number, height: number, channels: number): Uint8Array | undefined {
+export function unfilterPngRows(
+  data: Uint8Array,
+  width: number,
+  height: number,
+  channels: number,
+): Uint8Array | undefined {
   const stride = width * channels;
   if (data.length !== height * (stride + 1)) return undefined;
   const out = new Uint8Array(height * stride);

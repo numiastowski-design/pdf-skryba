@@ -1,26 +1,29 @@
 /** What `styles.xml` declares that the page keeps: which paragraph styles are
- *  headings (and at what level), and the run marks a paragraph style, a
+ *  headings (and at what level), and the run marks and colours a paragraph style, a
  *  character style and direct formatting combine into.
- *  COLOURS AND HIGHLIGHT ARE PUBLISHED SINCE LE 10/11/2026 (« du coup ne les jetons plus »), after his own
- *  Rovo trial of that day: asked which rules of a page were red or highlighted, Rovo returned all four, told text
- *  colour from background, and even named the shade. The paper « Silent Cue Loss » (arXiv:2610.30026) measures
- *  +0.302 of accuracy for highlighting and +0.262 for colour, bold/italic/strike ≈ 0. See `colours` below.
- *  NOT here: fonts, spacing — never published (decided,
- *  the docx reader (`extractor/docx-reader/`)) — nor walking the body
- *  (`docx-reader/body.ts`).
+ *  Decides: the style hierarchy each run property follows; colours and highlight are published since 10/11/2026,
+ *  because a reading agent was seen to use them (see `colours`), and only those the FILE states.
+ *  NOT here: fonts and spacing, which are never published (decided), nor walking the body (`docx-reader/body.ts`).
  *  Called by: `docx-reader/body.ts`, `docx-reader/index.ts`. */
 
 import type { InlineMark } from "doc-ir/lib/ir";
 import { isOnOff as isOnOffValue } from "../../lib/ooxml-bool";
-import { attributeOf, findChild, findChildren, type XNode } from "../ooxml/xml";
+import { attributeOf, findChild, findChildren, valOfChild, type XNode } from "../ooxml/xml";
 
-interface StyleDef {
-  id: string;
-  type: string;
-  name: string | undefined;
-  basedOn: string | undefined;
-  pPr: XNode | undefined;
-  rPr: XNode | undefined;
+interface StyleDefinition {
+  readonly id: string;
+  readonly type: string;
+  readonly name: string | undefined;
+  readonly basedOn: string | undefined;
+  readonly pPr: XNode | undefined;
+  readonly rPr: XNode | undefined;
+}
+
+/** What `styles.xml` declares, read once: every style by id, and the default paragraph and character styles. */
+interface StyleSheet {
+  readonly stylesById: ReadonlyMap<string, StyleDefinition>;
+  readonly defaultParagraphStyleId: string | undefined;
+  readonly defaultCharacterStyleId: string | undefined;
 }
 
 /** What a paragraph style makes of its paragraph. */
@@ -47,239 +50,248 @@ export interface Styles {
 }
 
 /**
- * ST_OnOff (ECMA-376 Part 1 §17.17.4): `true`, `1`, `on` — and the attribute
- * ABSENT — mean on; `false`, `0`, `off` mean off. `<w:b w:val="0"/>` is an
- * explicit "not bold", never a bold.
+ * An on/off element: `true`, `1`, `on` — and the attribute ABSENT — mean on; `false`, `0`, `off` mean off.
+ * `<w:b w:val="0"/>` is an explicit "not bold", never a bold (held by `docx-reader.test.ts`, test « 05 »).
  */
-export const onOff = (el: XNode): boolean => {
-  return isOnOffValue(attributeOf(el, "w:val"), true);
+export const onOff = (element: XNode): boolean => {
+  return isOnOffValue(attributeOf(element, "w:val"), true);
 };
+
+/** The first child named `tag` of a parent that may be absent. */
+const childOf = (parent: XNode | undefined, tag: string): XNode | undefined =>
+  parent ? findChild(parent, tag) : undefined;
+
+/** The `w:val` of a declaration that may be absent. */
+const valAttributeOf = (declaration: XNode | undefined): string | undefined =>
+  declaration ? attributeOf(declaration, "w:val") : undefined;
+
+/** A toggle declaration's value; an absent declaration is off. */
+const toggleValueOf = (declaration: XNode | undefined): boolean => (declaration ? onOff(declaration) : false);
 
 /** Built-in style names (w:name) the page reads. The NAME identifies
  *  a built-in style whatever its id — a French Word writes `Titre1` for the
  *  style named `heading 1` — and is compared without case, since producers
  *  write both `heading 1` and `Heading 1`. */
 const roleByName = (name: string): ParagraphRole | "subtitle" | undefined => {
-  const lower = name.trim().toLowerCase();
-  const heading = /^heading ([1-6])$/.exec(lower);
-  if (heading) return { kind: "heading", level: Number(heading[1]) as 1 | 2 | 3 | 4 | 5 | 6 };
-  if (lower === "title") return { kind: "heading", level: 1 };
+  const lowerCaseName = name.trim().toLowerCase();
+  const headingMatch = /^heading ([1-6])$/.exec(lowerCaseName);
+  if (headingMatch) return { kind: "heading", level: Number(headingMatch[1]) as 1 | 2 | 3 | 4 | 5 | 6 };
+  if (lowerCaseName === "title") return { kind: "heading", level: 1 };
   // Subtitle: a plain paragraph, with no mark added for it (decided).
-  if (lower === "subtitle") return "subtitle";
+  if (lowerCaseName === "subtitle") return "subtitle";
   return undefined;
 };
 
 /** Same reading from the id, for a style that declares no name at all. */
-const roleById = (id: string): ParagraphRole | "subtitle" | undefined => {
-  const heading = /^Heading([1-6])$/.exec(id);
-  if (heading) return { kind: "heading", level: Number(heading[1]) as 1 | 2 | 3 | 4 | 5 | 6 };
-  if (id === "Title") return { kind: "heading", level: 1 };
-  if (id === "Subtitle") return "subtitle";
+const roleById = (styleId: string): ParagraphRole | "subtitle" | undefined => {
+  const headingMatch = /^Heading([1-6])$/.exec(styleId);
+  if (headingMatch) return { kind: "heading", level: Number(headingMatch[1]) as 1 | 2 | 3 | 4 | 5 | 6 };
+  if (styleId === "Title") return { kind: "heading", level: 1 };
+  if (styleId === "Subtitle") return "subtitle";
   return undefined;
 };
 
-const PLAIN: ParagraphRole = { kind: "paragraph" };
+const PLAIN_PARAGRAPH: ParagraphRole = { kind: "paragraph" };
 
-/** Toggle properties (§17.7.3) the page keeps, and their mark. */
-const TOGGLES: [string, InlineMark][] = [
+/** The toggle properties the page keeps, and their mark. */
+const TOGGLES: readonly (readonly [string, InlineMark])[] = [
   ["w:b", "strong"],
   ["w:i", "em"],
   ["w:strike", "strike"],
 ];
 
-const MARK_ORDER: InlineMark[] = ["strong", "em", "underline", "strike", "sup", "sub"];
+const MARK_ORDER: readonly InlineMark[] = ["strong", "em", "underline", "strike", "sup", "sub"];
 
-/** 🔴 LES DEUX COULEURS DE TEXTE QU'ON NE PUBLIE JAMAIS, et c'est un biais choisi et écrit (10/11/2026).
- *  Ni l'une ni l'autre ne dit « ce passage ressort » — chacune est un défaut qu'un outil écrit en toutes lettres —
- *  et chacune EFFACE le texte sur un des deux thèmes de Confluence, ce qui en fait un mot perdu :
- *  - `#ffffff` : un auteur écrit en blanc sur une bannière ou une cellule colorée, et cette bannière nous ne la
- *    publions pas. MESURÉ : `10-lpc-invitation-to-tender` écrit son titre entier en blanc.
- *  - `#000000` : Google Docs pose un noir EXPLICITE sur chaque run de ses exports. MESURÉ : il est arrivé par un
- *    test du lecteur (`05-Essai-Annotations.docx`), et `07-moj-data-sharing-guidance` en portait sur tout son corps.
- *  CE QUE CE REFUS NE VOIT PAS, pour que personne n'en attende trop : un gris très clair ou très sombre passe
- *  encore. Aucun seuil de luminance n'est posé — ce serait une règle inventée, et aucune population ne l'a mesurée.
- *  15/09/2026 : « un texte illisible est un problème pour tout le monde ». */
+/** 🔴 THE TWO TEXT COLOURS WE NEVER PUBLISH, a bias chosen and written (10/11/2026).
+ *  Neither says « this passage stands out », and each ERASES the text on one of Confluence's two themes, which makes
+ *  it a lost word:
+ *  - `#ffffff`: white is written on a banner or a coloured cell that we do not publish, so it would come out white on
+ *    white.
+ *  - `#000000`: an explicit black is a producer's default on every run, not an author's mark.
+ *  WHAT THIS REFUSAL DOES NOT SEE, so nobody expects too much: a very light or very dark grey still passes. No
+ *  luminance threshold is set: it would be an invented rule, and no population has measured it.
+ *  15/09/2026: « unreadable text is a problem for everyone ». */
 const INVISIBLE_OR_DEFAULT = new Set(["#ffffff", "#000000"]);
 
-export const readStyles = (root: XNode | undefined): Styles => {
-  const byId = new Map<string, StyleDef>();
-  let defaultParagraph: string | undefined;
-  let defaultCharacter: string | undefined;
-  for (const s of root ? findChildren(root, "w:style") : []) {
-    const id = attributeOf(s, "w:styleId");
+/** Every style by id, and the first default paragraph and character styles. */
+const readStyleSheet = (root: XNode | undefined): StyleSheet => {
+  const stylesById = new Map<string, StyleDefinition>();
+  let defaultParagraphStyleId: string | undefined;
+  let defaultCharacterStyleId: string | undefined;
+  for (const style of root ? findChildren(root, "w:style") : []) {
+    const id = attributeOf(style, "w:styleId");
     if (id === undefined) continue;
-    const type = attributeOf(s, "w:type") ?? "paragraph";
-    const nameEl = findChild(s, "w:name");
-    const basedOnEl = findChild(s, "w:basedOn");
-    byId.set(id, {
+    const type = attributeOf(style, "w:type") ?? "paragraph";
+    stylesById.set(id, {
       id,
       type,
-      name: nameEl ? attributeOf(nameEl, "w:val") : undefined,
-      basedOn: basedOnEl ? attributeOf(basedOnEl, "w:val") : undefined,
-      pPr: findChild(s, "w:pPr"),
-      rPr: findChild(s, "w:rPr"),
+      name: valOfChild(style, "w:name"),
+      basedOn: valOfChild(style, "w:basedOn"),
+      pPr: findChild(style, "w:pPr"),
+      rPr: findChild(style, "w:rPr"),
     });
-    if (isOnOffValue(attributeOf(s, "w:default"), false)) {
-      if (type === "paragraph") defaultParagraph ??= id;
-      if (type === "character") defaultCharacter ??= id;
+    if (isOnOffValue(attributeOf(style, "w:default"), false)) {
+      if (type === "paragraph") defaultParagraphStyleId ??= id;
+      if (type === "character") defaultCharacterStyleId ??= id;
     }
   }
-  const docDefaults = root ? findChild(root, "w:docDefaults") : undefined;
-  const rPrDefaultHolder = docDefaults ? findChild(docDefaults, "w:rPrDefault") : undefined;
-  const rPrDefault = rPrDefaultHolder ? findChild(rPrDefaultHolder, "w:rPr") : undefined;
+  return { stylesById, defaultParagraphStyleId, defaultCharacterStyleId };
+};
 
-  /** The style and its ancestors, nearest first; a basedOn cycle stops. */
-  const chain = (id: string | undefined): StyleDef[] => {
-    const out: StyleDef[] = [];
-    const seen = new Set<string>();
-    let current = id;
-    while (current !== undefined && !seen.has(current)) {
-      seen.add(current);
-      const def = byId.get(current);
-      if (!def) break;
-      out.push(def);
-      current = def.basedOn;
-    }
-    return out;
-  };
+/** The document's default run properties (`w:docDefaults/w:rPrDefault/w:rPr`). */
+const readRunPropertiesDefault = (root: XNode | undefined): XNode | undefined =>
+  childOf(childOf(childOf(root, "w:docDefaults"), "w:rPrDefault"), "w:rPr");
+
+/** A hex the file states, or nothing: `auto` is « let the reader decide », and a theme slot is not a colour. */
+const statedHex = (node: XNode | undefined, valueAttribute: string, themeAttribute: string): string | undefined => {
+  if (node === undefined || attributeOf(node, themeAttribute) !== undefined) return undefined;
+  const value = attributeOf(node, valueAttribute);
+  return value !== undefined && /^[0-9A-Fa-f]{6}$/u.test(value) ? `#${value.toLowerCase()}` : undefined;
+};
+
+/** The style and its ancestors, nearest first; a basedOn cycle stops. */
+const basedOnChainOf = (
+  stylesById: ReadonlyMap<string, StyleDefinition>,
+  styleId: string | undefined,
+): StyleDefinition[] => {
+  const chainedStyles: StyleDefinition[] = [];
+  const seen = new Set<string>();
+  let current = styleId;
+  while (current !== undefined && !seen.has(current)) {
+    seen.add(current);
+    const style = stylesById.get(current);
+    if (!style) break;
+    chainedStyles.push(style);
+    current = style.basedOn;
+  }
+  return chainedStyles;
+};
+
+/** The marks of the non-toggle properties, from their nearest declaration: underline, superscript, subscript. */
+const addNonToggleMarks = (nearest: (tag: string) => XNode | undefined, foundMarks: Set<InlineMark>): void => {
+  // Every underline value but `none` draws a line (held by `docx-reader.test.ts`, test « 05 »).
+  const underlineValue = valAttributeOf(nearest("w:u"));
+  if (underlineValue !== undefined && underlineValue !== "none") foundMarks.add("underline");
+
+  const vertAlignValue = valAttributeOf(nearest("w:vertAlign"));
+  if (vertAlignValue === "superscript") foundMarks.add("sup");
+  if (vertAlignValue === "subscript") foundMarks.add("sub");
+};
+
+export const readStyles = (root: XNode | undefined): Styles => {
+  const { stylesById, defaultParagraphStyleId, defaultCharacterStyleId } = readStyleSheet(root);
+  const rPrDefault = readRunPropertiesDefault(root);
+  const basedOnChain = (styleId: string | undefined): StyleDefinition[] => basedOnChainOf(stylesById, styleId);
 
   /** The nearest declaration of `tag` in a style's rPr along its basedOn
    *  chain: inside ONE style hierarchy a derived style overrides its base. */
-  const nearestRunProperty = (id: string | undefined, tag: string): XNode | undefined => {
-    for (const def of chain(id)) {
-      const found = def.rPr ? findChild(def.rPr, tag) : undefined;
+  const nearestRunProperty = (styleId: string | undefined, tag: string): XNode | undefined => {
+    for (const style of basedOnChain(styleId)) {
+      const found = childOf(style.rPr, tag);
       if (found) return found;
     }
     return undefined;
   };
 
   const role = (styleId: string | undefined): ParagraphRole => {
-    for (const def of chain(styleId ?? defaultParagraph)) {
-      const found = def.name !== undefined ? roleByName(def.name) : roleById(def.id);
-      if (found === "subtitle") return PLAIN;
+    for (const style of basedOnChain(styleId ?? defaultParagraphStyleId)) {
+      const found = style.name !== undefined ? roleByName(style.name) : roleById(style.id);
+      if (found === "subtitle") return PLAIN_PARAGRAPH;
       if (found) return found;
     }
-    return PLAIN;
+    return PLAIN_PARAGRAPH;
   };
 
-  /** A toggle property's value for a run (§17.7.3). */
-  const toggle = (tag: string, pStyle: string | undefined, cStyle: string | undefined, rPr: XNode | undefined): boolean => {
-    const direct = rPr ? findChild(rPr, tag) : undefined;
-    // Direct formatting sets the absolute value (§17.7.3).
+  /** A toggle property's value for a run. Held by `docx-reader.test.ts` (« styles toggle »). */
+  const toggle = (
+    tag: string,
+    paragraphStyleId: string | undefined,
+    characterStyleId: string | undefined,
+    rPr: XNode | undefined,
+  ): boolean => {
+    const direct = childOf(rPr, tag);
+    // Direct formatting sets the absolute value.
     if (direct) return onOff(direct);
     // In the style hierarchy a toggle set to true INVERTS the value of the
-    // level below and false leaves it (§17.7.3): bold from the paragraph
+    // level below and false leaves it: bold from the paragraph
     // style plus bold from the character style is not bold.
-    const base = rPrDefault ? findChild(rPrDefault, tag) : undefined;
-    const fromParagraph = nearestRunProperty(pStyle, tag);
-    const fromCharacter = nearestRunProperty(cStyle, tag);
-    const on = (base ? onOff(base) : false) !== (fromParagraph ? onOff(fromParagraph) : false);
-    return on !== (fromCharacter ? onOff(fromCharacter) : false);
+    const documentDefault = childOf(rPrDefault, tag);
+    const fromParagraph = nearestRunProperty(paragraphStyleId, tag);
+    const fromCharacter = nearestRunProperty(characterStyleId, tag);
+    const valueAfterParagraphStyle = toggleValueOf(documentDefault) !== toggleValueOf(fromParagraph);
+    return valueAfterParagraphStyle !== toggleValueOf(fromCharacter);
   };
 
-  const characterStyleOf = (rPr: XNode | undefined): string | undefined => {
-    const rStyleEl = rPr ? findChild(rPr, "w:rStyle") : undefined;
-    return (rStyleEl ? attributeOf(rStyleEl, "w:val") : undefined) ?? defaultCharacter;
-  };
+  const characterStyleOf = (rPr: XNode | undefined): string | undefined =>
+    valOfChild(rPr, "w:rStyle") ?? defaultCharacterStyleId;
 
   const hidden = (paragraphStyleId: string | undefined, rPr: XNode | undefined): boolean =>
-    toggle("w:vanish", paragraphStyleId ?? defaultParagraph, characterStyleOf(rPr), rPr);
+    toggle("w:vanish", paragraphStyleId ?? defaultParagraphStyleId, characterStyleOf(rPr), rPr);
 
   /** The nearest declaration of a non-toggle run property: direct formatting, then the character style, then the
    *  paragraph style, then the document defaults. ONE hierarchy, named once: `marks` and `colours` both read it, and
    *  writing it twice would let the two drift apart. */
-  const nearestOf = (pStyle: string | undefined, cStyle: string | undefined, rPr: XNode | undefined) => (tag: string): XNode | undefined =>
-    (rPr ? findChild(rPr, tag) : undefined) ??
-    nearestRunProperty(cStyle, tag) ??
-    nearestRunProperty(pStyle, tag) ??
-    (rPrDefault ? findChild(rPrDefault, tag) : undefined);
+  const nearestOf =
+    (paragraphStyleId: string | undefined, characterStyleId: string | undefined, rPr: XNode | undefined) =>
+    (tag: string): XNode | undefined =>
+      childOf(rPr, tag) ??
+      nearestRunProperty(characterStyleId, tag) ??
+      nearestRunProperty(paragraphStyleId, tag) ??
+      childOf(rPrDefault, tag);
 
   const marks = (paragraphStyleId: string | undefined, rPr: XNode | undefined): InlineMark[] => {
-    const pStyle = paragraphStyleId ?? defaultParagraph;
-    const cStyle = characterStyleOf(rPr);
-    const out = new Set<InlineMark>();
+    const effectiveParagraphStyleId = paragraphStyleId ?? defaultParagraphStyleId;
+    const characterStyleId = characterStyleOf(rPr);
+    const foundMarks = new Set<InlineMark>();
 
     for (const [tag, mark] of TOGGLES) {
-      if (toggle(tag, pStyle, cStyle, rPr)) out.add(mark);
+      if (toggle(tag, effectiveParagraphStyleId, characterStyleId, rPr)) foundMarks.add(mark);
     }
 
-    const nearest = nearestOf(pStyle, cStyle, rPr);
-
-    // ST_Underline: `none` is the only value without a line.
-    const u = nearest("w:u");
-    const uVal = u ? attributeOf(u, "w:val") : undefined;
-    if (u && uVal !== undefined && uVal !== "none") out.add("underline");
-
-    // ST_VerticalAlignRun: superscript, subscript, baseline.
-    const va = nearest("w:vertAlign");
-    const vaVal = va ? attributeOf(va, "w:val") : undefined;
-    if (vaVal === "superscript") out.add("sup");
-    if (vaVal === "subscript") out.add("sub");
-
-    return MARK_ORDER.filter((m) => out.has(m));
+    addNonToggleMarks(nearestOf(effectiveParagraphStyleId, characterStyleId, rPr), foundMarks);
+    return MARK_ORDER.filter((mark) => foundMarks.has(mark));
   };
 
   /**
-   * THE COLOURS A RUN CARRIES, AND ONLY THOSE THE FILE STATES (10/11/2026 : « du coup ne les jetons plus »,
-   * après son propre essai Rovo du même jour — Rovo rend les quatre règles colorées d'une page, et distingue la
-   * couleur du texte de celle du fond).
+   * THE COLOURS A RUN CARRIES, AND ONLY THOSE THE FILE STATES (10/11/2026: a reading agent, asked which rules of a
+   * page were coloured or highlighted, found them all and told text colour from background).
    *
    * 🔴 LEFT OUT FOR NOW, AND IT IS A LIMIT, NOT A PRINCIPLE. A `w:themeColor` / `w:themeFill` names a slot of the
-   * document's theme (« accent1 »), not a colour, so nothing is published for it yet.
-   * THE REASON FIRST WRITTEN HERE WAS WRONG, and the maintainer caught it the same day: « et on pourrait le faire sur chaque
-   * doc à chaque fois ? ». Yes. Resolving it means opening `theme1.xml`, which is INSIDE the .docx, and reading
-   * `<a:accent1><a:srgbClr val="…"/></a:accent1>` — the FILE stating its colour, like it states its text. That is not
-   * the correspondence table the maintainer refused on 14/09/2026 (« je veux pas de table de correspondance pour les
-   * couleurs »): a table is a dictionary WE would write and maintain. Even `w:themeTint`/`w:themeShade` is arithmetic
-   * the standard defines (ECMA-376 Part 1), not a choice of ours.
-   * So this is a SCOPE limit of the first lot, to be lifted by reading the theme part — not a decision against it.
+   * document's theme (« accent1 »), not a colour, so nothing is published for it yet. The reason first written here
+   * was wrong: resolving it means reading the theme part INSIDE the .docx — the FILE stating its colour, like it
+   * states its text — not a correspondence table WE would write and maintain (refused on 14/09/2026). So this is a
+   * SCOPE limit of the first lot, to be lifted by reading the theme part, not a decision against it.
    *
-   * `w:color` and `w:shd/@w:fill` give a hex; `w:highlight` gives a NAME of its own closed list (ECMA-376 Part 1
-   * §17.18.40, ST_HighlightColor), handed on in lower case as the CSS keyword it already is — a case fold, not a
-   * table. `auto` and `none` state « no colour » and publish nothing.
+   * `w:highlight` gives a NAME, handed on in lower case as a CSS keyword: a case fold, not a table. `auto` and `none`
+   * state « no colour » and publish nothing.
    */
-  const colours = (paragraphStyleId: string | undefined, rPr: XNode | undefined): { color?: string; background?: string } => {
-    const nearest = nearestOf(paragraphStyleId ?? defaultParagraph, characterStyleOf(rPr), rPr);
+  const colours = (
+    paragraphStyleId: string | undefined,
+    rPr: XNode | undefined,
+  ): { color?: string; background?: string } => {
+    const nearest = nearestOf(paragraphStyleId ?? defaultParagraphStyleId, characterStyleOf(rPr), rPr);
 
-    /** A hex the file states, or nothing: `auto` is « let the reader decide », and a theme slot is not a colour. */
-    const statedHex = (node: XNode | undefined, valueAttr: string, themeAttr: string): string | undefined => {
-      if (node === undefined || attributeOf(node, themeAttr) !== undefined) return undefined;
-      const value = attributeOf(node, valueAttr);
-      return value !== undefined && /^[0-9A-Fa-f]{6}$/u.test(value) ? `#${value.toLowerCase()}` : undefined;
-    };
-
-    // 🔴 LA COULEUR DU TEXTE NE SE PREND QUE SUR LE RUN LUI-MÊME, jamais héritée d'un style (10/11/2026 :
-    // « fais le 2 »). MESURÉ le même jour sur quatre documents réels, avant la décision : en suivant la hiérarchie
-    // des styles, `01-Guide-Onboarding-Atria` sortait 15 inlines sur 43 au bleu standard du style « Titre 1 » de Word
-    // (#2e74b5), `07-moj-data-sharing-guidance` 315 sur 345 dont un `#000000` explicite sur tout son corps de texte,
-    // et `10-lpc-invitation-to-tender` un `#ffffff` sur son titre — du blanc posé sur une bannière que nous ne
-    // publions pas, donc du BLANC SUR BLANC : un texte présent et illisible, le pire défaut de ce produit.
-    // Une couleur de style dit le look du document ; une couleur posée sur le run dit l'intention de l'auteur sur CE
-    // passage, et c'est elle seule que le papier « Silent Cue Loss » mesure.
-    // 🔴 LE BLANC EST REFUSÉ, ET C'EST UN BIAIS CHOISI. Un auteur qui écrit en blanc le pose sur une bannière ou une
-    // cellule colorée ; cette bannière, nous ne la publions pas. Publier le blanc donnerait donc du BLANC SUR BLANC :
-    // un texte présent et illisible, soit un mot perdu — la priorité numéro un du mainteneur. Mesuré le 10/11/2026 :
-    // `01-Guide-Onboarding-Atria` en a 5 (des en-têtes de tableau), `10-lpc-invitation-to-tender` son titre entier.
-    // Laid et visible plutôt que faux et invisible. CE QUE CE REFUS NE VOIT PAS, écrit pour que personne n'en attende
-    // trop : un gris très clair passe encore. Aucun seuil de luminance n'est posé ici — ce serait une règle inventée,
-    // et aucune population ne l'a mesurée.
-    const stated = statedHex(rPr ? findChild(rPr, "w:color") : undefined, "w:val", "w:themeColor");
+    // 🔴 THE TEXT COLOUR IS TAKEN FROM THE RUN ITSELF ONLY, never inherited from a style (10/11/2026). A style's colour
+    // says the document's look; a colour set on the run says the author's intent on THIS passage. Following the style
+    // hierarchy painted most of the inlines of real documents in a heading style's default blue or an explicit black.
+    // White and black are refused (`INVISIBLE_OR_DEFAULT`).
+    const stated = statedHex(childOf(rPr, "w:color"), "w:val", "w:themeColor");
     const color = stated !== undefined && INVISIBLE_OR_DEFAULT.has(stated) ? undefined : stated;
-    // Même raison pour la trame : celle d'un style de tableau habille, elle ne signale pas.
-    const shading = statedHex(rPr ? findChild(rPr, "w:shd") : undefined, "w:fill", "w:themeFill");
-    // Le SURLIGNAGE garde la hiérarchie : personne ne surligne par habillage, et un style de caractère « Surligné »
-    // reste un geste d'auteur. C'est aussi le plus gros gain mesuré du papier (+0,302 contre +0,262).
-    const highlight = nearest("w:highlight");
-    const highlightValue = highlight ? attributeOf(highlight, "w:val") : undefined;
+    // Same reason for the shading: a table style's shading dresses, it does not signal.
+    const shading = statedHex(childOf(rPr, "w:shd"), "w:fill", "w:themeFill");
+    // The HIGHLIGHT keeps the hierarchy: nobody highlights to dress a page, and a « Highlighted » character style is
+    // still an author's gesture.
+    const highlightValue = valAttributeOf(nearest("w:highlight"));
     // The highlight wins over the shading when both are stated: it is the mark a reader of the document sees.
-    const background = highlightValue !== undefined && highlightValue !== "none" ? highlightValue.toLowerCase() : shading;
+    const background =
+      highlightValue !== undefined && highlightValue !== "none" ? highlightValue.toLowerCase() : shading;
 
     return { ...(color !== undefined ? { color } : {}), ...(background !== undefined ? { background } : {}) };
   };
 
   const paragraphProperty = (styleId: string | undefined, tag: string): XNode | undefined => {
-    for (const def of chain(styleId ?? defaultParagraph)) {
-      const found = def.pPr ? findChild(def.pPr, tag) : undefined;
+    for (const style of basedOnChain(styleId ?? defaultParagraphStyleId)) {
+      const found = childOf(style.pPr, tag);
       if (found) return found;
     }
     return undefined;

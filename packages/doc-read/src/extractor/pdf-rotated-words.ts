@@ -38,13 +38,23 @@ const keyOf = (x: number, y: number): string => `${x}|${y}`;
 const lies = (g: GlyphFragment, run: PdfTextRun): boolean => {
   const n = Math.hypot(run.matrix.a, run.matrix.b);
   const m = Math.hypot(g.matrix.a, g.matrix.b);
-  if (n === 0 || m === 0 || Math.abs(g.matrix.a / m - run.matrix.a / n) > 1e-3 || Math.abs(g.matrix.b / m - run.matrix.b / n) > 1e-3) return false;
+  if (
+    n === 0 ||
+    m === 0 ||
+    Math.abs(g.matrix.a / m - run.matrix.a / n) > 1e-3 ||
+    Math.abs(g.matrix.b / m - run.matrix.b / n) > 1e-3
+  )
+    return false;
   const ax = run.matrix.a / n;
   const ay = run.matrix.b / n;
   const dx = g.x - run.x;
   const dy = g.y - run.y;
   const along = dx * ax + dy * ay;
-  return along >= -ALONG_SLACK && along <= run.width + ALONG_SLACK && Math.abs(-dx * ay + dy * ax) <= ACROSS_EM * run.fontSize;
+  return (
+    along >= -ALONG_SLACK &&
+    along <= run.width + ALONG_SLACK &&
+    Math.abs(-dx * ay + dy * ax) <= ACROSS_EM * run.fontSize
+  );
 };
 
 /** The rotated glyphs bucketed by the grid cell of their origin: a run only tests the glyphs of the cells its own box touches, so the work
@@ -69,7 +79,8 @@ const nearRun = (grid: ReadonlyMap<string, GlyphFragment[]>, run: PdfTextRun): G
   const pad = ACROSS_EM * run.fontSize + ALONG_SLACK;
   const out: GlyphFragment[] = [];
   for (let cx = cellOf(Math.min(run.x, endX) - pad); cx <= cellOf(Math.max(run.x, endX) + pad); cx++) {
-    for (let cy = cellOf(Math.min(run.y, endY) - pad); cy <= cellOf(Math.max(run.y, endY) + pad); cy++) out.push(...(grid.get(keyOf(cx, cy)) ?? []));
+    for (let cy = cellOf(Math.min(run.y, endY) - pad); cy <= cellOf(Math.max(run.y, endY) + pad); cy++)
+      out.push(...(grid.get(keyOf(cx, cy)) ?? []));
   }
   return out;
 };

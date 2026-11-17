@@ -16,7 +16,9 @@ import type { PdfTextRun } from "./pdf-source";
 /** The text item nearest to `blank` along x (the leftmost on a tie); `text` is not empty. */
 function nearestTextItem(blank: PdfTextRun, text: readonly PdfTextRun[]): PdfTextRun {
   const gap = (a: PdfTextRun, b: PdfTextRun): number => Math.max(0, a.x - (b.x + b.width), b.x - (a.x + a.width));
-  return text.reduce((best, t) => (gap(blank, t) < gap(blank, best) || (gap(blank, t) === gap(blank, best) && t.x < best.x) ? t : best));
+  return text.reduce((best, t) =>
+    gap(blank, t) < gap(blank, best) || (gap(blank, t) === gap(blank, best) && t.x < best.x) ? t : best,
+  );
 }
 
 /**
@@ -109,19 +111,29 @@ export function interleaveRegions(
     // starts above the band and continues beside it (text wrapped around an image)
     // comes out as two paragraphs — in the right order. No document shows it yet.
     if (bande.length > 1) {
-      const aboveBand = linesAbove(pending, maxOf(bande, (r) => r.top));
+      const aboveBand = linesAbove(
+        pending,
+        maxOf(bande, (r) => r.top),
+      );
       out.push(...prose(pending.filter((it) => aboveBand.has(it))));
       pending = pending.filter((it) => !aboveBand.has(it));
     }
     const owner = bande.length === 1 ? (): PageRegion => bande[0]! : ownerByLine(pending, bande);
     const frontieres = new Map<PageRegion, number>(
-      bande.map((r) => [r, imageFrontier(r, pending.filter((it) => owner(it) === r))]),
+      bande.map((r) => [
+        r,
+        imageFrontier(
+          r,
+          pending.filter((it) => owner(it) === r),
+        ),
+      ]),
     );
     for (const region of bande) {
       const mediane = region.orderAt ?? region.top;
       const frontiere = frontieres.get(region)!;
       const mine = pending.filter((it) => owner(it) === region);
-      const before = (it: PdfTextRun): boolean => (region.consumesBand ? centerOf(it) > frontiere : centerOf(it) >= frontiere);
+      const before = (it: PdfTextRun): boolean =>
+        region.consumesBand ? centerOf(it) > frontiere : centerOf(it) >= frontiere;
       out.push(...prose(give(mine.filter(before))));
       out.push(...region.blocks);
       // ⚠️ AN IMAGE RAISED TO ITS TOP EDGE PUBLISHES RIGHT AFTER ITSELF the
@@ -249,7 +261,10 @@ export const readingOrder = (regions: readonly PageRegion[]): PageRegion[][] => 
  * on one side of the gutter or inside it, never around it. Blank fragments do not count:
  * they neither close a gap nor form a piece, they follow the nearest text fragment.
  */
-const ownerByLine = (items: readonly PdfTextRun[], regions: readonly PageRegion[]): ((it: PdfTextRun) => PageRegion) => {
+const ownerByLine = (
+  items: readonly PdfTextRun[],
+  regions: readonly PageRegion[],
+): ((it: PdfTextRun) => PageRegion) => {
   const gutters = guttersOf(regions);
   const owners = new Map<PdfTextRun, PageRegion>();
   for (const line of visualLines(items)) {
@@ -285,7 +300,10 @@ const guttersOf = (regions: readonly PageRegion[]): { left: number; right: numbe
  * One visual line cut where a gap between consecutive non-blank fragments contains a
  * whole gutter (see `ownerByLine`). Each piece keeps the line's own item order.
  */
-const splitAtGutters = (line: readonly PdfTextRun[], gutters: readonly { left: number; right: number }[]): PdfTextRun[][] => {
+const splitAtGutters = (
+  line: readonly PdfTextRun[],
+  gutters: readonly { left: number; right: number }[],
+): PdfTextRun[][] => {
   const isBlank = (it: PdfTextRun): boolean => it.text.trim() === "";
   const text = line.filter((it) => !isBlank(it)).sort((a, b) => a.x - b.x);
   if (gutters.length === 0 || text.length < 2) return [[...line]];
@@ -344,7 +362,8 @@ const linesAbove = (items: readonly PdfTextRun[], top: number): Set<PdfTextRun> 
 const nearestRegion = (ligne: readonly PdfTextRun[], regions: readonly PageRegion[]): PageRegion => {
   const x = minOf(ligne, (it) => it.x);
   const xEnd = maxOf(ligne, (it) => it.x + it.width);
-  const y = (ligne[0]!.y + ligne[0]!.height / 2 + (ligne[ligne.length - 1]!.y + ligne[ligne.length - 1]!.height / 2)) / 2;
+  const y =
+    (ligne[0]!.y + ligne[0]!.height / 2 + (ligne[ligne.length - 1]!.y + ligne[ligne.length - 1]!.height / 2)) / 2;
   const distance = (r: PageRegion): number => {
     const b = r.box;
     if (b === undefined) return Number.POSITIVE_INFINITY;

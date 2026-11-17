@@ -21,7 +21,18 @@ import { pageContentOf, parsedFormOf } from "./pdf-page-content";
 import { refKey, type PdfDict, type PdfStream, type PdfValue } from "./pdf-objects/objects";
 import { SCOPE_SEPARATOR } from "./pdf-font-bridge";
 import { cmykHex, greyHex, rgbHex } from "./pdf-colour-ours";
-import { chargeFormCall, glyphsOfString, newGlyphMemo, MAX_STATE_DEPTH, stateOf, UNKNOWN, type GlyphBudget, type GlyphMemo, type OurGlyph, type TextState } from "./pdf-glyph-source";
+import {
+  chargeFormCall,
+  glyphsOfString,
+  newGlyphMemo,
+  MAX_STATE_DEPTH,
+  stateOf,
+  UNKNOWN,
+  type GlyphBudget,
+  type GlyphMemo,
+  type OurGlyph,
+  type TextState,
+} from "./pdf-glyph-source";
 import { PathBuilder, PATH_OPS } from "./pdf-paths-ours";
 import type { PdfOp } from "./pdf-ops";
 import type { Matrix2D } from "doc-ir/layout/geometry";
@@ -48,12 +59,20 @@ const ONE_TO_ONE: Readonly<Record<string, string>> = {
   sh: "paintShading",
 };
 
-const numberOf = (value: PdfValue | undefined): number | undefined => (value?.kind === "number" ? value.value : undefined);
+const numberOf = (value: PdfValue | undefined): number | undefined =>
+  value?.kind === "number" ? value.value : undefined;
 
 const nameOf = (value: PdfValue | undefined): string | undefined => (value?.kind === "name" ? value.value : undefined);
 
 /** A matrix of six numbers, the form pdf-ops reads (`Matrix2D` after `transform` and `setTextMatrix`). */
-const matrixOf = (values: readonly number[]): Matrix2D => ({ a: values[0]!, b: values[1]!, c: values[2]!, d: values[3]!, e: values[4]!, f: values[5]! });
+const matrixOf = (values: readonly number[]): Matrix2D => ({
+  a: values[0]!,
+  b: values[1]!,
+  c: values[2]!,
+  d: values[3]!,
+  e: values[4]!,
+  f: values[5]!,
+});
 
 /** The key of a resource in a scope: the page's scope is empty, a form's scope is `form:<name>` (nested with `/`). */
 const keyOf = (scope: string, name: string): string => `${scope}${SCOPE_SEPARATOR}${name}`;
@@ -87,7 +106,8 @@ function isVerticalFont(doc: PdfObjectsDocument, dict: PdfDict | undefined): boo
 
 /** Glyphs of a vertical font are marked: the position reader refuses them (`glyph-positions.ts`, a vertical advance is
  *  not computed), so the page is not read as if the writing were horizontal. */
-const verticalGlyphs = (glyphs: readonly OurGlyph[]): OurGlyph[] => glyphs.map((glyph) => ({ ...glyph, vmetric: true }) as OurGlyph);
+const verticalGlyphs = (glyphs: readonly OurGlyph[]): OurGlyph[] =>
+  glyphs.map((glyph) => ({ ...glyph, vmetric: true }) as OurGlyph);
 
 interface Frame {
   /** The bytes of a page's content (tokenized here), or the operators of a form (tokenized once for the document, `parsedFormOf`). */
@@ -107,7 +127,18 @@ export function ourOpsOfPage(doc: PdfObjectsDocument, page: PdfPageEntry, memo: 
   const out: PdfOp[] = [];
   const bytes = pageContentOf(doc, page);
   const context: PageContext = { doc, memo, budget: { painted: 0, forms: 0 } };
-  emit(context, { content: bytes, resources: page.resources, scope: "", depth: 0, text: { font: { state: UNKNOWN, vertical: false }, saved: [] }, fill: { components: undefined, saved: [] } }, out);
+  emit(
+    context,
+    {
+      content: bytes,
+      resources: page.resources,
+      scope: "",
+      depth: 0,
+      text: { font: { state: UNKNOWN, vertical: false }, saved: [] },
+      fill: { components: undefined, saved: [] },
+    },
+    out,
+  );
   return out;
 }
 
@@ -129,18 +160,32 @@ function emit(context: PageContext, frame: Frame, out: PdfOp[]): void {
 /** `cs`, then `sc`/`scn`: the non-stroking colour, read in the space the stream NAMED. True when the operator was one
  *  of those three. A space we cannot convert, or an operand count that does not match it, leaves the colour UNKNOWN —
  *  `pdf-source.ts` then answers « I do not know » rather than keeping a colour the document never asked for. */
-function fillSpaceOperatorOf(context: PageContext, frame: Frame, op: string, operands: readonly PdfValue[], out: PdfOp[]): boolean {
+function fillSpaceOperatorOf(
+  context: PageContext,
+  frame: Frame,
+  op: string,
+  operands: readonly PdfValue[],
+  out: PdfOp[],
+): boolean {
   if (op === "cs") {
     frame.fill.components = spaceComponentsOf(context.doc, frame, nameOf(operands[0]));
     // §8.6.8: setting the space resets the colour to the space's initial value — black for the three device spaces.
-    out.push(frame.fill.components === undefined ? { op: "setFillColourUnknown", args: null } : { op: "setFillRGBColor", args: ["#000000"] });
+    out.push(
+      frame.fill.components === undefined
+        ? { op: "setFillColourUnknown", args: null }
+        : { op: "setFillRGBColor", args: ["#000000"] },
+    );
     return true;
   }
   if (op !== "sc" && op !== "scn") return false;
   // Read HERE and not taken from the caller: the operands are mapped only for the three operators that need them.
   const values = operands.map(numberOf);
-  const inSpace = values.every((n): n is number => n !== undefined) ? colourInSpace(frame.fill.components, values) : undefined;
-  out.push(inSpace === undefined ? { op: "setFillColourUnknown", args: null } : { op: "setFillRGBColor", args: [inSpace] });
+  const inSpace = values.every((n): n is number => n !== undefined)
+    ? colourInSpace(frame.fill.components, values)
+    : undefined;
+  out.push(
+    inSpace === undefined ? { op: "setFillColourUnknown", args: null } : { op: "setFillRGBColor", args: [inSpace] },
+  );
   return true;
 }
 
@@ -198,7 +243,12 @@ function trackSavedFont(frame: Frame, op: string): void {
 }
 
 /** `cm` and `Tm` with their six numbers. Returns whether the operator was handled. */
-function matrixOperatorOf(op: string, numbers: readonly (number | undefined)[], allNumbers: boolean, out: PdfOp[]): boolean {
+function matrixOperatorOf(
+  op: string,
+  numbers: readonly (number | undefined)[],
+  allNumbers: boolean,
+  out: PdfOp[],
+): boolean {
   if (!allNumbers || numbers.length !== 6) return false;
   if (op === "cm") {
     out.push({ op: "transform", args: matrixOf(numbers as number[]) });
@@ -222,7 +272,13 @@ function quotedShowing(context: PageContext, frame: Frame, operands: readonly Pd
 }
 
 /** The font and text-showing operators (`Tf`, `Tj`, `'`, `"`, `TJ`). Returns whether the operator was handled. */
-function textOperatorOf(context: PageContext, frame: Frame, op: string, operands: readonly PdfValue[], out: PdfOp[]): boolean {
+function textOperatorOf(
+  context: PageContext,
+  frame: Frame,
+  op: string,
+  operands: readonly PdfValue[],
+  out: PdfOp[],
+): boolean {
   if (op === "Tf") setFont(context, frame, operands, out);
   else if (op === "Tj") showing(context, frame, operands, out);
   else if (op === "'") {
@@ -235,7 +291,13 @@ function textOperatorOf(context: PageContext, frame: Frame, op: string, operands
 }
 
 /** The marked-content and `Do` operators. Returns whether the operator was handled. */
-function markerOperatorOf(context: PageContext, frame: Frame, op: string, operands: readonly PdfValue[], out: PdfOp[]): boolean {
+function markerOperatorOf(
+  context: PageContext,
+  frame: Frame,
+  op: string,
+  operands: readonly PdfValue[],
+  out: PdfOp[],
+): boolean {
   if (op === "EMC") out.push({ op: "endMarkedContent", args: [] });
   else if (op === "BDC" || op === "BMC") markedContent(context, frame, op, operands, out);
   else if (op === "Do") doXObject(context, frame, nameOf(operands[0]), out);
@@ -283,7 +345,13 @@ function spacedShowing(context: PageContext, frame: Frame, operands: readonly Pd
 
 /** `BMC /tag` and `BDC /tag props`. An optional-content group is named by its key in the page's /Properties
  *  (`layerConfigOf` reads it); any other marked content is its tag. */
-function markedContent(context: PageContext, frame: Frame, op: string, operands: readonly PdfValue[], out: PdfOp[]): void {
+function markedContent(
+  context: PageContext,
+  frame: Frame,
+  op: string,
+  operands: readonly PdfValue[],
+  out: PdfOp[],
+): void {
   const tag = nameOf(operands[0]) ?? "";
   if (op === "BMC") {
     out.push({ op: "beginMarkedContent", args: [tag] });
@@ -312,7 +380,8 @@ function groupOperand(doc: PdfObjectsDocument, entry: PdfValue): unknown {
   if (type === "OCMD") {
     const policy = nameOf(doc.resolve(group.get("P")));
     const members = doc.resolve(group.get("OCGs"));
-    const ids = members?.kind === "array" ? members.items.flatMap((item) => (item.kind === "ref" ? [refKey(item)] : [])) : [];
+    const ids =
+      members?.kind === "array" ? members.items.flatMap((item) => (item.kind === "ref" ? [refKey(item)] : [])) : [];
     // ⚠️ LIMITE ÉCRITE, PAS UNE GARDE (revue du 03/11/2026, constat 5) : `/VE`, l'expression de visibilité d'un OCMD
     // (§8.11.2.3), N'EST PAS LUE — `expression` vaut toujours `null`, donc la branche qui l'évaluerait dans
     // `pdf-layers.ts#membershipVisibility` est morte, et un OCMD qui déclare `[/Not ocg1]` sans `/P` est jugé par la
@@ -345,7 +414,10 @@ function doXObject(context: PageContext, frame: Frame, name: string | undefined,
 /** The `/Matrix` of a form: its six numbers, or the identity when it is absent or not six numbers. */
 function formMatrixOf(doc: PdfObjectsDocument, form: PdfStream): number[] {
   const matrixValues = doc.resolve(form.dict.get("Matrix"));
-  const values = matrixValues?.kind === "array" && matrixValues.items.length === 6 ? matrixValues.items.map((item) => numberOf(doc.resolve(item))) : undefined;
+  const values =
+    matrixValues?.kind === "array" && matrixValues.items.length === 6
+      ? matrixValues.items.map((item) => numberOf(doc.resolve(item)))
+      : undefined;
   return values !== undefined && values.every((n): n is number => n !== undefined) ? values : [1, 0, 0, 1, 0, 0];
 }
 

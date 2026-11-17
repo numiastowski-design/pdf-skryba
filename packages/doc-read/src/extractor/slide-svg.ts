@@ -39,7 +39,13 @@ import { utf8Length } from "../lib/utf8";
 import { escapeAttr } from "../lib/xml";
 import type { Box, Size } from "doc-ir/layout/slide-elements";
 import { sniffImage } from "doc-ir/extractor/image-format";
-import type { PptxConnectorShape, PptxPictureNotPublished, PptxPictureShape, PptxShape, PptxTextShape } from "./pptx-reader";
+import type {
+  PptxConnectorShape,
+  PptxPictureNotPublished,
+  PptxPictureShape,
+  PptxShape,
+  PptxTextShape,
+} from "./pptx-reader";
 import type { Hex } from "./pptx-reader/color";
 import { EMU_PER_PT, type Transform } from "./pptx-reader/geometry";
 import { applyMatrix } from "doc-ir/layout/painted-paths";
@@ -269,7 +275,10 @@ const pictureTransform = (frame: Box, rot: number | undefined, flipH: boolean, f
   const cy = pt(frame.y + frame.cy / 2);
   const steps: string[] = [];
   if (rot !== undefined && rot !== 0) steps.push(`rotate(${n(rot / 60_000)} ${n(cx)} ${n(cy)})`);
-  if (flipH || flipV) steps.push(`translate(${n(flipH ? 2 * cx : 0)} ${n(flipV ? 2 * cy : 0)}) scale(${flipH ? -1 : 1} ${flipV ? -1 : 1})`);
+  if (flipH || flipV)
+    steps.push(
+      `translate(${n(flipH ? 2 * cx : 0)} ${n(flipV ? 2 * cy : 0)}) scale(${flipH ? -1 : 1} ${flipV ? -1 : 1})`,
+    );
   return steps.length > 0 ? ` transform="${steps.join(" ")}"` : "";
 };
 
@@ -320,7 +329,12 @@ const growByPicture = (drawn: Extent, f: Box, rot: number | undefined, m: Transf
  *  and is never cut. Spaces between words are kept as written inside a line,
  *  and dropped where a line wraps. `noWrap` (`wrap="none"`): only the line
  *  breaks end a line. */
-const wrap = (text: string, widthPt: number, measure: (start: number, end: number) => number, noWrap: boolean): { start: number; end: number }[] => {
+const wrap = (
+  text: string,
+  widthPt: number,
+  measure: (start: number, end: number) => number,
+  noWrap: boolean,
+): { start: number; end: number }[] => {
   const lines: { start: number; end: number }[] = [];
   const push = (start: number, rawEnd: number): void => {
     lines.push({ start, end: start + text.slice(start, rawEnd).trimEnd().length });
@@ -398,7 +412,9 @@ const turnedPoint = (x: number, y: number, cx: number, cy: number, deg: number):
 
 /** The `transform` attribute (with its leading space) turning a SmartArt shape's outline about its frame's centre; none for an angle of 0. */
 const outlineTurn = (art: NonNullable<PptxTextShape["smartArt"]>): string =>
-  art.turn === 0 ? "" : ` transform="rotate(${n(art.turn / 60_000)} ${n(pt(art.frame.x + art.frame.cx / 2))} ${n(pt(art.frame.y + art.frame.cy / 2))})"`;
+  art.turn === 0
+    ? ""
+    : ` transform="rotate(${n(art.turn / 60_000)} ${n(pt(art.frame.x + art.frame.cx / 2))} ${n(pt(art.frame.y + art.frame.cy / 2))})"`;
 
 /** The six vertices (points, on the slide) of a `hexagon` preset, in its frame as written (the shape's turn comes as `transform`). Formulas of
  *  presetShapeDefinitions: `x1 = ss·a/100000` (`a` pinned to [0, 50000·w/ss]), `dy1 = (h/2)·vf/100000·sin 60°`, vertices at the left and right
@@ -444,7 +460,11 @@ const chordPath = (art: NonNullable<PptxTextShape["smartArt"]>): string | undefi
 };
 
 /** The element of a SmartArt shape's `hexagon` or `chord` preset; `undefined` for any other (and for a chord that is a whole turn). */
-const presetElement = (shape: PptxTextShape, art: NonNullable<PptxTextShape["smartArt"]>, paint: string): string | undefined => {
+const presetElement = (
+  shape: PptxTextShape,
+  art: NonNullable<PptxTextShape["smartArt"]>,
+  paint: string,
+): string | undefined => {
   if (shape.geometry === "hexagon") {
     const points = hexagonPoints(art, shape.adj).map(([x, y]) => `${n(x)},${n(y)}`);
     return `<polygon points="${points.join(" ")}" ${paint}/>`;
@@ -466,7 +486,13 @@ const outlineElement = (shape: PptxTextShape, b: Rect, radius: number, paint: st
 
 /** A shape's outline or fill, when it shows one, pushed onto `out` and grown into `drawn`. Says which fill was drawn (`undefined`: none) and
  *  whether the shape holds visible text. */
-const drawOutline = (shape: PptxTextShape, shown: { b: Rect; bounds: Rect }, radius: number, out: string[], drawn: Extent): { fill: Hex | undefined; hasText: boolean } => {
+const drawOutline = (
+  shape: PptxTextShape,
+  shown: { b: Rect; bounds: Rect },
+  radius: number,
+  out: string[],
+  drawn: Extent,
+): { fill: Hex | undefined; hasText: boolean } => {
   const { b, bounds } = shown;
   // The fill is drawn only when it is exact and the colour of every visible
   // run is known too: a known fill under text of unknown colour could hide
@@ -474,11 +500,15 @@ const drawOutline = (shape: PptxTextShape, shown: { b: Rect; bounds: Rect }, rad
   // not drawn, black text.
   const visibleRuns = shape.paragraphs.flatMap((p) => p.runs.filter((r) => r.text.trim() !== ""));
   const hasText = visibleRuns.length > 0;
-  const fill = shape.fill !== "none" && shape.fill !== "unknown" && visibleRuns.every((r) => r.color !== undefined) ? shape.fill : undefined;
+  const fill =
+    shape.fill !== "none" && shape.fill !== "unknown" && visibleRuns.every((r) => r.color !== undefined)
+      ? shape.fill
+      : undefined;
   const stroke = shape.lineShown || (fill === undefined && shape.fill !== "none");
   if (fill !== undefined || stroke) {
     const turn = shape.smartArt === undefined ? "" : outlineTurn(shape.smartArt);
-    const paint = (fill === undefined ? STROKE : `fill="${fill}"${stroke ? ' stroke="#000" stroke-width="1"' : ""}`) + turn;
+    const paint =
+      (fill === undefined ? STROKE : `fill="${fill}"${stroke ? ' stroke="#000" stroke-width="1"' : ""}`) + turn;
     out.push(outlineElement(shape, b, radius, paint));
     grow(drawn, bounds.x, bounds.y, bounds.x + bounds.w, bounds.y + bounds.h);
   }
@@ -547,7 +577,12 @@ const textRectangle = (shape: PptxTextShape, b: Rect, radius: number): TextRecta
   // of a line.
   // Bias, chosen: a text that spills into its padding, or past its box by
   // less than half a line, is not counted.
-  const room: Rect = { x: b.x + presetInsetX, y: b.y + presetInsetY, w: b.w - 2 * presetInsetX, h: b.h - 2 * presetInsetY };
+  const room: Rect = {
+    x: b.x + presetInsetX,
+    y: b.y + presetInsetY,
+    w: b.w - 2 * presetInsetX,
+    h: b.h - 2 * presetInsetY,
+  };
   return { t, room };
 };
 
@@ -563,7 +598,10 @@ interface SizedParagraphs {
  *  the one it inherits at that level from its layout and master
  *  (`PptxTextShape.inheritedSizes`, 29/09/2026). A visible run
  *  left without a size leaves the whole text out (`undefined`): its size would be a guess. */
-const sizeRuns = (shape: PptxTextShape, defaultSizes: Readonly<Record<number, number>>): SizedParagraphs | undefined => {
+const sizeRuns = (
+  shape: PptxTextShape,
+  defaultSizes: Readonly<Record<number, number>>,
+): SizedParagraphs | undefined => {
   const fallback = (level: number): number | undefined =>
     shape.placeholder === undefined ? (defaultSizes[level] ?? defaultSizes[0]) : shape.inheritedSizes?.[level];
   // `endSize` between the run's own size and the level's (8b of the
@@ -617,7 +655,13 @@ const largestKnownSize = (sizes: readonly { size: number | undefined }[]): numbe
 };
 
 /** The pieces of one line, `[start, end)` of the paragraph's text, and the largest size among its visible characters (0: none). */
-const piecesOf = (joined: string, start: number, end: number, colorAt: readonly (Hex | undefined)[], sizeAt: readonly number[]): { pieces: Piece[]; size: number } => {
+const piecesOf = (
+  joined: string,
+  start: number,
+  end: number,
+  colorAt: readonly (Hex | undefined)[],
+  sizeAt: readonly number[],
+): { pieces: Piece[]; size: number } => {
   const pieces: Piece[] = [];
   let size = 0;
   for (let i = start; i < end; i++) {
@@ -642,7 +686,9 @@ const layoutParagraph = (
   const joined = p.runs.map((r) => r.text).join("");
   // Each character's colour and size, from the run it belongs to.
   const colorAt = p.runs.flatMap((r) => Array.from({ length: r.text.length }, () => (coloured ? r.color : undefined)));
-  const sizeAt = sizes.flatMap((r) => Array.from({ length: r.text.length }, () => (r.size === undefined ? paragraphSize : r.size * scale)));
+  const sizeAt = sizes.flatMap((r) =>
+    Array.from({ length: r.text.length }, () => (r.size === undefined ? paragraphSize : r.size * scale)),
+  );
   const measure = (start: number, end: number): number => {
     let w = 0;
     for (let i = start; i < end; i++) w += advanceEm(joined[i]!) * sizeAt[i]! * env.advance;
@@ -652,7 +698,10 @@ const layoutParagraph = (
   for (const { start, end } of wrap(joined, wrapWidth, measure, noWrap)) {
     const { pieces, size: largest } = piecesOf(joined, start, end, colorAt, sizeAt);
     const size = largest === 0 ? paragraphSize : largest;
-    const height = spacing !== undefined && "points" in spacing ? spacing.points : size * LINE_HEIGHT_EM * Math.max((spacing?.percent ?? 1) - reduction, 0);
+    const height =
+      spacing !== undefined && "points" in spacing
+        ? spacing.points
+        : size * LINE_HEIGHT_EM * Math.max((spacing?.percent ?? 1) - reduction, 0);
     const width = measure(start, end);
     lines.push({ text: joined.slice(start, end), pieces, size, height, width, align: p.align });
     if (width > roomWidth) overflow = true;
@@ -720,7 +769,12 @@ const crossesPage = (box: Rect, turns: readonly Turn[], page: Rect): boolean => 
   const corners = turnedCorners(box, turns);
   const xs = corners.map((c) => c[0]);
   const ys = corners.map((c) => c[1]);
-  return Math.max(...xs) > page.x && Math.min(...xs) < page.x + page.w && Math.max(...ys) > page.y && Math.min(...ys) < page.y + page.h;
+  return (
+    Math.max(...xs) > page.x &&
+    Math.min(...xs) < page.x + page.w &&
+    Math.max(...ys) > page.y &&
+    Math.min(...ys) < page.y + page.h
+  );
 };
 
 /** The `transform` attribute of a text turned by `turns` (none: nothing). SVG applies the list right to left, so the text rectangle's
@@ -733,13 +787,26 @@ const transformAttr = (turns: readonly Turn[]): string => {
 
 /** One line as its `<text>` element at `baseline`, and the area it covers (before the turns, which `growTurned` applies). `turns`, as SVG
  *  writes them, are applied right to left: the text rectangle's first. */
-const lineElement = (line: TextLine, t: Rect, baseline: number, turns: readonly Turn[]): { element: string; covers: Rect } => {
-  const [x, anchor] = line.align === "ctr" ? [t.x + t.w / 2, ' text-anchor="middle"'] : line.align === "r" ? [t.x + t.w, ' text-anchor="end"'] : [t.x, ""];
+const lineElement = (
+  line: TextLine,
+  t: Rect,
+  baseline: number,
+  turns: readonly Turn[],
+): { element: string; covers: Rect } => {
+  const [x, anchor] =
+    line.align === "ctr"
+      ? [t.x + t.w / 2, ' text-anchor="middle"']
+      : line.align === "r"
+        ? [t.x + t.w, ' text-anchor="end"']
+        : [t.x, ""];
   const left = line.align === "ctr" ? x - line.width / 2 : line.align === "r" ? x - line.width : x;
   const turned = transformAttr(turns);
   const one = line.pieces.length === 1 ? line.pieces[0]! : undefined;
   const sizeAttr = (q: Piece): string => (q.size === line.size ? "" : ` font-size="${n(q.size)}"`);
-  const body = one !== undefined ? escapeAttr(line.text) : line.pieces.map((q) => `<tspan${fillAttr(q.color)}${sizeAttr(q)}>${escapeAttr(q.text)}</tspan>`).join("");
+  const body =
+    one !== undefined
+      ? escapeAttr(line.text)
+      : line.pieces.map((q) => `<tspan${fillAttr(q.color)}${sizeAttr(q)}>${escapeAttr(q.text)}</tspan>`).join("");
   return {
     element: `<text x="${n(x)}" y="${n(baseline)}" font-family="sans-serif" font-size="${n(line.size)}"${anchor}${fillAttr(one?.color)}${turned} xml:space="preserve">${body}</text>`,
     covers: { x: left, y: baseline - line.size, w: line.width, h: line.size * (1 + DESCENT_EM) },
@@ -747,7 +814,13 @@ const lineElement = (line: TextLine, t: Rect, baseline: number, turns: readonly 
 };
 
 /** The lines as `<text>` elements, stacked from the anchor, grown into `drawn`; says whether a line's middle leaves the room. */
-const emitLines = (shape: PptxTextShape, lines: readonly TextLine[], { t, room, art }: TextRectangles, out: string[], drawn: Extent): boolean => {
+const emitLines = (
+  shape: PptxTextShape,
+  lines: readonly TextLine[],
+  { t, room, art }: TextRectangles,
+  out: string[],
+  drawn: Extent,
+): boolean => {
   let overflow = false;
   const height = lines.reduce((sum, l) => sum + l.height, 0);
   const top = shape.anchor === "b" ? t.y + t.h - height : shape.anchor === "ctr" ? t.y + (t.h - height) / 2 : t.y;
@@ -814,7 +887,8 @@ const drawText = (shape: PptxTextShape, env: DrawEnv, out: string[]): { overflow
   // `coloured` below reads `filled` only when this shape has no fill of its
   // own, i.e. when nothing is pushed here: no copy of the list is needed.
   // The bounds of a shape turned by other than a quarter are no background for a text laid flat (`inside` compares unturned rectangles).
-  if (fill !== undefined && (shape.smartArt === undefined || shape.smartArt.turn % 5_400_000 === 0)) env.filled.push(bounds);
+  if (fill !== undefined && (shape.smartArt === undefined || shape.smartArt.turn % 5_400_000 === 0))
+    env.filled.push(bounds);
   if (!hasText) return { overflow: false };
   if (shape.turnedText || shape.flipV) {
     omit("turned-text");
@@ -839,15 +913,28 @@ const textFrameOf = (shape: PptxTextShape, b: Rect): Rect => {
 const smartArtText = (shape: PptxTextShape, env: DrawEnv): SmartArtText | undefined => {
   const art = shape.smartArt;
   if (art === undefined) return undefined;
-  const inner: Turn = { deg: art.textTurn / 60_000, cx: pt(art.textBox.x + art.textBox.cx / 2), cy: pt(art.textBox.y + art.textBox.cy / 2) };
-  const outer: Turn = { deg: art.turn / 60_000, cx: pt(art.frame.x + art.frame.cx / 2), cy: pt(art.frame.y + art.frame.cy / 2) };
+  const inner: Turn = {
+    deg: art.textTurn / 60_000,
+    cx: pt(art.textBox.x + art.textBox.cx / 2),
+    cy: pt(art.textBox.y + art.textBox.cy / 2),
+  };
+  const outer: Turn = {
+    deg: art.turn / 60_000,
+    cx: pt(art.frame.x + art.frame.cx / 2),
+    cy: pt(art.frame.y + art.frame.cy / 2),
+  };
   const sameCentre = Math.abs(inner.cx - outer.cx) < SAME_CENTRE_PT && Math.abs(inner.cy - outer.cy) < SAME_CENTRE_PT;
   const cancel = (art.turn + art.textTurn) % FULL_TURN === 0 && sameCentre;
   return { sink: env.smartArtText, page: env.page, turns: cancel ? [] : [inner, outer].filter((t) => t.deg !== 0) };
 };
 
 /** The text of a shape whose outline is drawn: sized, laid out in its text rectangle and emitted, or left out when a size is not declared. */
-const drawLines = (shape: PptxTextShape, env: DrawEnv, out: string[], placed: { b: Rect; radius: number; fill: Hex | undefined }): { overflow: boolean } => {
+const drawLines = (
+  shape: PptxTextShape,
+  env: DrawEnv,
+  out: string[],
+  placed: { b: Rect; radius: number; fill: Hex | undefined },
+): { overflow: boolean } => {
   const { b, radius, fill } = placed;
   const art = smartArtText(shape, env);
   const base = textRectangle(shape, textFrameOf(shape, b), radius);
@@ -873,7 +960,12 @@ const drawLines = (shape: PptxTextShape, env: DrawEnv, out: string[], placed: { 
  *  vertices the reader computed (`pptx-reader/geometry.ts#bentPath`), with
  *  their arrow heads; or why not. An invisible line (`visibleLine` false)
  *  draws nothing and is no omission. */
-const drawConnector = (shape: PptxConnectorShape, out: string[], omit: (reason: SlideSvgOmission) => void, drawn: Extent): boolean => {
+const drawConnector = (
+  shape: PptxConnectorShape,
+  out: string[],
+  omit: (reason: SlideSvgOmission) => void,
+  drawn: Extent,
+): boolean => {
   const geometry = shape.geometry ?? "";
   const straight = STRAIGHT_CONNECTORS.has(geometry);
   if (!straight && !(BENT_CONNECTORS.has(geometry) && shape.path !== undefined)) {
@@ -888,14 +980,18 @@ const drawConnector = (shape: PptxConnectorShape, out: string[], omit: (reason: 
   if (straight) {
     if (shape.ends === undefined) return false;
     const e = shape.ends;
-    out.push(`<line x1="${n(pt(e.x1))}" y1="${n(pt(e.y1))}" x2="${n(pt(e.x2))}" y2="${n(pt(e.y2))}" stroke="#000" stroke-width="1"${start}${end}/>`);
+    out.push(
+      `<line x1="${n(pt(e.x1))}" y1="${n(pt(e.y1))}" x2="${n(pt(e.x2))}" y2="${n(pt(e.y2))}" stroke="#000" stroke-width="1"${start}${end}/>`,
+    );
     grow(drawn, pt(e.x1), pt(e.y1), pt(e.x2), pt(e.y2));
   } else {
     for (const v of shape.path!) grow(drawn, pt(v.x), pt(v.y), pt(v.x), pt(v.y));
     // A vertex written twice in a row (an adj of 0 or 100 000 folds a
     // segment to nothing) is dropped: a head orients on its segment, and a
     // segment of no length has no direction.
-    const points = shape.path!.map((v) => `${n(pt(v.x))},${n(pt(v.y))}`).filter((v, i, all) => i === 0 || v !== all[i - 1]);
+    const points = shape
+      .path!.map((v) => `${n(pt(v.x))},${n(pt(v.y))}`)
+      .filter((v, i, all) => i === 0 || v !== all[i - 1]);
     out.push(`<polyline points="${points.join(" ")}" fill="none" stroke="#000" stroke-width="1"${start}${end}/>`);
   }
   return shape.startArrow || shape.endArrow;
@@ -939,7 +1035,21 @@ export const renderSlideSvg = (
     }
     switch (shape.kind) {
       case "text":
-        if (drawText(shape, { page: { x: 0, y: 0, w: pt(slide.cx), h: pt(slide.cy) }, defaultSizes: defaultTextSizes, filled, omit, drawn, smartArtText }, out).overflow) overflowingText++;
+        if (
+          drawText(
+            shape,
+            {
+              page: { x: 0, y: 0, w: pt(slide.cx), h: pt(slide.cy) },
+              defaultSizes: defaultTextSizes,
+              filled,
+              omit,
+              drawn,
+              smartArtText,
+            },
+            out,
+          ).overflow
+        )
+          overflowingText++;
         break;
       case "connector":
         if (drawConnector(shape, out, omit, drawn)) arrows = true;
@@ -978,7 +1088,9 @@ export const renderSlideSvg = (
           shape,
           head:
             `<image x="${n(pt(f.x))}" y="${n(pt(f.y))}" width="${n(pt(f.cx))}" height="${n(pt(f.cy))}"` +
-            (shape.matrix === undefined ? pictureTransform(f, shape.rot, shape.flipH === true, shape.flipV === true) : pictureMatrix(shape.matrix)) +
+            (shape.matrix === undefined
+              ? pictureTransform(f, shape.rot, shape.flipH === true, shape.flipV === true)
+              : pictureMatrix(shape.matrix)) +
             ` preserveAspectRatio="none" href="data:${type};base64,`,
           bytes: shape.image.bytes,
         });
@@ -1016,7 +1128,8 @@ export const renderSlideSvg = (
     `<rect x="${n(vx)}" y="${n(vy)}" width="${n(vw)}" height="${n(vh)}" fill="#fff"/>`;
   const close = "</svg>";
 
-  let size = utf8Length(open) + utf8Length(close) + parts.reduce((sum, p) => sum + p.reduce((s, x) => s + utf8Length(x), 0), 0);
+  let size =
+    utf8Length(open) + utf8Length(close) + parts.reduce((sum, p) => sum + p.reduce((s, x) => s + utf8Length(x), 0), 0);
   for (const picture of pictures) {
     // Base64 is ASCII, one byte per character, 4 of them per 3 bytes padded:
     // the tag's size is exact BEFORE encoding, so a picture the cap drops is
@@ -1032,5 +1145,11 @@ export const renderSlideSvg = (
   }
   // Shape-tree order: the cap is decided after the walk.
   picturesNotDrawn.sort((a, b) => a.spTreeIndex - b.spTreeIndex);
-  return { svg: open + parts.map((p) => p.join("")).join("") + close, omitted, overflowingText, picturesNotDrawn, smartArtText };
+  return {
+    svg: open + parts.map((p) => p.join("")).join("") + close,
+    omitted,
+    overflowingText,
+    picturesNotDrawn,
+    smartArtText,
+  };
 };

@@ -233,7 +233,8 @@ function readBfRange(data: Uint8Array, from: number, state: Placing): number {
 function placeRange(state: Placing, destination: Token, first: number, last: number): number {
   if (destination.kind === "array") {
     if (destination.items.length < last - first + 1) return refuse();
-    for (let code = first; code <= last; code += 1) place(state, code, textOf(destination.items[code - first] as number[]));
+    for (let code = first; code <= last; code += 1)
+      place(state, code, textOf(destination.items[code - first] as number[]));
     return destination.end;
   }
   if (destination.kind !== "hex") return refuse();

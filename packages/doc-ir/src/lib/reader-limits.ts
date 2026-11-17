@@ -9,7 +9,7 @@
  *  Confluence page, a product decision of Miksumia Publisher. Those seven live in the APP
  *  (`core/document-caps.ts#PRODUCT_READER_LIMITS`), which passes them as `limits` at the two call sites that read a
  *  document. Here they default to `NO_CAP`: **a reading given no `limits` withholds nothing**, and a consumer of the
- *  published library (`skryba`) sets its own, or none.
+ *  published library (`pdf-skryba`) sets its own, or none.
  *  A bound that protects the READER keeps its value here, and is only lowerable: the byte ceiling of a payload, the
  *  chart bounds, and — in their own files — the zip, XML and PDF decoding budgets. A reader that reads without bounds
  *  is a bomb whatever its caller asked for, so those are never `NO_CAP`.
@@ -56,6 +56,11 @@ export const MAX_NOTICE_SHEET_NAMES = 5;
  *  (`more`). 03/11/2026: a count with nowhere to look is not a report. */
 export const MAX_NOTICE_IMAGE_PLACES = MAX_NOTICE_SHEET_NAMES;
 
+/** How many PAGE RANGES a `pdf-text-unread` notice names (`lib/reader-types.ts#DocumentNotice`): the same display bound as
+ *  the lost picture places, and for the same reason; the pages left out are only counted (`more`). Starting value to
+ *  calibrate (16/11/2026). A PDF of 2 000 pages that all fail holds in one range. */
+export const MAX_NOTICE_PAGE_RANGES = MAX_NOTICE_IMAGE_PLACES;
+
 /** A sheet name is client text: a notice keeps at most this many characters
  *  of it (then « … »). The dev log's missing words are cut by the same `cutNoticeName`, at the same value as
  *  `pipeline/declared-format-conservation.ts#MISSING_WORD_SHOWN_MAX_CHARS` (held equal by `core/reader-limits.test.ts`;
@@ -63,7 +68,8 @@ export const MAX_NOTICE_IMAGE_PLACES = MAX_NOTICE_SHEET_NAMES;
 export const MAX_NOTICE_SHEET_NAME_CHARS = 64;
 
 /** Client text as a notice or the dev log carries it: bounded, never the whole string. */
-export const cutNoticeName = (name: string): string => (name.length > MAX_NOTICE_SHEET_NAME_CHARS ? `${name.slice(0, MAX_NOTICE_SHEET_NAME_CHARS)}…` : name);
+export const cutNoticeName = (name: string): string =>
+  name.length > MAX_NOTICE_SHEET_NAME_CHARS ? `${name.slice(0, MAX_NOTICE_SHEET_NAME_CHARS)}…` : name;
 
 /** The folded notices of parts a reader kept out, one line per kind and only when counted: charts withheld whole (a bound,
  *  a damaged part: `chart-withheld`), pictures whose part is damaged (`image-missing`), and hidden content dropped
@@ -78,10 +84,18 @@ export const unpublishedPartNotices = (counts: {
 }): Extract<DocumentNotice, { kind: "chart-withheld" | "image-missing" | "hidden-dropped" | "table-withheld" }>[] => [
   ...(counts.chartsWithheld > 0 ? [{ kind: "chart-withheld" as const, count: counts.chartsWithheld }] : []),
   ...(counts.imagesMissing > 0 ? [{ kind: "image-missing" as const, count: counts.imagesMissing }] : []),
-  ...(counts.tablesWithheld !== undefined && counts.tablesWithheld > 0 ? [{ kind: "table-withheld" as const, count: counts.tablesWithheld }] : []),
-  ...(([["shape", counts.hiddenShapes], ["filtered-rows", counts.filteredRows], ["tracked-deletion", counts.trackedDeletions]] as const).flatMap(([what, count]) =>
+  ...(counts.tablesWithheld !== undefined && counts.tablesWithheld > 0
+    ? [{ kind: "table-withheld" as const, count: counts.tablesWithheld }]
+    : []),
+  ...(
+    [
+      ["shape", counts.hiddenShapes],
+      ["filtered-rows", counts.filteredRows],
+      ["tracked-deletion", counts.trackedDeletions],
+    ] as const
+  ).flatMap(([what, count]) =>
     count !== undefined && count > 0 ? [{ kind: "hidden-dropped" as const, what, count }] : [],
-  )),
+  ),
 ];
 
 const boundedSheetNames = (names: readonly string[]): { sheets: string[]; more: number } => ({
@@ -91,13 +105,17 @@ const boundedSheetNames = (names: readonly string[]): { sheets: string[]; more: 
 
 /** The `workbook-cap` notice of the sheets left beyond the cap: at most
  *  `MAX_NOTICE_SHEET_NAMES` cut names, the others counted in `more`. */
-export const workbookCapNotice = (beyondCap: readonly string[]): { kind: "workbook-cap"; sheets: string[]; more: number } => ({
+export const workbookCapNotice = (
+  beyondCap: readonly string[],
+): { kind: "workbook-cap"; sheets: string[]; more: number } => ({
   kind: "workbook-cap",
   ...boundedSheetNames(beyondCap),
 });
 
 /** The `sheet-unreadable` notice of visible sheets whose part is absent: the same bounds as `workbook-cap`. */
-export const sheetUnreadableNotice = (names: readonly string[]): { kind: "sheet-unreadable"; sheets: string[]; more: number } => ({
+export const sheetUnreadableNotice = (
+  names: readonly string[],
+): { kind: "sheet-unreadable"; sheets: string[]; more: number } => ({
   kind: "sheet-unreadable",
   ...boundedSheetNames(names),
 });

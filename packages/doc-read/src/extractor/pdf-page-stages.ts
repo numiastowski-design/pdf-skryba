@@ -109,7 +109,7 @@ export interface PageContext {
   headingLevelOf: (size: number) => HeadingLevel | undefined;
   /** Smaller than the page's body: the paragraph is « Small text ». */
   isSmallSize: (size: number) => boolean;
-        /** The rank the DOCUMENT ITSELF gives a text cycle in its reading order,
+  /** The rank the DOCUMENT ITSELF gives a text cycle in its reading order,
    *  when this page is tagged and its tree accounts for all of its text
    *  (`pdf-reading-order.ts`). Absent on every other page — which is most of
    *  them — and the order is then purely geometric. Only `flowingPage` reads

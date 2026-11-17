@@ -15,7 +15,13 @@
  *  grammar; borrowing the lexer of `parse.ts` would read MORE than the clause allows. The trailer dictionary,
  *  which IS general syntax, is read by `parseValue`. */
 
-import { MAX_DOCUMENT_BYTES, MAX_XREF_ENTRIES, MAX_XREF_FIELD_BYTES, MAX_XREF_SECTIONS, STARTXREF_SEARCH_BYTES } from "./bounds";
+import {
+  MAX_DOCUMENT_BYTES,
+  MAX_XREF_ENTRIES,
+  MAX_XREF_FIELD_BYTES,
+  MAX_XREF_SECTIONS,
+  STARTXREF_SEARCH_BYTES,
+} from "./bounds";
 import type { PdfDict, PdfValue } from "./objects";
 import { parseIndirectObject, parseValue } from "./parse";
 import { PdfObjectsRefusal } from "./refusal";
@@ -140,7 +146,13 @@ function readSection(bytes: Uint8Array, offset: number, spend: SpendBytes): Sect
 }
 
 /** One subsection's `count` entries, read from `at`. Returns where to go on. */
-function readSubsection(bytes: Uint8Array, first: number, count: number, from: number, entries: Map<number, MergedEntry>): number {
+function readSubsection(
+  bytes: Uint8Array,
+  first: number,
+  count: number,
+  from: number,
+  entries: Map<number, MergedEntry>,
+): number {
   // Bounded BEFORE the loop: a count bigger than the bytes left cannot be honest, whatever it claims.
   if (count > (bytes.length - from) / MIN_ENTRY_BYTES) throw new PdfObjectsRefusal("xref-syntax");
   if (entries.size + count > MAX_XREF_ENTRIES) throw new PdfObjectsRefusal("xref-too-large");
@@ -180,7 +192,12 @@ function fieldWidths(dict: PdfDict): readonly [number, number, number] {
   const w: PdfValue | undefined = dict.get("W");
   if (w?.kind !== "array" || w.items.length !== 3) throw new PdfObjectsRefusal("xref-stream");
   const widths = w.items.map((item) => {
-    if (item.kind !== "number" || !Number.isInteger(item.value) || item.value < 0 || item.value > MAX_XREF_FIELD_BYTES) {
+    if (
+      item.kind !== "number" ||
+      !Number.isInteger(item.value) ||
+      item.value < 0 ||
+      item.value > MAX_XREF_FIELD_BYTES
+    ) {
       throw new PdfObjectsRefusal("xref-stream");
     }
     return item.value;
@@ -190,7 +207,8 @@ function fieldWidths(dict: PdfDict): readonly [number, number, number] {
 
 /** A non-negative integer of a cross-reference stream's dictionary; anything else refuses the section. */
 function wholeNumber(value: PdfValue | undefined): number {
-  if (value?.kind !== "number" || !Number.isInteger(value.value) || value.value < 0) throw new PdfObjectsRefusal("xref-stream");
+  if (value?.kind !== "number" || !Number.isInteger(value.value) || value.value < 0)
+    throw new PdfObjectsRefusal("xref-stream");
   return value.value;
 }
 
@@ -198,7 +216,8 @@ function wholeNumber(value: PdfValue | undefined): number {
 function indexRanges(dict: PdfDict): readonly (readonly [number, number])[] {
   const index: PdfValue | undefined = dict.get("Index");
   if (index === undefined) return [[0, wholeNumber(dict.get("Size"))]];
-  if (index.kind !== "array" || index.items.length === 0 || index.items.length % 2 !== 0) throw new PdfObjectsRefusal("xref-stream");
+  if (index.kind !== "array" || index.items.length === 0 || index.items.length % 2 !== 0)
+    throw new PdfObjectsRefusal("xref-stream");
 
   const ranges: (readonly [number, number])[] = [];
   for (let i = 0; i < index.items.length; i += 2) {

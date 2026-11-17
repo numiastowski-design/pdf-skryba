@@ -139,7 +139,13 @@ class TreeBuilder implements XmlTokenVisitor {
  * NAMESPACES (document mode): a part that is not namespace-well-formed (`namespaces.ts`) is refused; it is well-formed
  * XML 1.0, so the refusal is ours alone. Names stay as written.
  */
-export function buildTree(source: string, mode: XmlMode, encoding: XmlSourceEncoding = "UTF-8", maxNodes = MAX_XML_NODES, maxDepth = MAX_XML_DEPTH): XNode[] {
+export function buildTree(
+  source: string,
+  mode: XmlMode,
+  encoding: XmlSourceEncoding = "UTF-8",
+  maxNodes = MAX_XML_NODES,
+  maxDepth = MAX_XML_DEPTH,
+): XNode[] {
   const builder = new TreeBuilder(mode, maxNodes, maxDepth);
   tokenize(source, builder, encoding);
   return builder.finish();

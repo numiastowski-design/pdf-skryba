@@ -171,11 +171,17 @@ const continuesCellParagraph = (previous: CellLine, next: CellLine, marginRight:
   !isDeliberateBreak(asLine(previous), asLine(next), marginRight);
 
 /** The fragments of two joined lines in reading order, or none when either line has none: half an order is no order. */
-const joinedFragments = (a: { fragments?: readonly Fragment[] }, b: { fragments?: readonly Fragment[] }): readonly Fragment[] | undefined =>
+const joinedFragments = (
+  a: { fragments?: readonly Fragment[] },
+  b: { fragments?: readonly Fragment[] },
+): readonly Fragment[] | undefined =>
   a.fragments !== undefined && b.fragments !== undefined ? [...a.fragments, ...b.fragments] : undefined;
 
 /** The union of two lines' raised calls, or none (`CellLine.raised`). */
-const joinedRaised = (a: { raised?: ReadonlySet<Fragment> }, b: { raised?: ReadonlySet<Fragment> }): ReadonlySet<Fragment> | undefined =>
+const joinedRaised = (
+  a: { raised?: ReadonlySet<Fragment> },
+  b: { raised?: ReadonlySet<Fragment> },
+): ReadonlySet<Fragment> | undefined =>
   a.raised === undefined && b.raised === undefined ? undefined : new Set([...(a.raised ?? []), ...(b.raised ?? [])]);
 
 /** Sets `raised` on a line or paragraph being built, or removes it. */
@@ -185,7 +191,10 @@ const setRaised = (target: { raised?: ReadonlySet<Fragment> }, raised: ReadonlyS
 };
 
 /** Sets `fragments` on a line or paragraph being built, or removes it. */
-const setFragments = (target: { fragments?: readonly Fragment[] }, fragments: readonly Fragment[] | undefined): void => {
+const setFragments = (
+  target: { fragments?: readonly Fragment[] },
+  fragments: readonly Fragment[] | undefined,
+): void => {
   if (fragments === undefined) delete target.fragments;
   else target.fragments = fragments;
 };

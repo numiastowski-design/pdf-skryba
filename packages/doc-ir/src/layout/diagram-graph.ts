@@ -149,7 +149,11 @@ const EMU_PER_MM = 36_000;
  *  midpoint); `ambiguity` 1.5: a connector's label must sit 1.5 times
  *  closer than any other connector's, else none is attached (a wrong label
  *  gives a wrong order, worse than today's). */
-export const OOXML_DIAGRAM_TOLERANCES: DiagramTolerances = { endTouch: 4 * EMU_PER_MM, labelReach: 11 * EMU_PER_MM, ambiguity: 1.5 };
+export const OOXML_DIAGRAM_TOLERANCES: DiagramTolerances = {
+  endTouch: 4 * EMU_PER_MM,
+  labelReach: 11 * EMU_PER_MM,
+  ambiguity: 1.5,
+};
 
 export interface DiagramInput {
   elements: readonly DiagramElement[];
@@ -173,7 +177,10 @@ type EndReading = { ok: true; shape: Shape; via: "declared" | "geometry" } | { o
 
 /** The nodes of a component with every source before its target, the ready ones (no unplaced source left) taken in reading order (lowest
  *  index first); `undefined` when a cycle leaves some unplaced. A binary min-heap: a diagram of thousands of shapes stays cheap. */
-const topologicalOrder = (nodes: readonly number[], edges: readonly { source: number; target: number }[]): number[] | undefined => {
+const topologicalOrder = (
+  nodes: readonly number[],
+  edges: readonly { source: number; target: number }[],
+): number[] | undefined => {
   const waiting = new Map<number, number>(nodes.map((n) => [n, 0]));
   const next = new Map<number, number[]>();
   for (const e of edges) {
@@ -185,7 +192,7 @@ const topologicalOrder = (nodes: readonly number[], edges: readonly { source: nu
   const heap: number[] = [];
   const push = (v: number): void => {
     heap.push(v);
-    for (let i = heap.length - 1; i > 0; ) {
+    for (let i = heap.length - 1; i > 0;) {
       const up = (i - 1) >> 1;
       if (heap[up]! <= heap[i]!) break;
       [heap[up], heap[i]] = [heap[i]!, heap[up]!];
@@ -197,7 +204,7 @@ const topologicalOrder = (nodes: readonly number[], edges: readonly { source: nu
     const last = heap.pop()!;
     if (heap.length > 0) {
       heap[0] = last;
-      for (let i = 0; ; ) {
+      for (let i = 0; ;) {
         const l = 2 * i + 1;
         const r = l + 1;
         let m = i;
@@ -243,8 +250,16 @@ interface ShapeIndex {
 /** Elements first (their index is their `element`), then obstacles (-1); ids may repeat, so `byId` keeps lists. */
 const indexShapes = (elements: readonly DiagramElement[], obstacles: readonly DiagramObstacle[]): ShapeIndex => {
   const shapes: Shape[] = [
-    ...elements.map((e, i): Shape => ({ ...(e.id === undefined ? {} : { id: e.id }), ...(e.box === undefined ? {} : { box: e.box, rect: fromBox(e.box), raw: rawFromBox(e.box) }), element: i })),
-    ...obstacles.map((o): Shape => ({ ...(o.id === undefined ? {} : { id: o.id }), ...(o.box === undefined ? {} : { box: o.box, rect: fromBox(o.box), raw: rawFromBox(o.box) }), element: -1 })),
+    ...elements.map((e, i): Shape => ({
+      ...(e.id === undefined ? {} : { id: e.id }),
+      ...(e.box === undefined ? {} : { box: e.box, rect: fromBox(e.box), raw: rawFromBox(e.box) }),
+      element: i,
+    })),
+    ...obstacles.map((o): Shape => ({
+      ...(o.id === undefined ? {} : { id: o.id }),
+      ...(o.box === undefined ? {} : { box: o.box, rect: fromBox(o.box), raw: rawFromBox(o.box) }),
+      element: -1,
+    })),
   ];
   const byId = new Map<string, Shape[]>();
   for (const s of shapes) {
@@ -261,7 +276,16 @@ const makeEndReader = ({ shapes, byId }: ShapeIndex, tolerances: DiagramToleranc
   /** Every shape whose outline the point touches, and among them the innermost ones. */
   const geometryReading = (x: number, y: number): { touched: Shape[]; innermost: Shape[] } => {
     const touched = shapes.filter((s) => s.rect !== undefined && outlineDistance(s.rect, x, y) <= tolerances.endTouch);
-    const innermost = touched.filter((s) => !touched.some((o) => o !== s && s.raw !== undefined && o.raw !== undefined && holdsRect(RECT_RULES["diagram-frame"], s.raw, o.raw)));
+    const innermost = touched.filter(
+      (s) =>
+        !touched.some(
+          (o) =>
+            o !== s &&
+            s.raw !== undefined &&
+            o.raw !== undefined &&
+            holdsRect(RECT_RULES["diagram-frame"], s.raw, o.raw),
+        ),
+    );
     return { touched, innermost };
   };
 
@@ -344,7 +368,7 @@ const splitComponents = (edges: readonly Edge[]): Components => {
     let root = i;
     while (parent.get(root) !== root) root = parent.get(root)!;
     // Full path compression: a long chain must not cost a walk per lookup.
-    for (let at = i; at !== root; ) {
+    for (let at = i; at !== root;) {
       const next = parent.get(at)!;
       parent.set(at, root);
       at = next;
@@ -403,7 +427,8 @@ const classifyComponents = ({ members, edgesOf }: Components, abstain: Abstain):
       for (const e of mine) sourcesOf.set(e.target, (sourcesOf.get(e.target) ?? new Set<number>()).add(e.source));
     }
   }
-  for (const target of [...sourcesOf.keys()].sort((a, b) => a - b)) links.push({ target, sources: [...sourcesOf.get(target)!].sort((a, b) => a - b) });
+  for (const target of [...sourcesOf.keys()].sort((a, b) => a - b))
+    links.push({ target, sources: [...sourcesOf.get(target)!].sort((a, b) => a - b) });
   return { kept, topological, links };
 };
 
@@ -416,21 +441,32 @@ const attachLabels = (
   abstain: Abstain,
 ): { labelsOf: Map<number, number[]>; labelsAttached: number } => {
   const { elements, connectors, tolerances } = input;
-  const midpoints = connectors.flatMap((c, index) => (c.visible && c.ends ? [{ index, x: (c.ends.x1 + c.ends.x2) / 2, y: (c.ends.y1 + c.ends.y2) / 2 }] : []));
+  const midpoints = connectors.flatMap((c, index) =>
+    c.visible && c.ends ? [{ index, x: (c.ends.x1 + c.ends.x2) / 2, y: (c.ends.y1 + c.ends.y2) / 2 }] : [],
+  );
   const labelsOf = new Map<number, number[]>();
   let labelsAttached = 0;
   elements.forEach((el, i) => {
-    if (!el.node || el.notLabel === true || el.box === undefined || endsOfRelation.has(i) || keptEdges.length === 0) return;
+    if (!el.node || el.notLabel === true || el.box === undefined || endsOfRelation.has(i) || keptEdges.length === 0)
+      return;
     // A box that holds another shape is a frame with a title, not a label.
     const elShape = shapes[i]!;
     const elRect = elShape.rect!;
-    if (shapes.some((s) => s.element !== i && s.raw !== undefined && holdsRect(RECT_RULES["diagram-frame"], elShape.raw!, s.raw))) return abstain("label-is-a-frame");
-    const ranked = midpoints.map((m) => ({ index: m.index, d: distanceToPoint(elRect, m.x, m.y) })).sort((a, b) => a.d - b.d);
+    if (
+      shapes.some(
+        (s) => s.element !== i && s.raw !== undefined && holdsRect(RECT_RULES["diagram-frame"], elShape.raw!, s.raw),
+      )
+    )
+      return abstain("label-is-a-frame");
+    const ranked = midpoints
+      .map((m) => ({ index: m.index, d: distanceToPoint(elRect, m.x, m.y) }))
+      .sort((a, b) => a.d - b.d);
     const nearest = ranked[0];
     if (nearest === undefined) return;
     if (nearest.d > tolerances.labelReach) return abstain("label-too-far");
     const second = ranked[1];
-    if (second !== undefined && !(second.d > nearest.d && second.d >= tolerances.ambiguity * nearest.d)) return abstain("label-ambiguous");
+    if (second !== undefined && !(second.d > nearest.d && second.d >= tolerances.ambiguity * nearest.d))
+      return abstain("label-ambiguous");
     if (!keptEdges.some((e) => e.connector === nearest.index)) return abstain("label-on-unplaced-connector");
     labelsOf.set(nearest.index, [...(labelsOf.get(nearest.index) ?? []), i]);
     labelsAttached++;
@@ -505,7 +541,13 @@ const emitParagraphs = (
       continue;
     }
     const into = new Set((edgesOf.get(componentOf(nodes[0]!)) ?? []).map((e) => e.target));
-    walkTree(nodes.find((n) => !into.has(n))!, outgoing, labelsOf, paragraphs, emitted);
+    walkTree(
+      nodes.find((n) => !into.has(n))!,
+      outgoing,
+      labelsOf,
+      paragraphs,
+      emitted,
+    );
   }
   return { paragraphs, emitted };
 };
@@ -538,7 +580,13 @@ export const orderDiagram = (input: DiagramInput): DiagramOrder => {
     paragraphs,
     rest,
     links: classes.links,
-    relations: { resolved: edges.length, total: keptEdges.length, declared: count("declared"), geometry: count("geometry"), mixed: count("mixed") },
+    relations: {
+      resolved: edges.length,
+      total: keptEdges.length,
+      declared: count("declared"),
+      geometry: count("geometry"),
+      mixed: count("mixed"),
+    },
     edges: keptEdges.map((e) => ({ source: e.source, target: e.target, labels: labelsOf.get(e.connector) ?? [] })),
     labelsAttached,
     abstentions,

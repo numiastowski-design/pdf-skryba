@@ -2,7 +2,7 @@
   "name": "doc-read",
   "version": "0.0.0",
   "private": true,
-  "description": "The readers themselves: what a PDF, an OOXML package or a Google export becomes, and the doors the published packages are built from. Private: `skryba` and `docs-scribe` are bundled from here, it is never published on its own (12/11/2026).",
+  "description": "The readers themselves: what a PDF, an OOXML package or a Google export becomes, and the doors the published packages are built from. Private: `pdf-skryba` and `docs-scribe` are bundled from here, it is never published on its own (12/11/2026).",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "engines": {

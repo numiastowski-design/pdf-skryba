@@ -40,10 +40,27 @@ import type { HeadingLevel } from "doc-ir/layout/heading-sizes";
 import { modeOf } from "doc-ir/layout/mode";
 import { SAME_LINE_PT } from "doc-ir/layout/tolerances";
 import { inducedMarkers, leadingMarkerToken } from "doc-ir/layout/induced-markers";
-import { blockReading, bulletRuns, itemTextLeft, listRuns, markerOf, orderedPieces, quantiseIndent, type ListCandidate, type Marker } from "doc-ir/layout/list";
+import {
+  blockReading,
+  bulletRuns,
+  itemTextLeft,
+  listRuns,
+  markerOf,
+  orderedPieces,
+  quantiseIndent,
+  type ListCandidate,
+  type Marker,
+} from "doc-ir/layout/list";
 import { linesFromGroups } from "./pdf-lines";
 import type { ImageCandidate, Line, PositionedItem, TextRun } from "./pdf-model";
-import { continuesCentredLine, endsWithPageLeader, hangsFromMarker, isCentredPair, isDeliberateBreak, startsNewItem } from "./pdf-line-breaks";
+import {
+  continuesCentredLine,
+  endsWithPageLeader,
+  hangsFromMarker,
+  isCentredPair,
+  isDeliberateBreak,
+  startsNewItem,
+} from "./pdf-line-breaks";
 
 // See module doc: empirically calibrated against fixtures/pdf/05a, not guessed.
 // Exported for `pdf-cell-paragraphs.ts`, which asks the same question of the
@@ -54,7 +71,11 @@ export const PARAGRAPH_BREAK_GAP_RATIO = 2.2;
  *  même emphase : « ABSENCES » en gras suivi de « : 6 demi-journées » en maigre
  *  fait deux inlines, pas quinze. Un morceau de texte vide ne produit rien —
  *  SAUF s'il porte un marqueur bitmap (son image seule doit survivre). */
-const marksOf = (r: TextRun): InlineMark[] => [...(r.bold ? ["strong" as const] : []), ...(r.italic === true ? ["em" as const] : []), ...(r.sup === true ? ["sup" as const] : [])];
+const marksOf = (r: TextRun): InlineMark[] => [
+  ...(r.bold ? ["strong" as const] : []),
+  ...(r.italic === true ? ["em" as const] : []),
+  ...(r.sup === true ? ["sup" as const] : []),
+];
 
 const inlinesFromRuns = (runs: readonly TextRun[]): Inline[] =>
   runs
@@ -94,7 +115,6 @@ interface PendingParagraph {
   first: number;
   count: number;
 }
-
 
 /** The fewest gaps (so three lines) a segment needs for its median gap to be a yardstick. With ONE gap the median is that
  *  gap itself, so every gap feature of both lines reads 1.0 (« stuck to the next line »): 4 real headings of
@@ -197,10 +217,13 @@ const candidateOf = (blockLines: readonly Line[], bodyIndent: number, induced: r
   if (first === undefined) return { indented: false, marker: undefined };
   const marker = markerOf(first.text) ?? inducedMarkerOf(first.text, induced);
   const afterMarker =
-    marker !== undefined && first.lead !== undefined && first.lead.text.trim() === first.text.slice(0, marker.length).trim()
+    marker !== undefined &&
+    first.lead !== undefined &&
+    first.lead.text.trim() === first.text.slice(0, marker.length).trim()
       ? first.lead.nextLeft
       : undefined;
-  const textLeft = marker?.kind === "ordered" ? itemTextLeft({ afterMarker, secondLine: blockLines[1]?.left }) : undefined;
+  const textLeft =
+    marker?.kind === "ordered" ? itemTextLeft({ afterMarker, secondLine: blockLines[1]?.left }) : undefined;
   return {
     indented: quantiseIndent(first.left) !== bodyIndent,
     marker,
@@ -232,7 +255,10 @@ const flushParagraph = (
   const inlines = inlinesFromRuns(pending.runs);
   candidates.push(candidateOf(lines.slice(pending.first, pending.first + pending.count), m.bodyIndent, induced));
   const small = level === undefined && policy.isSmallSize?.(lines[pending.first]!.fontSize) === true;
-  const block: IRBlock = level === undefined ? { kind: "paragraph", inlines, ...(small ? { size: "small" as const } : {}) } : { kind: "heading", level, inlines };
+  const block: IRBlock =
+    level === undefined
+      ? { kind: "paragraph", inlines, ...(small ? { size: "small" as const } : {}) }
+      : { kind: "heading", level, inlines };
   blocks.push(block);
   pending.runs = [];
   pending.count = 0;
@@ -242,7 +268,8 @@ const flushParagraph = (
  *  next one: put in front of a bold piece, it would produce
  *  `<strong> Absences</strong>`, an emphasis that starts with a blank. */
 /** Two text runs of one style (emphasis, link, raised call) merge into one piece. */
-const sameStyle = (a: TextRun, b: TextRun): boolean => a.bold === b.bold && (a.italic === true) === (b.italic === true) && a.href === b.href && a.sup === b.sup;
+const sameStyle = (a: TextRun, b: TextRun): boolean =>
+  a.bold === b.bold && (a.italic === true) === (b.italic === true) && a.href === b.href && a.sup === b.sup;
 
 /** Whether the junction between two visual lines of a paragraph writes a space.
  *  🔴 A WORD THE PAPER CUT TAKES NO JUNCTION SPACE (03/11/2026). Measured on 100 wild PDFs: 11 documents, 75 words,
@@ -269,7 +296,8 @@ const copyOfRun = (run: TextRun): TextRun => ({
 /** A WORD THE PAPER CUT: the junction replaces its hyphen by the cut mark, resolved once the whole document is read
  *  (`layout/cut-word.ts#resolveCutHyphens`). Its own function for the complexity ratchet, like its two neighbours. */
 const markCutJunction = (previous: TextRun | undefined, next: TextRun | undefined, separator: boolean): void => {
-  if (separator && previous !== undefined && cutAcrossLines(previous.text, next?.text ?? "")) previous.text = `${previous.text.slice(0, -1)}${CUT_MARK}`;
+  if (separator && previous !== undefined && cutAcrossLines(previous.text, next?.text ?? ""))
+    previous.text = `${previous.text.slice(0, -1)}${CUT_MARK}`;
 };
 
 const appendRuns = (current: TextRun[], runs: readonly TextRun[], separator: boolean): void => {
@@ -279,12 +307,14 @@ const appendRuns = (current: TextRun[], runs: readonly TextRun[], separator: boo
   markCutJunction(previous, runs[0], separator);
   if (writesSpace && previous !== undefined) {
     // A link takes the junction's space only when the next line goes on with the same link (`pdf-links.ts`).
-    if (previous.marker === undefined && (previous.href === undefined || previous.href === runs[0]?.href)) previous.text += " ";
+    if (previous.marker === undefined && (previous.href === undefined || previous.href === runs[0]?.href))
+      previous.text += " ";
     else current.push({ text: " ", bold: false });
   }
   for (const run of runs) {
     const last = current[current.length - 1];
-    if (last !== undefined && last.marker === undefined && run.marker === undefined && sameStyle(last, run)) last.text += run.text;
+    if (last !== undefined && last.marker === undefined && run.marker === undefined && sameStyle(last, run))
+      last.text += run.text;
     else current.push(copyOfRun(run));
   }
 };
@@ -360,7 +390,8 @@ const asideLimitsOf = (
  *  else `isDeliberateBreak` already separates them. Booklet `26-Livret-Accueil-Canva.pdf` p9, published 12/11/2026:
  *  « 2) sélectionner → groupe IT service desk » butts against the picture and swallowed « 3) sélectionner la raison
  *  du signalement… ». */
-const opensASiblingItem = (prev: Line, line: Line): boolean => markerOf(line.text) !== undefined && line.left <= prev.left + SAME_LINE_PT;
+const opensASiblingItem = (prev: Line, line: Line): boolean =>
+  markerOf(line.text) !== undefined && line.left <= prev.left + SAME_LINE_PT;
 
 /** What the segment lends to the paragraph decision: its other lines, its right margin, and the two readers that
  *  answer a question about a PAIR of lines. Gathered in one place since 13/11/2026 — `startsParagraph` had grown to
@@ -385,7 +416,11 @@ interface SegmentContext {
  */
 const breaksOnGeometry = (prev: Line, line: Line, ctx: SegmentContext): boolean => {
   if (hangsFromMarker(prev, line)) return false;
-  if (isCentredPair(prev, line) && !continuesCentredLine(prev, line, ctx.centredContainerWidth?.(prev, line, ctx.lines))) return true;
+  if (
+    isCentredPair(prev, line) &&
+    !continuesCentredLine(prev, line, ctx.centredContainerWidth?.(prev, line, ctx.lines))
+  )
+    return true;
   const asideLimit = ctx.asideLimitOf(prev);
   return asideLimit === undefined
     ? isDeliberateBreak(prev, line, ctx.marginRight)
@@ -496,14 +531,24 @@ const groupLists = (blocks: readonly IRBlock[], candidates: readonly ListCandida
 };
 
 /** The block at `i` without its marker, when that marker is of the list's own `kind` (the list's marker replaces it). */
-const withoutMarkerAt = (blocks: readonly IRBlock[], candidates: readonly ListCandidate[], i: number, kind: "ordered" | "bullet"): IRBlock => {
+const withoutMarkerAt = (
+  blocks: readonly IRBlock[],
+  candidates: readonly ListCandidate[],
+  i: number,
+  kind: "ordered" | "bullet",
+): IRBlock => {
   const block = blocks[i]!;
   const marker = candidates[i]?.marker;
-  return marker === undefined || marker.kind !== kind || !("inlines" in block) ? block : stripMarker(block, marker.length);
+  return marker === undefined || marker.kind !== kind || !("inlines" in block)
+    ? block
+    : stripMarker(block, marker.length);
 };
 
 /** The simple bulleted runs (`layout/list.ts#bulletRuns`), unless a run above already holds one of their blocks. */
-const freeBulletRuns = <R extends { start: number; end: number; tail?: number | undefined }>(bulletRunList: readonly R[], runs: readonly { start: number; end: number }[]): R[] => {
+const freeBulletRuns = <R extends { start: number; end: number; tail?: number | undefined }>(
+  bulletRunList: readonly R[],
+  runs: readonly { start: number; end: number }[],
+): R[] => {
   const taken = (i: number): boolean => runs.some((r) => i >= r.start && i <= r.end);
   return bulletRunList.filter((r) => {
     for (let i = r.start; i <= (r.tail ?? r.end); i++) if (taken(i)) return false;
@@ -512,14 +557,23 @@ const freeBulletRuns = <R extends { start: number; end: number; tail?: number | 
 };
 
 /** A bulleted list of one block per item, from `start` to `end`. */
-const bulletList = (blocks: readonly IRBlock[], candidates: readonly ListCandidate[], start: number, end: number): IRBlock => {
+const bulletList = (
+  blocks: readonly IRBlock[],
+  candidates: readonly ListCandidate[],
+  start: number,
+  end: number,
+): IRBlock => {
   const items: IRBlock[][] = [];
   for (let i = start; i <= end; i++) items.push([withoutMarkerAt(blocks, candidates, i, "bullet")]);
   return { kind: "list", ordered: false, items };
 };
 
 /** A simple bulleted run as a list; its tail goes on with the last item's own text, one paragraph (a space between the two). */
-const simpleBulletList = (blocks: readonly IRBlock[], candidates: readonly ListCandidate[], run: { start: number; end: number; tail: number | undefined }): IRBlock => {
+const simpleBulletList = (
+  blocks: readonly IRBlock[],
+  candidates: readonly ListCandidate[],
+  run: { start: number; end: number; tail: number | undefined },
+): IRBlock => {
   const list = bulletList(blocks, candidates, run.start, run.end);
   if (list.kind !== "list") return list;
   const { items } = list;
@@ -548,7 +602,10 @@ const orderedRunBlocks = (
       : {
           kind: "list",
           ordered: true,
-          items: piece.items.map(([opener, ...rest]) => [withoutMarkerAt(blocks, candidates, opener!, "ordered"), ...rest.map((i) => blocks[i]!)]),
+          items: piece.items.map(([opener, ...rest]) => [
+            withoutMarkerAt(blocks, candidates, opener!, "ordered"),
+            ...rest.map((i) => blocks[i]!),
+          ]),
           ...(piece.first !== 1 ? { start: piece.first } : {}),
         },
   );
@@ -595,7 +652,11 @@ export const asidePictureReader =
 
 /** The blocks of one segment of grouped items. `classe` false gives no headings and no rule outside the grid: the content of
  *  a block set beside another. */
-export const paragraphsFromSegment = (segment: readonly PositionedItem[][], reading: SegmentReading, classe = true): IRBlock[] =>
+export const paragraphsFromSegment = (
+  segment: readonly PositionedItem[][],
+  reading: SegmentReading,
+  classe = true,
+): IRBlock[] =>
   paragraphsFromLines(
     linesFromGroups(segment, reading.isBold, reading.wordWidthAt, reading.markerBefore),
     classe ? reading.headingLevelOf : undefined,

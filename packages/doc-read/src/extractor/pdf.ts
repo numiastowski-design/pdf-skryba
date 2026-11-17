@@ -35,8 +35,13 @@ import type { DocumentNotice, PageLanguage } from "doc-ir/lib/reader-types";
 import type { PdfTableDetection } from "doc-ir/layout/geometry";
 import type { PdfObjectsDocument } from "./pdf-objects/document";
 import type { IRBlock } from "doc-ir/lib/ir";
-import { MAX_NOTICE_IMAGE_PLACES, type ReaderLimits, unpublishedPartNotices } from "doc-ir/lib/reader-limits";
-import type { PictureRefusal } from "doc-ir/lib/reader-types";
+import {
+  MAX_NOTICE_IMAGE_PLACES,
+  MAX_NOTICE_PAGE_RANGES,
+  type ReaderLimits,
+  unpublishedPartNotices,
+} from "doc-ir/lib/reader-limits";
+import type { PdfTextUnreadReason, PictureRefusal } from "doc-ir/lib/reader-types";
 import type { LostPlace } from "./pdf-model";
 import { withholdOversizedTables } from "doc-ir/lib/table-width-cap";
 import { gridBandOf } from "doc-ir/layout/grid-band";
@@ -75,13 +80,15 @@ import { DEFAULT_FRAMED_BLOCKS, type FramedBlocks } from "./pdf-framed-blocks";
 export { interleaveRegions } from "./pdf-region-order";
 export { PAGE_STAGES, layoutPage } from "./pdf-page-stages";
 
-
 type ImageLoss = { slow: number; unreadable: number; places: readonly LostPlace[] };
 
 /** ONE `pdf-image-unread` notice for the images lost on the pages kept as digital, or none. `replaced`: the pages
  *  whose digital blocks the AI's text replaced (a scan read by the AI): their images were never to be published, so
  *  their losses are not losses (review of 06/10/2026). */
-export function pdfImageUnreadNotices(lossByPage: ReadonlyMap<number, ImageLoss>, replaced: ReadonlySet<number>): DocumentNotice[] | undefined {
+export function pdfImageUnreadNotices(
+  lossByPage: ReadonlyMap<number, ImageLoss>,
+  replaced: ReadonlySet<number>,
+): DocumentNotice[] | undefined {
   let slow = 0;
   let unreadable = 0;
   const places: { page: number; id: string; why: PictureRefusal }[] = [];
@@ -106,6 +113,40 @@ export function pdfImageUnreadNotices(lossByPage: ReadonlyMap<number, ImageLoss>
   ];
 }
 
+/** The closed reasons, in the order their notices are listed: a fixed order, so two runs give the same list. */
+const TEXT_UNREAD_REASONS: readonly PdfTextUnreadReason[] = ["limit", "unsupported", "damaged", "unexpected", "font"];
+
+/** Pages (0-based, sorted) folded into 1-based inclusive ranges. */
+const pageRangesOf = (sorted: readonly number[]): { from: number; to: number }[] => {
+  const ranges: { from: number; to: number }[] = [];
+  for (const pageIndex of sorted) {
+    const last = ranges.at(-1);
+    if (last !== undefined && last.to === pageIndex) last.to = pageIndex + 1;
+    else ranges.push({ from: pageIndex + 1, to: pageIndex + 1 });
+  }
+  return ranges;
+};
+
+/** One `pdf-text-unread` notice per reason for the pages whose glyphs could not be built, or none. `replaced`: the pages
+ *  the AI's text replaced — their text is on the page after all, so they are not losses (as `pdfImageUnreadNotices`). */
+export function pdfTextUnreadNotices(
+  unreadByPage: ReadonlyMap<number, PdfTextUnreadReason>,
+  replaced: ReadonlySet<number>,
+): DocumentNotice[] | undefined {
+  const notices: DocumentNotice[] = [];
+  for (const reason of TEXT_UNREAD_REASONS) {
+    const pages = [...unreadByPage]
+      .filter(([pageIndex, why]) => why === reason && !replaced.has(pageIndex))
+      .map(([pageIndex]) => pageIndex);
+    if (pages.length === 0) continue;
+    const ranges = pageRangesOf([...pages].sort((left, right) => left - right));
+    const kept = ranges.slice(0, MAX_NOTICE_PAGE_RANGES);
+    const shown = kept.reduce((sum, range) => sum + range.to - range.from + 1, 0);
+    notices.push({ kind: "pdf-text-unread", reason, count: pages.length, pages: kept, more: pages.length - shown });
+  }
+  return notices.length > 0 ? notices : undefined;
+}
+
 /** The runs of every page after the two enrichments that need glyphs, and the way back to the reader's own runs. */
 interface EnrichedRuns {
   items: PdfTextRun[][];
@@ -122,7 +163,11 @@ interface EnrichedRuns {
  * and each glyph of a linked word a copy carrying its `href`, which a table cell reads (`pdf-table-render.ts`).
  * `glyphsByPage` is updated in place with the linked glyphs.
  */
-const enrichRuns = (source: PdfSource, readItems: readonly (readonly PdfTextRun[])[], glyphsByPage: GlyphFragment[][]): EnrichedRuns => {
+const enrichRuns = (
+  source: PdfSource,
+  readItems: readonly (readonly PdfTextRun[])[],
+  glyphsByPage: GlyphFragment[][],
+): EnrichedRuns => {
   const originalOf = new Map<PositionedItem, PdfTextRun>();
   const items = readItems.map((runs, pageIndex) => {
     const glyphs = glyphsByPage[pageIndex]!;
@@ -144,7 +189,9 @@ const enrichRuns = (source: PdfSource, readItems: readonly (readonly PdfTextRun[
             return copy;
           });
     // A rotated line of several runs is one run, read along its own axis (`pdf-rotated-lines.ts`), led back to its first run.
-    return gatherRotatedLines(linked, (copy, source) => originalOf.set(copy, originalOf.get(source) ?? source)) as PdfTextRun[];
+    return gatherRotatedLines(linked, (copy, source) =>
+      originalOf.set(copy, originalOf.get(source) ?? source),
+    ) as PdfTextRun[];
   });
   return { items, originalOf };
 };
@@ -273,7 +320,8 @@ const boldTestOf = (
 ): ((item: PositionedItem) => boolean) => {
   const strokedAt = new Set(glyphs.filter((g) => g.stroked).map((g) => positionKey(g.x, g.y, "")));
   return (item) =>
-    (boldKeys !== undefined && boldKeys.has(positionKey(item.x, item.y, sourceRun(item).text))) || strokedAt.has(positionKey(item.x, item.y, ""));
+    (boldKeys !== undefined && boldKeys.has(positionKey(item.x, item.y, sourceRun(item).text))) ||
+    strokedAt.has(positionKey(item.x, item.y, ""));
 };
 
 /**
@@ -319,13 +367,23 @@ const pageLayoutReader = (
     // invisible.
     const gutter = scale.gutterCut === undefined ? undefined : { cut: scale.gutterCut, all: scale.gutterCuts };
     const cut = pageColumnCut(pageItems, cutByPage.get(pageIndex), gutter);
-    const boxes = (signals.boxesByPage.get(pageIndex) ?? []).map((c) => ({ left: c.xLeft, right: c.xRight, bottom: c.yBottom, top: c.yTop }));
+    const boxes = (signals.boxesByPage.get(pageIndex) ?? []).map((c) => ({
+      left: c.xLeft,
+      right: c.xRight,
+      bottom: c.yBottom,
+      top: c.yTop,
+    }));
     const planner = pagePlanReader(cut);
     pagePlans.set(pageIndex, planner.plan);
     laid = {
       ...markers,
       wordWidthAt: firstWordWidthReader(glyphsByPage[pageIndex]!),
-      centredContainer: centredContainerReader(boxes, cut, scale.bodyTextArea, valueColumnStarts(linesFromItems(pageItems))),
+      centredContainer: centredContainerReader(
+        boxes,
+        cut,
+        scale.bodyTextArea,
+        valueColumnStarts(linesFromItems(pageItems)),
+      ),
       imageCandidates: planner.watchPictures(candidates),
       placeDocumentImages: place,
       cut,
@@ -398,16 +456,28 @@ const layoutPages = (doc: DocumentRead): LaidOutPages => {
     // is judged on the WHOLE page like any prose page (`pipeline/letter-conservation.ts#checkPage`, `bands === undefined`).
     // Since 26/10/2026 the table stage can run and publish only flat regions, which is exactly that case (an empty array here
     // sent the page to `orderNotJudgedPages`, where a real move hides).
-    if (outcome.tableBands !== undefined && outcome.tableBands.length > 0) tableBandsByPage.set(pageIndex, outcome.tableBands);
+    if (outcome.tableBands !== undefined && outcome.tableBands.length > 0)
+      tableBandsByPage.set(pageIndex, outcome.tableBands);
     deliberateRemovals.push(...(outcome.deliberateRemovals ?? []));
     deliberateRemovalsByPage.push([...(outcome.deliberateRemovals ?? [])]);
     pages.push(outcome.blocks);
   }
-  return { pages, scannedPageIndices, deliberateRemovals, deliberateRemovalsByPage, lostImageCounts, tableBandsByPage, pagePlans };
+  return {
+    pages,
+    scannedPageIndices,
+    deliberateRemovals,
+    deliberateRemovalsByPage,
+    lostImageCounts,
+    tableBandsByPage,
+    pagePlans,
+  };
 };
 
 /** Per page, the images lost by either path (dropped by the detector, or unreadable once placed). */
-const imageLossOf = (signals: PdfPageSignals, lostImageCounts: ReadonlyMap<number, () => ImageLoss>): Map<number, ImageLoss> => {
+const imageLossOf = (
+  signals: PdfPageSignals,
+  lostImageCounts: ReadonlyMap<number, () => ImageLoss>,
+): Map<number, ImageLoss> => {
   const imageLossByPage = new Map<number, ImageLoss>();
   for (const pageIndex of new Set([...signals.droppedImagesByPage.keys(), ...lostImageCounts.keys()])) {
     const dropped = signals.droppedImagesByPage.get(pageIndex) ?? { slow: 0, unreadable: 0, places: [] };
@@ -422,25 +492,40 @@ const imageLossOf = (signals: PdfPageSignals, lostImageCounts: ReadonlyMap<numbe
 };
 
 /** The tab layout cuts at the page: a header cut into lines folds into ONE row (render 113, `lib/table-empty-parts.ts`). */
-const withBandsFallen = (pages: readonly (readonly IRBlock[])[]): IRBlock[][] => pages.map((blocks) => withoutLeadingBandsDeep(blocks));
+const withBandsFallen = (pages: readonly (readonly IRBlock[])[]): IRBlock[][] =>
+  pages.map((blocks) => withoutLeadingBandsDeep(blocks));
 
 /** The text cycles of every page for the letters control, the structure-tree order of the pages published in it (`declaredRanks`: the tree
  *  accounts for all the page's content text), the pages that rest on the cycles alone, and the pages the table stage laid out, with the bands of
  *  their rendered tables. A page laid by the table stage keeps its own interleaving: the control judges the order of its prose outside the bands. */
-const letterReference = (source: PdfSource, tableBandsByPage: ReadonlyMap<number, readonly { top: number; bottom: number }[]>): PdfExtractResult["textSource"]["reference"] => {
+const letterReference = (
+  source: PdfSource,
+  tableBandsByPage: ReadonlyMap<number, readonly { top: number; bottom: number }[]>,
+): PdfExtractResult["textSource"]["reference"] => {
   const structureOrderByPage = new Map<number, string[]>();
   source.pages.forEach((page, index) => {
-    if (page.declaredOrder !== undefined && declaredRanks(page) !== undefined) structureOrderByPage.set(index, [...page.declaredOrder]);
+    if (page.declaredOrder !== undefined && declaredRanks(page) !== undefined)
+      structureOrderByPage.set(index, [...page.declaredOrder]);
   });
   return {
     pages: source.pages.map((page) => page.reference ?? []),
     ...(structureOrderByPage.size > 0 ? { structureOrderByPage } : {}),
-    ...(tableBandsByPage.size > 0 ? { tableBandsByPage: new Map([...tableBandsByPage].map(([page, bands]) => [page, bands.map((b) => ({ ...b }))])) } : {}),
+    ...(tableBandsByPage.size > 0
+      ? {
+          tableBandsByPage: new Map([...tableBandsByPage].map(([page, bands]) => [page, bands.map((b) => ({ ...b }))])),
+        }
+      : {}),
   };
 };
 
 /** The result of the extraction: the pages merged and published, the notices, and the text source the conservation check reads. */
-const assembleResult = (doc: DocumentRead, laid: LaidOutPages, readItems: readonly (readonly PdfTextRun[])[], limits: ReaderLimits | undefined, pageLanguage: PageLanguage): PdfExtractResult => {
+const assembleResult = (
+  doc: DocumentRead,
+  laid: LaidOutPages,
+  readItems: readonly (readonly PdfTextRun[])[],
+  limits: ReaderLimits | undefined,
+  pageLanguage: PageLanguage,
+): PdfExtractResult => {
   const { source, cost, detected, images } = doc;
   const { signals, tableDetections } = detected;
   const { pages, scannedPageIndices, deliberateRemovals } = laid;
@@ -468,24 +553,47 @@ const assembleResult = (doc: DocumentRead, laid: LaidOutPages, readItems: readon
   const deliberateRemovalsByPage = laid.deliberateRemovalsByPage.map((removed) => [...removed]);
   const imageLossByPage = imageLossOf(signals, laid.lostImageCounts);
   const imageNotices = pdfImageUnreadNotices(imageLossByPage, new Set());
+  const textUnreadByPage = new Map<number, PdfTextUnreadReason>();
+  source.pages.forEach((page, pageIndex) => {
+    // A page whose whole text is unread keeps its reason; one that only lost a font's words says `font` (17/11/2026) — but not
+    // an OCR layer of a scan, whose text is never published (`pdf-page-stages.ts`), so none of its words is missing.
+    const reason =
+      page.glyphsUnavailable ??
+      (page.fontUnread === true && !ocrLayerPageIndices.includes(pageIndex) ? "font" : undefined);
+    if (reason !== undefined) textUnreadByPage.set(pageIndex, reason);
+  });
+  const textUnreadNotices = pdfTextUnreadNotices(textUnreadByPage, new Set());
   // A table wider than MAX_TABLE_COLS or longer than MAX_TABLE_ROWS is not published, and said (one notice for the document).
   let tablesWithheld = 0;
   const published = merged.map((page, pageIndex) => {
-    const { blocks, withheld } = withholdOversizedTables(page, (text) => {
-      deliberateRemovals.push(text);
-      deliberateRemovalsByPage[pageIndex]?.push(text);
-    }, limits);
+    const { blocks, withheld } = withholdOversizedTables(
+      page,
+      (text) => {
+        deliberateRemovals.push(text);
+        deliberateRemovalsByPage[pageIndex]?.push(text);
+      },
+      limits,
+    );
     tablesWithheld += withheld;
     return blocks;
   });
-  const notices = [...(imageNotices ?? []), ...unpublishedPartNotices({ chartsWithheld: 0, imagesMissing: 0, tablesWithheld })];
+  const notices = [
+    ...(imageNotices ?? []),
+    ...(textUnreadNotices ?? []),
+    ...unpublishedPartNotices({ chartsWithheld: 0, imagesMissing: 0, tablesWithheld }),
+  ];
   return {
     pages: published,
     ...(notices.length > 0 ? { notices } : {}),
     imageLossByPage,
+    textUnreadByPage,
     ...(publishedImages.length > 0 ? { images: publishedImages, pagesOfImage: images.pagesOfImage } : {}),
     scannedPageIndices,
-    docFacts: describePdf(source, { scanned: scannedPageIndices, invisibleText: ocrLayerPageIndices }),
+    // An unread page is no scan (17/11/2026): the facts call none of them scanned.
+    docFacts: describePdf(source, {
+      scanned: scannedPageIndices.filter((pageIndex) => !textUnreadByPage.has(pageIndex)),
+      invisibleText: ocrLayerPageIndices,
+    }),
     ...(ocrLayerPageIndices.length > 0 ? { ocrLayerPageIndices } : {}),
     ...(tableDetections.length > 0 ? { tableDetections } : {}),
     cost,
@@ -523,7 +631,12 @@ export const extractPdf = async (
   // counter would leak from one document to the next in production. See
   // `extraction-cost.ts` for what it catches and above all what it does not see.
   const cost = emptyExtractionCost();
-  const { source, items: readItems } = await openPdfSource(bytes, cost, opts?.pageLimit ?? opts?.limits?.pageLimit, opts?.firstPages);
+  const { source, items: readItems } = await openPdfSource(
+    bytes,
+    cost,
+    opts?.pageLimit ?? opts?.limits?.pageLimit,
+    opts?.firstPages,
+  );
   const glyphsOfPage = glyphReader(source);
   const glyphsByPage = readItems.map((_, pageIndex) => glyphsOfPage(pageIndex));
   const { items, originalOf } = enrichRuns(source, readItems, glyphsByPage);

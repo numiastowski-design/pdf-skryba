@@ -99,7 +99,12 @@ function placeWidth(state: WidthTable, cid: number, width: number): void {
 }
 
 /** The form `c [w w w]`: one width per CID from `c`. */
-function placeWidthList(reader: FontReader, state: WidthTable, start: number, list: readonly (PdfValue | undefined)[]): void {
+function placeWidthList(
+  reader: FontReader,
+  state: WidthTable,
+  start: number,
+  list: readonly (PdfValue | undefined)[],
+): void {
   for (const [offset, width] of list.entries()) {
     const value = numberOf(reader, width);
     if (value !== undefined) placeWidth(state, start + offset, value);
@@ -137,7 +142,12 @@ function readWidthEntry(reader: FontReader, items: readonly Resolved[], at: numb
 const WIDTHS_OF_DESCENDANT = new WeakMap<PdfDict, Map<number, (code: number) => number | undefined>>();
 
 /** §9.7.4.3: `/W` mixes `c [w w w]` and `cFirst cLast w`; anything else in it is ignored, never guessed. */
-function cidWidths(reader: FontReader, descendant: PdfDict, budget: TableBudget | undefined, highest = 65_535): (code: number) => number | undefined {
+function cidWidths(
+  reader: FontReader,
+  descendant: PdfDict,
+  budget: TableBudget | undefined,
+  highest = 65_535,
+): (code: number) => number | undefined {
   let byCeiling = WIDTHS_OF_DESCENDANT.get(descendant);
   const known = byCeiling?.get(highest);
   if (known !== undefined) return known;
@@ -150,7 +160,12 @@ function cidWidths(reader: FontReader, descendant: PdfDict, budget: TableBudget 
   return widths;
 }
 
-function readCidWidths(reader: FontReader, descendant: PdfDict, budget: TableBudget | undefined, highest: number): (code: number) => number | undefined {
+function readCidWidths(
+  reader: FontReader,
+  descendant: PdfDict,
+  budget: TableBudget | undefined,
+  highest: number,
+): (code: number) => number | undefined {
   const fallback = numberOf(reader, descendant.get("DW")) ?? DEFAULT_CID_WIDTH;
   const w = reader.resolve(descendant.get("W"));
   // 🔴 ONE ENTRY BUDGET FOR THE WHOLE ARRAY, not per range (security review of 31/10/2026). Without it the
@@ -172,7 +187,11 @@ function readCidWidths(reader: FontReader, descendant: PdfDict, budget: TableBud
 }
 
 /** The advance of each code of this font, read once; the function it returns is pure. */
-export function fontWidths(reader: FontReader, font: PdfDict, budget?: TableBudget): (code: number) => number | undefined {
+export function fontWidths(
+  reader: FontReader,
+  font: PdfDict,
+  budget?: TableBudget,
+): (code: number) => number | undefined {
   const subtype = reader.resolve(font.get("Subtype"));
   if (subtype?.kind === "name" && subtype.value === "Type0") {
     // 🔴 `/W` IS INDEXED BY CID, NOT BY CODE (§9.7.4.3), and the code equals the CID only for `Identity-H/V`.

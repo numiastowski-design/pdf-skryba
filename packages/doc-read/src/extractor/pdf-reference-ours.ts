@@ -16,7 +16,10 @@ const UPRIGHT_EPSILON = 1e-9;
 
 /** The reference cycles of a page, from its glyphs in paint order. `pageObjId` is the page's object identifier
  *  (`p<num>R<gen>`), the prefix of its marked-content identifiers. */
-export function referenceOfGlyphs(glyphs: readonly GlyphFragment[], pageObjId: string | undefined): PdfReferenceCycle[] {
+export function referenceOfGlyphs(
+  glyphs: readonly GlyphFragment[],
+  pageObjId: string | undefined,
+): PdfReferenceCycle[] {
   const cycles: PdfReferenceCycle[] = [];
   let group: GlyphFragment[] = [];
   const flush = (): void => {
@@ -56,7 +59,9 @@ function overpaintCopies(group: readonly GlyphFragment[], pageObjId: string | un
 function cycleOf(group: readonly GlyphFragment[], pageObjId: string | undefined): PdfReferenceCycle {
   const first = group[0]!;
   const middle = group.reduce((sum, glyph) => sum + glyph.y + glyph.height / 2, 0) / group.length;
-  const rotated = group.some((glyph) => Math.abs(glyph.matrix.b) > UPRIGHT_EPSILON || Math.abs(glyph.matrix.c) > UPRIGHT_EPSILON);
+  const rotated = group.some(
+    (glyph) => Math.abs(glyph.matrix.b) > UPRIGHT_EPSILON || Math.abs(glyph.matrix.c) > UPRIGHT_EPSILON,
+  );
   const mcid = first.mcid;
   return {
     text: group.map((glyph) => glyph.text).join(""),

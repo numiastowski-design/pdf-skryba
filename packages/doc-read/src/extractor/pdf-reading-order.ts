@@ -94,8 +94,12 @@ export const declaredRanks = (page: PdfSourcePage): readonly (number | undefined
   declared.forEach((id, rank) => {
     if (!rankOfId.has(id)) rankOfId.set(id, rank);
   });
-  const ranks = page.runs.map((run) => (run.markedContentId === undefined ? undefined : rankOfId.get(run.markedContentId)));
-  const covered = page.runs.every((run, index) => run.text.trim().length === 0 || run.artifact || ranks[index] !== undefined);
+  const ranks = page.runs.map((run) =>
+    run.markedContentId === undefined ? undefined : rankOfId.get(run.markedContentId),
+  );
+  const covered = page.runs.every(
+    (run, index) => run.text.trim().length === 0 || run.artifact || ranks[index] !== undefined,
+  );
   return covered ? ranks : undefined;
 };
 
@@ -132,7 +136,10 @@ const indexLines = <T extends PositionedItem>(segments: readonly T[][][], rankOf
  * on a LATER line: cells centred vertically in a grid not rebuilt, where a cell begun above (or going on below) is not read mid-line
  * (doc 151 p10, 23/10/2026). O(items log items).
  */
-const splitCrossingLines = <T extends PositionedItem>(segments: readonly T[][][], rankOf: (item: T) => number | undefined): T[][][] => {
+const splitCrossingLines = <T extends PositionedItem>(
+  segments: readonly T[][][],
+  rankOf: (item: T) => number | undefined,
+): T[][][] => {
   const { owners, lineIndex, firstLine, lastLine } = indexLines(segments, rankOf);
   const ranks = [...owners.keys()].sort((a, b) => a - b);
   const position = new Map(ranks.map((rank, index) => [rank, index]));
@@ -197,7 +204,9 @@ interface RankedGroup<T extends PositionedItem> {
 }
 
 /** The horizontal extent and the baseline of a line's NON-blank items (a blank may be spread across a gutter), or `undefined`. */
-const inkOf = <T extends PositionedItem>(group: readonly T[]): { left: number; right: number; y: number } | undefined => {
+const inkOf = <T extends PositionedItem>(
+  group: readonly T[],
+): { left: number; right: number; y: number } | undefined => {
   // By LOOP, never a spread: one argument per item of the group, and a hostile page may draw ~100k on one line (tour 10).
   let left = Number.POSITIVE_INFINITY;
   let right = Number.NEGATIVE_INFINITY;
@@ -271,7 +280,9 @@ const tieBlocksOf = <T extends PositionedItem>(entries: readonly RankedGroup<T>[
 };
 
 /** The connected components of the inked blocks: two blocks of DIFFERENT input segments whose extents overlap join one. */
-const tieComponents = <T extends PositionedItem>(blocks: readonly TieBlock<T>[]): { block: TieBlock<T>; ink: { left: number; right: number; y: number }; place: number }[][] => {
+const tieComponents = <T extends PositionedItem>(
+  blocks: readonly TieBlock<T>[],
+): { block: TieBlock<T>; ink: { left: number; right: number; y: number }; place: number }[][] => {
   const members = blocks.flatMap((block, place) => (block.ink === undefined ? [] : [{ block, ink: block.ink, place }]));
   const parent = members.map((_, i) => i);
   for (let i = 0; i < members.length; i++)
@@ -279,7 +290,8 @@ const tieComponents = <T extends PositionedItem>(blocks: readonly TieBlock<T>[])
       const a = members[i]!;
       const b = members[j]!;
       const overlap = Math.min(a.ink.right, b.ink.right) - Math.max(a.ink.left, b.ink.left);
-      if (a.block.segment !== b.block.segment && overlap > TIE_OVERLAP_THRESHOLD_PT) parent[rootOf(parent, j)] = rootOf(parent, i);
+      if (a.block.segment !== b.block.segment && overlap > TIE_OVERLAP_THRESHOLD_PT)
+        parent[rootOf(parent, j)] = rootOf(parent, i);
     }
   const byRoot = new Map<number, typeof members>();
   members.forEach((member, i) => {
@@ -300,9 +312,11 @@ const reorderTie = <T extends PositionedItem>(out: RankedGroup<T>[], start: numb
       ordered[places[i]!] = member.block;
     });
   }
-  ordered.flatMap((block) => block.entries).forEach((entry, i) => {
-    out[start + i] = entry;
-  });
+  ordered
+    .flatMap((block) => block.entries)
+    .forEach((entry, i) => {
+      out[start + i] = entry;
+    });
 };
 
 /**
@@ -353,7 +367,8 @@ export const segmentsInDeclaredOrder = <T extends PositionedItem>(
   for (const entry of ordered) {
     // A segment continues only while the declared order walks the geometric
     // one FORWARD, one group at a time, inside one geometric segment.
-    const continues = previous !== undefined && entry.index === previous.index + 1 && entry.segment === previous.segment;
+    const continues =
+      previous !== undefined && entry.index === previous.index + 1 && entry.segment === previous.segment;
     if (!continues && current.length > 0) {
       out.push(current);
       current = [];

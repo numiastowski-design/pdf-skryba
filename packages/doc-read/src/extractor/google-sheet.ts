@@ -50,16 +50,27 @@ export interface GoogleSheetMeta {
  *  caps (the caps once read the raw grid, and a merge declared down to row
  *  1000 widened it). Merge ranges are half-open [start, end) here, inclusive
  *  in `sheet-grid.ts`: converted once. */
-const keptTableOf = (sheet: GoogleSheetMeta["sheets"][number], values: readonly (readonly string[])[]): { lines: KeptLines; build: () => Extract<IRBlock, { kind: "table" }> } => {
+const keptTableOf = (
+  sheet: GoogleSheetMeta["sheets"][number],
+  values: readonly (readonly string[])[],
+): { lines: KeptLines; build: () => Extract<IRBlock, { kind: "table" }> } => {
   const filled: [number, number][] = [];
-  values.forEach((row, rowIndex) => row.forEach((text, colIndex) => (text.length > 0 ? filled.push([rowIndex, colIndex]) : undefined)));
+  values.forEach((row, rowIndex) =>
+    row.forEach((text, colIndex) => (text.length > 0 ? filled.push([rowIndex, colIndex]) : undefined)),
+  );
   const lines = keptLinesOf(
     filled,
-    (rowIndex) => sheet.rowMetadata?.[rowIndex]?.hiddenByUser === true || sheet.rowMetadata?.[rowIndex]?.hiddenByFilter === true, // dropped, same as a hidden tab
+    (rowIndex) =>
+      sheet.rowMetadata?.[rowIndex]?.hiddenByUser === true || sheet.rowMetadata?.[rowIndex]?.hiddenByFilter === true, // dropped, same as a hidden tab
     (colIndex) => sheet.columnMetadata?.[colIndex]?.hiddenByUser === true,
   );
   // An absent start index is read as 0 (a merge starting at A1 may carry none).
-  const merges = (sheet.merges ?? []).map((merge) => ({ startRow: merge.startRowIndex ?? 0, startCol: merge.startColumnIndex ?? 0, endRow: merge.endRowIndex - 1, endCol: merge.endColumnIndex - 1 }));
+  const merges = (sheet.merges ?? []).map((merge) => ({
+    startRow: merge.startRowIndex ?? 0,
+    startCol: merge.startColumnIndex ?? 0,
+    endRow: merge.endRowIndex - 1,
+    endCol: merge.endColumnIndex - 1,
+  }));
   // Same rule as a .xlsx cell link: an internal form (« #gid=… ») stays plain text; the scheme filter is the renderer's.
   const hrefByPosition = new Map<string, string>();
   for (const link of sheet.links ?? []) {
@@ -85,7 +96,10 @@ const chartLinesOf = (sheet: GoogleSheetMeta["sheets"][number]): IRBlock[] =>
   });
 
 /** The source rows hidden by the user or by a filter, and how many of the filter-hidden ones carry a value. */
-const hiddenRowsOf = (sheet: GoogleSheetMeta["sheets"][number], values: readonly (readonly string[])[]): { hiddenRows: Set<number>; filteredRows: number } => {
+const hiddenRowsOf = (
+  sheet: GoogleSheetMeta["sheets"][number],
+  values: readonly (readonly string[])[],
+): { hiddenRows: Set<number>; filteredRows: number } => {
   const hiddenRows = new Set<number>();
   let filteredRows = 0;
   (sheet.rowMetadata ?? []).forEach((row, rowIndex) => {
@@ -95,7 +109,11 @@ const hiddenRowsOf = (sheet: GoogleSheetMeta["sheets"][number], values: readonly
   return { hiddenRows, filteredRows };
 };
 
-export const extractGoogleSheet = async (meta: GoogleSheetMeta, valuesByTitle: Map<string, string[][]>, limits?: ReaderLimits): Promise<{ doc: IRDoc; notices: DocumentNotice[] }> => {
+export const extractGoogleSheet = async (
+  meta: GoogleSheetMeta,
+  valuesByTitle: Map<string, string[][]>,
+  limits?: ReaderLimits,
+): Promise<{ doc: IRDoc; notices: DocumentNotice[] }> => {
   // A `meta.sheets` that is missing or not an array is named here as an extraction failure (fuzz finding, 04/09/2026): it
   // used to throw a raw TypeError, which the caller reclassified as a bare `UNKNOWN`, against the principle « un échec est
   // toujours un échec nommé ».
@@ -123,13 +141,24 @@ export const extractGoogleSheet = async (meta: GoogleSheetMeta, valuesByTitle: M
           const { hiddenRows, filteredRows: filteredRowsInSheet } = hiddenRowsOf(sheet, values);
           filteredRows += filteredRowsInSheet;
           return {
-            grid: { lines: kept.lines, hiddenRows, table: kept.build, header: async () => ({ ...(frozenRowCount >= 1 ? { frozenRow: frozenRowCount - 1 } : {}), tableSpans: [] }) },
+            grid: {
+              lines: kept.lines,
+              hiddenRows,
+              table: kept.build,
+              header: async () => ({
+                ...(frozenRowCount >= 1 ? { frozenRow: frozenRowCount - 1 } : {}),
+                tableSpans: [],
+              }),
+            },
             extras,
           };
         },
       })),
     limits,
   );
-  const notices: DocumentNotice[] = [...workbookNotices, ...unpublishedPartNotices({ chartsWithheld: 0, imagesMissing: 0, filteredRows })];
+  const notices: DocumentNotice[] = [
+    ...workbookNotices,
+    ...unpublishedPartNotices({ chartsWithheld: 0, imagesMissing: 0, filteredRows }),
+  ];
   return { doc: { blocks: tabs.length > 0 ? [{ kind: "tabs", tabs }] : [] }, notices };
 };

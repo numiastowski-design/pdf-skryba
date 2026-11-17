@@ -10,7 +10,13 @@
  *  for the text matrices), the resources a name points at, the forms a `Do` draws, the fonts.
  *  Called by: the POC's font census (`tools/poc/`), and `content.test.ts`. */
 
-import { MAX_CONTENT_NODES, MAX_CONTENT_OPERANDS, MAX_CONTENT_OPS, MAX_INLINE_IMAGE_ENTRIES, MAX_TOKEN_BYTES } from "./bounds";
+import {
+  MAX_CONTENT_NODES,
+  MAX_CONTENT_OPERANDS,
+  MAX_CONTENT_OPS,
+  MAX_INLINE_IMAGE_ENTRIES,
+  MAX_TOKEN_BYTES,
+} from "./bounds";
 import type { PdfDict, PdfValue } from "./objects";
 import { parseContentValue } from "./parse";
 import { PdfObjectsRefusal } from "./refusal";
@@ -34,11 +40,27 @@ const isSpace = (byte: number): boolean =>
 
 /** §7.2.2 Table 2 delimiters, which end a keyword as a white space does. */
 const isDelimiter = (byte: number): boolean =>
-  byte === 0x28 || byte === 0x29 || byte === 0x3c || byte === 0x3e || byte === 0x5b || byte === 0x5d || byte === 0x7b || byte === 0x7d || byte === 0x2f || byte === PERCENT;
+  byte === 0x28 ||
+  byte === 0x29 ||
+  byte === 0x3c ||
+  byte === 0x3e ||
+  byte === 0x5b ||
+  byte === 0x5d ||
+  byte === 0x7b ||
+  byte === 0x7d ||
+  byte === 0x2f ||
+  byte === PERCENT;
 
 /** The bytes a VALUE may start with (§7.3): a number, a name, a string, an array, a dictionary. */
 const startsValue = (byte: number): boolean =>
-  (byte >= 0x30 && byte <= 0x39) || byte === 0x2b || byte === 0x2d || byte === 0x2e || byte === 0x2f || byte === 0x28 || byte === 0x3c || byte === 0x5b;
+  (byte >= 0x30 && byte <= 0x39) ||
+  byte === 0x2b ||
+  byte === 0x2d ||
+  byte === 0x2e ||
+  byte === 0x2f ||
+  byte === 0x28 ||
+  byte === 0x3c ||
+  byte === 0x5b;
 
 /** Past white space and comments (§7.2.3: a comment runs to the end of the line). */
 function skipBlanks(data: Uint8Array, from: number): number {
@@ -153,7 +175,12 @@ function operandAt(data: Uint8Array, at: number, operands: PdfValue[]): { end: n
 
 /** One operator, with the operands read so far — or, for `BI`, the inline image read whole (§8.9.7). Returns
  *  where to go on, and the nodes the operator makes us RETAIN beyond itself (an inline image's dictionary). */
-function operatorAt(data: Uint8Array, keyword: Keyword, operands: readonly PdfValue[], ops: ContentOp[]): { end: number; nodes: number } {
+function operatorAt(
+  data: Uint8Array,
+  keyword: Keyword,
+  operands: readonly PdfValue[],
+  ops: ContentOp[],
+): { end: number; nodes: number } {
   if (ops.length >= MAX_CONTENT_OPS) throw new PdfObjectsRefusal("content-too-long");
   if (keyword.text !== "BI") {
     ops.push({ op: keyword.text, operands });

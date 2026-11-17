@@ -28,22 +28,22 @@ export interface ColorContext {
   /** The colour map in force (`bg1` → `lt1`…): the slide's
    *  `p:clrMapOvr/a:overrideClrMapping`, else its layout's, else the
    *  master's `p:clrMap`. */
-  map: Readonly<Record<string, string>>;
+  readonly map: Readonly<Record<string, string>>;
   /** The theme's colour scheme, slot by slot (`dk1`, `lt1`, `accent1`…),
    *  the slots whose colour is exact only. */
-  scheme: Readonly<Record<string, Hex>>;
+  readonly scheme: Readonly<Record<string, Hex>>;
   /** The theme's `a:fmtScheme/a:fillStyleLst` entries, in order: what
    *  `a:fillRef idx` 1 to 999 names. */
-  fillStyles: readonly XNode[];
+  readonly fillStyles: readonly XNode[];
   /** Resolve the colour modifiers documented in ECMA-376 (`tint`, `shade`, `lumMod`, `lumOff`, `satMod`) instead of calling the colour
    *  unknown. Set for a SmartArt's saved drawing only (`extractor/smartart-drawing.ts`): the slides keep decision 12 of 25/09/2026. */
-  modifiers?: true;
+  readonly modifiers?: true;
 }
 
 /** The element children of a node, character data left out. */
 export const elements = (node: XNode): XNode[] =>
-  childNodesOf(node).filter((k) => {
-    const tag = qualifiedNameOf(k);
+  childNodesOf(node).filter((childNode) => {
+    const tag = qualifiedNameOf(childNode);
     return tag !== undefined && tag !== "#text";
   });
 
@@ -55,72 +55,81 @@ const hexOf = (value: string | undefined): Hex | undefined =>
  *  black on white). Any other modifier, or any of these at another value, still makes the colour unknown (decision 12 of 25/09/2026). */
 const NEUTRAL_OFFSETS: ReadonlySet<string> = new Set(["a:hueOff", "a:satOff", "a:lumOff", "a:alphaOff"]);
 
-const changesNothing = (modifier: XNode): boolean => NEUTRAL_OFFSETS.has(qualifiedNameOf(modifier) ?? "") && Number(attributeOf(modifier, "val")) === 0;
+const changesNothing = (modifier: XNode): boolean =>
+  NEUTRAL_OFFSETS.has(qualifiedNameOf(modifier) ?? "") && Number(attributeOf(modifier, "val")) === 0;
 
 /** Channels stay unrounded (0..255) between modifiers: only the final colour is rounded. */
 /** sRGB channel (0..255) to linear light (0..1), and back (IEC 61966-2-1). */
-const toLinear = (c: number): number => {
-  const v = c / 255;
-  return v <= 0.040_45 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+const toLinear = (channel: number): number => {
+  const encoded = channel / 255;
+  return encoded <= 0.040_45 ? encoded / 12.92 : ((encoded + 0.055) / 1.055) ** 2.4;
 };
-const fromLinear = (l: number): number => {
-  const v = l <= 0.003_130_8 ? l * 12.92 : 1.055 * l ** (1 / 2.4) - 0.055;
-  return Math.min(Math.max(v, 0), 1) * 255;
+const fromLinear = (linear: number): number => {
+  const encoded = linear <= 0.003_130_8 ? linear * 12.92 : 1.055 * linear ** (1 / 2.4) - 0.055;
+  return Math.min(Math.max(encoded, 0), 1) * 255;
 };
 
 type Rgb = [number, number, number];
 
-const rgbOf = (hex: Hex): Rgb => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16)) as Rgb;
-const hexFrom = ([r, g, b]: Rgb): Hex => `#${[r, g, b].map((c) => Math.round(c).toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+const rgbOf = (hex: Hex): Rgb => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16)) as Rgb;
+const hexFrom = ([r, g, b]: Rgb): Hex =>
+  `#${[r, g, b]
+    .map((channel) => Math.round(channel).toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase()}`;
 
 /** RGB (0..255) to hue (0..6), saturation and lightness (0..1): the HSL model `lumMod`, `lumOff` and `satMod` work in. */
 const toHsl = ([r, g, b]: Rgb): Rgb => {
-  const [R, G, B] = [r / 255, g / 255, b / 255];
-  const max = Math.max(R, G, B);
-  const min = Math.min(R, G, B);
-  const l = (max + min) / 2;
-  if (max === min) return [0, 0, l];
-  const d = max - min;
-  const s = d / (l > 0.5 ? 2 - max - min : max + min);
-  if (max === R) return [(G - B) / d + (G < B ? 6 : 0), s, l];
-  return [max === G ? (B - R) / d + 2 : (R - G) / d + 4, s, l];
+  const [red, green, blue] = [r / 255, g / 255, b / 255];
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const lightness = (max + min) / 2;
+  if (max === min) return [0, 0, lightness];
+  const chroma = max - min;
+  const saturation = chroma / (lightness > 0.5 ? 2 - max - min : max + min);
+  if (max === red) return [(green - blue) / chroma + (green < blue ? 6 : 0), saturation, lightness];
+  return [max === green ? (blue - red) / chroma + 2 : (red - green) / chroma + 4, saturation, lightness];
 };
 
-/** One channel of `fromHsl`: `t` the hue shifted for that channel (in sixths of a turn), `p` and `q` the lightness bounds. */
-const hslChannel = (t0: number, p: number, q: number): number => {
-  const t = (t0 + 6) % 6;
-  if (t < 1) return (p + (q - p) * t) * 255;
-  if (t < 3) return q * 255;
-  if (t < 4) return (p + (q - p) * (4 - t)) * 255;
-  return p * 255;
+/** One channel of `fromHsl`: `shiftedHue` the hue shifted for that channel (in sixths of a turn), `lowBound` and `highBound` the lightness bounds. */
+const hslChannel = (shiftedHue: number, lowBound: number, highBound: number): number => {
+  const hue = (shiftedHue + 6) % 6;
+  if (hue < 1) return (lowBound + (highBound - lowBound) * hue) * 255;
+  if (hue < 3) return highBound * 255;
+  if (hue < 4) return (lowBound + (highBound - lowBound) * (4 - hue)) * 255;
+  return lowBound * 255;
 };
 
-const fromHsl = ([h, s, l]: Rgb): Rgb => {
-  if (s === 0) return [l * 255, l * 255, l * 255];
-  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
-  const p = 2 * l - q;
-  return [hslChannel(h + 2, p, q), hslChannel(h, p, q), hslChannel(h - 2, p, q)];
+const fromHsl = ([hue, saturation, lightness]: Rgb): Rgb => {
+  if (saturation === 0) return [lightness * 255, lightness * 255, lightness * 255];
+  const highBound = lightness < 0.5 ? lightness * (1 + saturation) : lightness + saturation - lightness * saturation;
+  const lowBound = 2 * lightness - highBound;
+  return [
+    hslChannel(hue + 2, lowBound, highBound),
+    hslChannel(hue, lowBound, highBound),
+    hslChannel(hue - 2, lowBound, highBound),
+  ];
 };
 
-const clamp01 = (v: number): number => Math.min(Math.max(v, 0), 1);
+const clamp01 = (value: number): number => Math.min(Math.max(value, 0), 1);
 
 /** One modifier applied to a colour, or `undefined` for one this reader does not resolve (`alpha`, `hueMod`, `comp`…). `tint` and `shade`
  *  work in linear light (ECMA-376 §20.1.2.3.34 and §20.1.2.3.31; Office's PDF paints #CFD5EA for accent1 4472C4 at `tint 40000`). */
 const modified = (rgb: Rgb, modifier: XNode): Rgb | undefined => {
   const val = Number(attributeOf(modifier, "val")) / 100_000;
   if (!Number.isFinite(val)) return undefined;
-  const [h, s, l] = toHsl(rgb);
+  const [hue, saturation, lightness] = toHsl(rgb);
   switch (qualifiedNameOf(modifier)) {
     case "a:tint":
-      return rgb.map((c) => fromLinear(1 - (1 - toLinear(c)) * val)) as Rgb;
+      return rgb.map((channel) => fromLinear(1 - (1 - toLinear(channel)) * val)) as Rgb;
     case "a:shade":
-      return rgb.map((c) => fromLinear(toLinear(c) * val)) as Rgb;
+      return rgb.map((channel) => fromLinear(toLinear(channel) * val)) as Rgb;
     case "a:lumMod":
-      return fromHsl([h, s, clamp01(l * val)]);
+      return fromHsl([hue, saturation, clamp01(lightness * val)]);
     case "a:lumOff":
-      return fromHsl([h, s, clamp01(l + val)]);
+      return fromHsl([hue, saturation, clamp01(lightness + val)]);
     case "a:satMod":
-      return fromHsl([h, clamp01(s * val), l]);
+      return fromHsl([hue, clamp01(saturation * val), lightness]);
     default:
       return undefined;
   }
@@ -138,7 +147,11 @@ const withModifiers = (base: Hex, color: XNode, context: ColorContext | undefine
   return hexFrom(rgb);
 };
 
-const baseColorOf = (color: XNode, context: ColorContext | undefined, placeholder: Hex | undefined): Hex | undefined => {
+const baseColorOf = (
+  color: XNode,
+  context: ColorContext | undefined,
+  placeholder: Hex | undefined,
+): Hex | undefined => {
   switch (qualifiedNameOf(color)) {
     case "a:srgbClr":
       return hexOf(attributeOf(color, "val"));
@@ -175,8 +188,8 @@ export const solidFillColor = (solidFill: XNode, context?: ColorContext, placeho
 const FILLS = new Set(["a:noFill", "a:solidFill", "a:gradFill", "a:blipFill", "a:pattFill"]);
 
 /** The fill a properties element writes, or `undefined` when it writes none. */
-export const writtenFillOf = (props: XNode | undefined): XNode | undefined =>
-  childNodesOf(props ?? {}).find((k) => FILLS.has(qualifiedNameOf(k) ?? ""));
+export const writtenFillOf = (properties: XNode | undefined): XNode | undefined =>
+  childNodesOf(properties ?? {}).find((childNode) => FILLS.has(qualifiedNameOf(childNode) ?? ""));
 
 /** The fill `p:style/a:fillRef` gives: `idx` 0 and 1000 mean no fill
  *  (ECMA-376 Part 1 §20.1.4.2.10), "none"; 1 to 999, the theme's fill

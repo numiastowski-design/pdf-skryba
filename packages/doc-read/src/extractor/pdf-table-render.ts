@@ -16,7 +16,14 @@
 
 import type { Inline, IRBlock } from "doc-ir/lib/ir";
 import { recomposeCellText } from "doc-ir/layout/cell-text";
-import { assignFragmentsToCells, dominantTextSize, type Fragment, type MergedCell, type MergeMap, type TableGrid } from "doc-ir/layout/geometry";
+import {
+  assignFragmentsToCells,
+  dominantTextSize,
+  type Fragment,
+  type MergedCell,
+  type MergeMap,
+  type TableGrid,
+} from "doc-ir/layout/geometry";
 import { imageFrontier as sharedImageFrontier } from "doc-ir/layout/image-frontier";
 import { headerRowCount } from "doc-ir/layout/merged-cells";
 import { joinCutUrlRows } from "./pdf-row-url-join";
@@ -43,16 +50,18 @@ const cellInlines = (
   raised?: ReadonlySet<Fragment>,
 ): Inline[] => {
   const hasRaised = raised !== undefined && fragments !== undefined && fragments.some((f) => raised.has(f));
-  if (fragments === undefined || (!hasRaised && (hrefOf.size === 0 || !fragments.some((f) => hrefOf.has(f))))) return [{ text }];
+  if (fragments === undefined || (!hasRaised && (hrefOf.size === 0 || !fragments.some((f) => hrefOf.has(f)))))
+    return [{ text }];
   const painted: { char: string; href: string | undefined; sup: boolean }[] = [];
   for (const f of fragments) {
-    for (const char of f.text) if (!SPACE.test(char)) painted.push({ char, href: hrefOf.get(f), sup: raised?.has(f) === true });
+    for (const char of f.text)
+      if (!SPACE.test(char)) painted.push({ char, href: hrefOf.get(f), sup: raised?.has(f) === true });
   }
   const targets: string[] = [];
   const linkAt: (number | undefined)[] = new Array<number | undefined>(text.length).fill(undefined);
   const supAt: boolean[] = new Array<boolean>(text.length).fill(false);
   let next = 0;
-  for (let c = 0; c < text.length; ) {
+  for (let c = 0; c < text.length;) {
     const char = String.fromCodePoint(text.codePointAt(c)!);
     if (!SPACE.test(char)) {
       const glyph = painted[next++];
@@ -78,7 +87,12 @@ const cellInlines = (
     const sup = supAt[c]!;
     const last = inlines[inlines.length - 1];
     if (last !== undefined && last.href === href && lastSup === sup) last.text += text[c]!;
-    else inlines.push({ text: text[c]!, ...(href !== undefined ? { href } : {}), ...(sup ? { marks: ["sup" as const] } : {}) });
+    else
+      inlines.push({
+        text: text[c]!,
+        ...(href !== undefined ? { href } : {}),
+        ...(sup ? { marks: ["sup" as const] } : {}),
+      });
     lastSup = sup;
   }
   return inlines;
@@ -104,7 +118,10 @@ export function cellsOfRow<T>(
   merge: MergeMap | undefined,
 ): { fragments: T[]; cell: MergedCell }[] {
   if (merge === undefined) {
-    return (byCase[rowIndex] ?? []).map((fragments, col) => ({ fragments, cell: { row: rowIndex, col, colspan: 1, rowspan: 1 } }));
+    return (byCase[rowIndex] ?? []).map((fragments, col) => ({
+      fragments,
+      cell: { row: rowIndex, col, colspan: 1, rowspan: 1 },
+    }));
   }
   return merge.cells
     .filter((cell) => cell.row === rowIndex)
@@ -176,7 +193,11 @@ export interface CellImage {
 
 /** The images of each REAL cell, keyed `row,col` of the cell's first case: the
  *  case holding the image's centre, then the merged cell that owns that case. */
-function imagesPerCell(images: readonly CellImage[], grid: TableGrid, merge: MergeMap | undefined): Map<string, CellImage[]> {
+function imagesPerCell(
+  images: readonly CellImage[],
+  grid: TableGrid,
+  merge: MergeMap | undefined,
+): Map<string, CellImage[]> {
   const rows = grid.rowBoundaries;
   const cols = grid.colBoundaries;
   const out = new Map<string, CellImage[]>();
@@ -376,7 +397,12 @@ const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 /** The box's one character; undefined when the box is empty; null when it holds more than one grapheme. */
 const boxCharacter = (fragments: readonly GlyphFragment[]): string | undefined | null => {
-  const text = fragments.map((f) => f.text).join("").normalize("NFC").replace(ZERO_WIDTH, "").replace(/\s+/gu, "");
+  const text = fragments
+    .map((f) => f.text)
+    .join("")
+    .normalize("NFC")
+    .replace(ZERO_WIDTH, "")
+    .replace(/\s+/gu, "");
   if (text.length === 0) return undefined;
   const parts = [...graphemes.segment(text)];
   return parts.length === 1 ? text : null;
@@ -399,13 +425,16 @@ function readStrip(cells: readonly (readonly GlyphFragment[])[]): Strip | undefi
     filled.push({ col, char });
     heights.push(...fragments.filter((f) => f.text.trim().length > 0).map((f) => f.height));
   }
-  return { filled, height: heights.sort((a, b) => a - b)[heights.length >> 1] ?? 0 };
+  return { filled, height: [...heights].sort((a, b) => a - b)[heights.length >> 1] ?? 0 };
 }
 
 /** Whether the strip is a TIGHT comb — see the comment above for each condition. */
 function isTightComb({ filled, height }: Strip, widths: readonly number[]): boolean {
   if (height <= 0 || filled.length < COMB_BOX_THRESHOLD) return false;
-  const { low, high } = widths.reduce((acc, w) => ({ low: Math.min(acc.low, w), high: Math.max(acc.high, w) }), { low: Infinity, high: 0 });
+  const { low, high } = widths.reduce((acc, w) => ({ low: Math.min(acc.low, w), high: Math.max(acc.high, w) }), {
+    low: Infinity,
+    high: 0,
+  });
   const median = [...widths].sort((a, b) => a - b)[widths.length >> 1]!;
   return (
     low > 0 &&
@@ -424,14 +453,23 @@ function isTightComb({ filled, height }: Strip, widths: readonly number[]): bool
  *  now stated here on its own so that moving the product's cap does not silently change what a comb is. */
 const COMB_MIN_COLUMNS = 21;
 
-function combText(cells: readonly (readonly GlyphFragment[])[], grid: TableGrid, merge: MergeMap | undefined, hasImages: boolean): string | undefined {
+function combText(
+  cells: readonly (readonly GlyphFragment[])[],
+  grid: TableGrid,
+  merge: MergeMap | undefined,
+  hasImages: boolean,
+): string | undefined {
   if (hasImages || grid.rowBoundaries.length !== 2) return undefined;
   if (merge?.cells.some((cell) => cell.colspan > 1 || cell.rowspan > 1)) return undefined;
   const strip = readStrip(cells);
   if (strip === undefined) return undefined;
   const { filled } = strip;
   const widths = grid.colBoundaries.slice(1).map((boundary, i) => boundary - grid.colBoundaries[i]!);
-  if (isTightComb(strip, widths)) return filled.reduce((text, { col, char }, i) => text + (i > 0 && col - filled[i - 1]!.col > 1 ? " " : "") + char, "");
+  if (isTightComb(strip, widths))
+    return filled.reduce(
+      (text, { col, char }, i) => text + (i > 0 && col - filled[i - 1]!.col > 1 ? " " : "") + char,
+      "",
+    );
   return filled.length > COMB_MIN_COLUMNS ? filled.map(({ char }) => char).join(" ") : undefined;
 }
 
@@ -557,7 +595,13 @@ export function renderTableRegion(
   const comb = combText(cells[0] ?? [], grid, merge, images.length > 0);
   if (comb !== undefined) {
     const width = grid.colBoundaries[grid.colBoundaries.length - 1]! - grid.colBoundaries[0]!;
-    return [{ kind: "table", columnWidths: [width], rows: [{ cells: [{ blocks: [{ kind: "paragraph", inlines: [{ text: comb }] }] }] }] }];
+    return [
+      {
+        kind: "table",
+        columnWidths: [width],
+        rows: [{ cells: [{ blocks: [{ kind: "paragraph", inlines: [{ text: comb }] }] }] }],
+      },
+    ];
   }
 
   // THE DOCUMENT'S PROPORTIONS, PASSED ON AS THEY ARE (10/09/2026).
@@ -618,118 +662,121 @@ export function renderTableRegion(
   // fragments of the covered columns are joined, and the cell carries its
   // `colspan`. `renderer/storage.ts` already emits it on `<th>`/`<td>`.
   const built = cells.map((_, rowIndex) =>
-      cellsOfRow(cells, rowIndex, merge).map(({ fragments: cellFragments, cell }) => {
-        // No AI column/header labeling in this jalon (§8 jalon 2's own
-        // staging — 2b, may never be built at all, cost-permitting): the
-        // first row as the header is a plain, sane default, not a guess
-        // dressed up as a decision — matches the shape of a real school
-        // report ("Matière | Note" as row 1) and every other real-world
-        // table this convention is common for.
-        //
-        // A LOGICAL LINE IS NEVER MERGED WITH ITS NEIGHBOUR HERE.
-        // `recomposeCellText` tells a wrap (it joins) from a real break (it
-        // separates) — without that, « FRANCAIS » and « Mme FINELLE » become
-        // « FRANCAIS Mme FINELLE », the family of findings the rendering review
-        // called « plausible, invisible, false ». What the two rules below
-        // decide is only how a break that STAYS is published: a line break
-        // inside one paragraph, or two paragraphs.
-        //
-        // `depth` is available and DELIBERATELY UNUSED here: that is the first
-        // step of gap 17. Keeping the separation claims nothing; deciding that
-        // « indented » means « subordinate » is a claim of another class, for
-        // the second step.
-        const span = { left: grid.colBoundaries[cell.col]!, right: grid.colBoundaries[cell.col + cell.colspan]! };
-        const recomposed = recomposeCellText(cellFragments, span, bodyTextSize);
-        const lines = JOIN_CELL_LINES && contentColumnCount === 1 ? joinCellLines(recomposed, span.right) : recomposed;
-        recordCollapsedPaintings(cellFragments, span, bodyTextSize, recordRemoval);
-        const texts = cellParagraphs(lines);
-        // WRITTEN LIMIT (R3, measured 22/09/2026): a cell carries no bold.
-        // A `CellLine` carries no emphasis, and a cell paragraph is one
-        // plain inline. On the tables that the glyph repair of that day brought
-        // out, 440 bold characters over 10 pages publish as plain text — 609 p8:
-        // 158, 713 p5: 105, p6: 54, p3: 37, p4: 23, 25 p2: 22, 669 p2 and p3: 15
-        // each, 523 p1: 7, 27 p2: 4. The text itself is kept.
-        //
-        // IN A CELL, A LINE THE JOIN LEFT ALONE IS A LINE BREAK, NOT A NEW
-        // PARAGRAPH (lot « 44 », 23/09/2026 — `cellParagraphs`). Two lines
-        // separated by an ordinary line spacing come out as one `<p>` with a
-        // `<br/>` between them; only a real paragraph blank, measured by the
-        // vertical gap, opens a second `<p>`. The claim is exact where the
-        // paragraph break was a guess, and nothing is merged.
-        //
-        // THE JOIN RUNS FIRST AND IS UNCHANGED — a table of ONE COLUMN joins
-        // the lines of its cells into continuous prose (lot « 42 »,
-        // 23/09/2026). The condition and why it is the right one live at
-        // `pdf-cell-paragraphs.ts`; the measurements that led to it are the ones
-        // below, and they stay here because they were taken here.
-        //
-        // MEASURED on the 39 French and English PDFs: of the cell paragraph
-        // PAIRS, 121 end with no final punctuation and are followed by a
-        // lowercase letter — 121 line breaks too many (the count of 23/09 read
-        // 122 on a slightly different basis). Booklet 26 carries 97 of them on
-        // its pages 1, 9, 10, 13, 14 and 15; then 0000754 (9), 0000713 (8),
-        // bulletin T1 (4), bulletin T2 (2), fixture 24 (1).
-        //
-        // THE TWO ATTEMPTS THAT CAME BEFORE, AND WHY NEITHER IS RETRIED.
-        //
-        // 1. LOT « 35 », shape + contiguity in the PDF flow: 64 right joins and
-        //    ONE wrong, on booklet 26 page 13, cell « Moyens de Communication
-        //    Interne ». Its two items open with DRAWN bullets, absent from the
-        //    text layer: « Le chat via Google drive » and « ordinateur portable
-        //    pour chaque collaborateur. » would have become one sentence the
-        //    document does not write — false and invisible.
-        //
-        // 2. LOT « 41 » (23/09/2026), the ORDINARY paragraph rules applied to
-        //    the logical lines of `recomposeCellText` — same predicates as
-        //    outside a cell, the cell's own width as the centred container, the
-        //    cell's widest line as the right margin, joins only (no boundary
-        //    ever added), `roomReadable` closing the rule on a degenerate cell.
-        //    Measured on the 39 French and English PDFs: 126 joins, 86 RIGHT and
-        //    40 WRONG, each looked at on the page image (`pdftoppm -r 110`).
-        //      right: booklet 26 (64 — the p1 welcome word comes out whole, and
-        //        the title « LIVRET D'ACCUEIL STAGIAIRE » rejoins), 0000754 (9),
-        //        0000713 p6 (8), the wrapped headers « Maîtrise / insuffisante »
-        //        of both school reports (5);
-        //      wrong: bulletin T1 (19) and T2 (10) — « FRANCAIS » + « Mme
-        //        FINELLE », « Écrit » + « Oral », the two grades « 7,00 » +
-        //        « 6,00 »; 0000713 p3–p5 (10) — « Présentation de
-        //        l'organisation sur site » + « Organigramme opérationnel », two
-        //        distinct entries of one cell; 0000754 p2 (1) — the callout
-        //        bubbles « 7 » and « 5 » of a screenshot.
-        //    WHY GEOMETRY CANNOT DECIDE HERE: « did the next word fit » is asked
-        //    against a MARGIN, and a cell of two lines has none — the margin is
-        //    set by the OTHER line of the pair, so the shorter of the two never
-        //    has room and everything rejoins.
-        //    Second reading measured the same day, the CELL's right edge as the
-        //    margin: 53 joins, the 10 wrong ones of 0000713 and the one of
-        //    0000754 disappear, but the school reports keep 12 (their narrow
-        //    « Matières » column) and the booklet only gains 29 joins instead of
-        //    64 — Canva lays its text far inside its page frame. Neither reading
-        //    reaches zero wrong, and one wrong is enough to give up (
-        //    23/09: fidelity before comfort).
-        //    WHAT THIS REFUTES: the blocking case is NOT booklet 26 p13. Neither
-        //    geometric reading joins its two drawn-bullet items — « Le chat via
-        //    Google drive » ends far from the margin, so its line end is read as
-        //    deliberate. That page blocked the rule of lot « 35 », not this one.
-        //
-        // WHAT LOT « 42 » CHANGED: reading 1 is kept AS IT IS, and applied only
-        // where its own precondition holds — a table of ONE column, whose cell
-        // spans the whole width, so the margin it asks against is real. That
-        // removes the wrong joins of both school reports and of 0000754, which
-        // are grids of several columns. A piece that is only a NUMBER never
-        // joins either, whatever the table: that is the « 7,00 » + « 6,00 »
-        // defect, named and guarded on its own.
-        // 🔴 IT DOES NOT REMOVE THE WRONG JOINS OF 0000713, whose tables publish
-        // ONE column and still glue two entries of a list together: the cause
-        // and the numbers are at `pdf-cell-paragraphs.ts`, and two red tests say
-        // so.
-        const blocks: IRBlock[] = texts.map(({ text, fragments, raised }) => ({ kind: "paragraph" as const, inlines: cellInlines(text, fragments, hrefOf, raised) }));
-        const boxes: CellParagraphBox[] = [...texts];
+    cellsOfRow(cells, rowIndex, merge).map(({ fragments: cellFragments, cell }) => {
+      // No AI column/header labeling in this jalon (§8 jalon 2's own
+      // staging — 2b, may never be built at all, cost-permitting): the
+      // first row as the header is a plain, sane default, not a guess
+      // dressed up as a decision — matches the shape of a real school
+      // report ("Matière | Note" as row 1) and every other real-world
+      // table this convention is common for.
+      //
+      // A LOGICAL LINE IS NEVER MERGED WITH ITS NEIGHBOUR HERE.
+      // `recomposeCellText` tells a wrap (it joins) from a real break (it
+      // separates) — without that, « FRANCAIS » and « Mme FINELLE » become
+      // « FRANCAIS Mme FINELLE », the family of findings the rendering review
+      // called « plausible, invisible, false ». What the two rules below
+      // decide is only how a break that STAYS is published: a line break
+      // inside one paragraph, or two paragraphs.
+      //
+      // `depth` is available and DELIBERATELY UNUSED here: that is the first
+      // step of gap 17. Keeping the separation claims nothing; deciding that
+      // « indented » means « subordinate » is a claim of another class, for
+      // the second step.
+      const span = { left: grid.colBoundaries[cell.col]!, right: grid.colBoundaries[cell.col + cell.colspan]! };
+      const recomposed = recomposeCellText(cellFragments, span, bodyTextSize);
+      const lines = JOIN_CELL_LINES && contentColumnCount === 1 ? joinCellLines(recomposed, span.right) : recomposed;
+      recordCollapsedPaintings(cellFragments, span, bodyTextSize, recordRemoval);
+      const texts = cellParagraphs(lines);
+      // WRITTEN LIMIT (R3, measured 22/09/2026): a cell carries no bold.
+      // A `CellLine` carries no emphasis, and a cell paragraph is one
+      // plain inline. On the tables that the glyph repair of that day brought
+      // out, 440 bold characters over 10 pages publish as plain text — 609 p8:
+      // 158, 713 p5: 105, p6: 54, p3: 37, p4: 23, 25 p2: 22, 669 p2 and p3: 15
+      // each, 523 p1: 7, 27 p2: 4. The text itself is kept.
+      //
+      // IN A CELL, A LINE THE JOIN LEFT ALONE IS A LINE BREAK, NOT A NEW
+      // PARAGRAPH (lot « 44 », 23/09/2026 — `cellParagraphs`). Two lines
+      // separated by an ordinary line spacing come out as one `<p>` with a
+      // `<br/>` between them; only a real paragraph blank, measured by the
+      // vertical gap, opens a second `<p>`. The claim is exact where the
+      // paragraph break was a guess, and nothing is merged.
+      //
+      // THE JOIN RUNS FIRST AND IS UNCHANGED — a table of ONE COLUMN joins
+      // the lines of its cells into continuous prose (lot « 42 »,
+      // 23/09/2026). The condition and why it is the right one live at
+      // `pdf-cell-paragraphs.ts`; the measurements that led to it are the ones
+      // below, and they stay here because they were taken here.
+      //
+      // MEASURED on the 39 French and English PDFs: of the cell paragraph
+      // PAIRS, 121 end with no final punctuation and are followed by a
+      // lowercase letter — 121 line breaks too many (the count of 23/09 read
+      // 122 on a slightly different basis). Booklet 26 carries 97 of them on
+      // its pages 1, 9, 10, 13, 14 and 15; then 0000754 (9), 0000713 (8),
+      // bulletin T1 (4), bulletin T2 (2), fixture 24 (1).
+      //
+      // THE TWO ATTEMPTS THAT CAME BEFORE, AND WHY NEITHER IS RETRIED.
+      //
+      // 1. LOT « 35 », shape + contiguity in the PDF flow: 64 right joins and
+      //    ONE wrong, on booklet 26 page 13, cell « Moyens de Communication
+      //    Interne ». Its two items open with DRAWN bullets, absent from the
+      //    text layer: « Le chat via Google drive » and « ordinateur portable
+      //    pour chaque collaborateur. » would have become one sentence the
+      //    document does not write — false and invisible.
+      //
+      // 2. LOT « 41 » (23/09/2026), the ORDINARY paragraph rules applied to
+      //    the logical lines of `recomposeCellText` — same predicates as
+      //    outside a cell, the cell's own width as the centred container, the
+      //    cell's widest line as the right margin, joins only (no boundary
+      //    ever added), `roomReadable` closing the rule on a degenerate cell.
+      //    Measured on the 39 French and English PDFs: 126 joins, 86 RIGHT and
+      //    40 WRONG, each looked at on the page image (`pdftoppm -r 110`).
+      //      right: booklet 26 (64 — the p1 welcome word comes out whole, and
+      //        the title « LIVRET D'ACCUEIL STAGIAIRE » rejoins), 0000754 (9),
+      //        0000713 p6 (8), the wrapped headers « Maîtrise / insuffisante »
+      //        of both school reports (5);
+      //      wrong: bulletin T1 (19) and T2 (10) — « FRANCAIS » + « Mme
+      //        FINELLE », « Écrit » + « Oral », the two grades « 7,00 » +
+      //        « 6,00 »; 0000713 p3–p5 (10) — « Présentation de
+      //        l'organisation sur site » + « Organigramme opérationnel », two
+      //        distinct entries of one cell; 0000754 p2 (1) — the callout
+      //        bubbles « 7 » and « 5 » of a screenshot.
+      //    WHY GEOMETRY CANNOT DECIDE HERE: « did the next word fit » is asked
+      //    against a MARGIN, and a cell of two lines has none — the margin is
+      //    set by the OTHER line of the pair, so the shorter of the two never
+      //    has room and everything rejoins.
+      //    Second reading measured the same day, the CELL's right edge as the
+      //    margin: 53 joins, the 10 wrong ones of 0000713 and the one of
+      //    0000754 disappear, but the school reports keep 12 (their narrow
+      //    « Matières » column) and the booklet only gains 29 joins instead of
+      //    64 — Canva lays its text far inside its page frame. Neither reading
+      //    reaches zero wrong, and one wrong is enough to give up (
+      //    23/09: fidelity before comfort).
+      //    WHAT THIS REFUTES: the blocking case is NOT booklet 26 p13. Neither
+      //    geometric reading joins its two drawn-bullet items — « Le chat via
+      //    Google drive » ends far from the margin, so its line end is read as
+      //    deliberate. That page blocked the rule of lot « 35 », not this one.
+      //
+      // WHAT LOT « 42 » CHANGED: reading 1 is kept AS IT IS, and applied only
+      // where its own precondition holds — a table of ONE column, whose cell
+      // spans the whole width, so the margin it asks against is real. That
+      // removes the wrong joins of both school reports and of 0000754, which
+      // are grids of several columns. A piece that is only a NUMBER never
+      // joins either, whatever the table: that is the « 7,00 » + « 6,00 »
+      // defect, named and guarded on its own.
+      // 🔴 IT DOES NOT REMOVE THE WRONG JOINS OF 0000713, whose tables publish
+      // ONE column and still glue two entries of a list together: the cause
+      // and the numbers are at `pdf-cell-paragraphs.ts`, and two red tests say
+      // so.
+      const blocks: IRBlock[] = texts.map(({ text, fragments, raised }) => ({
+        kind: "paragraph" as const,
+        inlines: cellInlines(text, fragments, hrefOf, raised),
+      }));
+      const boxes: CellParagraphBox[] = [...texts];
 
-        placeCellImages(blocks, boxes, imagesByCell.get(`${cell.row},${cell.col}`) ?? []);
+      placeCellImages(blocks, boxes, imagesByCell.get(`${cell.row},${cell.col}`) ?? []);
 
-        return { cell, blocks, header: rowIndex < headerRows };
-      }),
+      return { cell, blocks, header: rowIndex < headerRows };
+    }),
   );
 
   if (contentColumnCount === 1 && images.length === 0) return [...flatOneColumnRegion(built)];

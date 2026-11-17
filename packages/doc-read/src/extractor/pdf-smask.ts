@@ -10,11 +10,26 @@ import { decodeCcittFax } from "./codecs/ccitt-fax";
 import { singleFilterOf } from "./pdf-objects/document";
 import type { PdfObjectsDocument } from "./pdf-objects/document";
 import type { PdfStream, PdfValue } from "./pdf-objects/objects";
-import { componentsOfSpace, decodeArrayOf, decodeSample, jpegFrameOf, numberOf, pictureSizeOk, rgbOf, unpackSamples } from "./pdf-image-pixels";
+import {
+  componentsOfSpace,
+  decodeArrayOf,
+  decodeSample,
+  jpegFrameOf,
+  numberOf,
+  pictureSizeOk,
+  rgbOf,
+  unpackSamples,
+} from "./pdf-image-pixels";
 
 /** The filters of §7.4 that are NOT pixels and that our stream reader undoes itself, so a mask coded with one of them
  *  reaches us as plain samples. Held by a test (`pdf-smask.test.ts`: a RunLength-coded mask), not by this list alone. */
-const READER_FILTERS: ReadonlySet<string> = new Set(["FlateDecode", "LZWDecode", "RunLengthDecode", "ASCIIHexDecode", "ASCII85Decode"]);
+const READER_FILTERS: ReadonlySet<string> = new Set([
+  "FlateDecode",
+  "LZWDecode",
+  "RunLengthDecode",
+  "ASCIIHexDecode",
+  "ASCII85Decode",
+]);
 
 /** Whether a soft mask is one we decode: a ONE-COMPONENT grey image at 1, 2, 4 or 8 bits coded with a filter the stream
  *  reader undoes (or none), an 8-bit grey DCT image, or a 1-bit grey CCITT image — each with a `/Decode` we can read
@@ -83,7 +98,12 @@ function flateSamplesOf(doc: PdfObjectsDocument, mask: PdfStream, mw: number, mh
  *  A REFUSAL OF THE STREAM READER IS SUCH A CASE, and it is caught here (03/11/2026): a filter chain the reader does not
  *  undo, a truncated stream, a budget spent. The picture's own samples were already read this way
  *  (`pdf-flate-images.ts#samplesOf`); the mask was not, so the refusal escaped to the page. */
-function maskSamplesOf(doc: PdfObjectsDocument, mask: PdfStream, filter: string | undefined, size: { mw: number; mh: number }): Uint8Array | undefined {
+function maskSamplesOf(
+  doc: PdfObjectsDocument,
+  mask: PdfStream,
+  filter: string | undefined,
+  size: { mw: number; mh: number },
+): Uint8Array | undefined {
   try {
     if (filter === "CCITTFaxDecode") return ccittSamplesOf(doc, mask, size.mw, size.mh);
     if (filter === "DCTDecode") return dctSamplesOf(doc, mask, size.mw, size.mh);
@@ -96,7 +116,12 @@ function maskSamplesOf(doc: PdfObjectsDocument, mask: PdfStream, filter: string 
 /** The alpha of a soft mask at the picture's size. pdf.js took each picture pixel's alpha from the mask sample at
  *  `floor(x · maskWidth / width)`, `floor(y · maskHeight / height)` (nearest, no centring: measured on a 40 × 30 mask
  *  under a 64 × 48 picture, all 3 072 pixels). `undefined` when the mask cannot be read. */
-export function alphaOf(doc: PdfObjectsDocument, mask: PdfStream, width: number, height: number): Uint8Array | undefined {
+export function alphaOf(
+  doc: PdfObjectsDocument,
+  mask: PdfStream,
+  width: number,
+  height: number,
+): Uint8Array | undefined {
   const mw = numberOf(doc.resolve(mask.dict.get("Width")));
   const mh = numberOf(doc.resolve(mask.dict.get("Height")));
   if (mw === undefined || mh === undefined || !pictureSizeOk(mw, mh) || !pictureSizeOk(width, height)) return undefined;

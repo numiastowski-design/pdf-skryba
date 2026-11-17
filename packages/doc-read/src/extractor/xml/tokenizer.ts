@@ -118,24 +118,31 @@ const LINE_FEED = 0x0a;
 const RIGHT_SQUARE_BRACKET = 0x5d;
 const HYPHEN_MINUS = 0x2d;
 
-const isSpace = (charCode: number): boolean => charCode === 0x20 || charCode === 0x09 || charCode === LINE_FEED || charCode === CARRIAGE_RETURN;
+const isSpace = (charCode: number): boolean =>
+  charCode === 0x20 || charCode === 0x09 || charCode === LINE_FEED || charCode === CARRIAGE_RETURN;
 
 /** §2.2 Char, for a code point. */
 const isChar = (codePoint: number): boolean =>
-  codePoint === 0x09 || codePoint === LINE_FEED || codePoint === CARRIAGE_RETURN || (codePoint >= 0x20 && codePoint <= 0xd7ff) || (codePoint >= 0xe000 && codePoint <= 0xfffd) || (codePoint >= 0x10000 && codePoint <= LAST_UNICODE_CODE_POINT);
+  codePoint === 0x09 ||
+  codePoint === LINE_FEED ||
+  codePoint === CARRIAGE_RETURN ||
+  (codePoint >= 0x20 && codePoint <= 0xd7ff) ||
+  (codePoint >= 0xe000 && codePoint <= 0xfffd) ||
+  (codePoint >= 0x10000 && codePoint <= LAST_UNICODE_CODE_POINT);
 
 /** Flat `[low, high, low, high, …]` inclusive ranges: no pair object to allocate or destructure per character. */
 type Ranges = readonly number[];
 
 const isInRanges = (codePoint: number, ranges: Ranges): boolean => {
-  for (let lowIndex = 0; lowIndex < ranges.length; lowIndex += 2) if (codePoint >= ranges[lowIndex]! && codePoint <= ranges[lowIndex + 1]!) return true;
+  for (let lowIndex = 0; lowIndex < ranges.length; lowIndex += 2)
+    if (codePoint >= ranges[lowIndex]! && codePoint <= ranges[lowIndex + 1]!) return true;
   return false;
 };
 
 /** §2.3 NameStartChar: letters first (the common case), then `:` and `_`, then the rest. */
 const NAME_START_RANGES: Ranges = [
-  0x61, 0x7a, 0x41, 0x5a, 0x3a, 0x3a, 0x5f, 0x5f, 0xc0, 0xd6, 0xd8, 0xf6, 0xf8, 0x2ff, 0x370, 0x37d, 0x37f, 0x1fff, 0x200c, 0x200d, 0x2070, 0x218f, 0x2c00, 0x2fef, 0x3001,
-  0xd7ff, 0xf900, 0xfdcf, 0xfdf0, 0xfffd, 0x10000, 0xeffff,
+  0x61, 0x7a, 0x41, 0x5a, 0x3a, 0x3a, 0x5f, 0x5f, 0xc0, 0xd6, 0xd8, 0xf6, 0xf8, 0x2ff, 0x370, 0x37d, 0x37f, 0x1fff,
+  0x200c, 0x200d, 0x2070, 0x218f, 0x2c00, 0x2fef, 0x3001, 0xd7ff, 0xf900, 0xfdcf, 0xfdf0, 0xfffd, 0x10000, 0xeffff,
 ];
 
 /** §2.3 NameChar beyond NameStartChar: `-`, `.`, digits, U+00B7, combining marks, U+203F-2040. */
@@ -164,8 +171,10 @@ const DECLARATION_VALUE_SEARCH = 64;
 
 /** Judges a declaration pseudo-attribute value as soon as it is read. */
 const checkDeclarationValue = (pseudoAttributeName: string, value: string, encoding: XmlSourceEncoding): void => {
-  if (pseudoAttributeName === "version" && !VERSION_NUMBER_PATTERN.test(value)) throw xmlRefusal("malformed XML declaration");
-  if (pseudoAttributeName === "standalone" && value !== "yes" && value !== "no") throw xmlRefusal("malformed XML declaration");
+  if (pseudoAttributeName === "version" && !VERSION_NUMBER_PATTERN.test(value))
+    throw xmlRefusal("malformed XML declaration");
+  if (pseudoAttributeName === "standalone" && value !== "yes" && value !== "no")
+    throw xmlRefusal("malformed XML declaration");
   if (pseudoAttributeName !== "encoding") return;
   if (!ENCODING_NAME_PATTERN.test(value)) throw xmlRefusal("malformed XML declaration");
   if (encoding === "UTF-16LE" || encoding === "UTF-16BE") {
@@ -174,7 +183,8 @@ const checkDeclarationValue = (pseudoAttributeName: string, value: string, encod
   }
   const declaredEncoding = canonicalizeEncodingLabel(value);
   if (declaredEncoding === undefined) throw xmlRefusal("unknown encoding declared");
-  if (declaredEncoding !== (encoding === "UTF-8" ? "utf-8" : encoding)) throw xmlRefusal("declared encoding does not match the bytes");
+  if (declaredEncoding !== (encoding === "UTF-8" ? "utf-8" : encoding))
+    throw xmlRefusal("declared encoding does not match the bytes");
 };
 
 /** One forward pass over `source`; `position` is the read position, shared by the methods below. */
@@ -238,7 +248,12 @@ class Lexer {
     const first = this.codePointAt(this.position);
     if (first < 0 || !isNameStart(first)) throw xmlRefusal("malformed name");
     this.position += getCodeUnitWidth(first);
-    for (let codePoint = this.codePointAt(this.position); codePoint >= 0 && isNameChar(codePoint); codePoint = this.codePointAt(this.position)) this.position += getCodeUnitWidth(codePoint);
+    for (
+      let codePoint = this.codePointAt(this.position);
+      codePoint >= 0 && isNameChar(codePoint);
+      codePoint = this.codePointAt(this.position)
+    )
+      this.position += getCodeUnitWidth(codePoint);
     const name = this.source.slice(start, this.position);
     if (isObjectKey && JS_RESERVED_NAMES.has(name)) throw xmlRefusal("name reserved by JavaScript objects");
     return name;
@@ -271,7 +286,8 @@ class Lexer {
       value = value * radix + digit;
       if (value > LAST_UNICODE_CODE_POINT) throw xmlRefusal("character reference out of range");
     }
-    if (digits === 0 || this.source.charCodeAt(this.position) !== SEMICOLON) throw xmlRefusal("malformed character reference");
+    if (digits === 0 || this.source.charCodeAt(this.position) !== SEMICOLON)
+      throw xmlRefusal("malformed character reference");
     this.position++;
     if (!isChar(value)) throw xmlRefusal("character reference to a forbidden character");
     return String.fromCodePoint(value);
@@ -280,8 +296,16 @@ class Lexer {
   /** One of the five predefined entity references after `&`; leaves `position` after its `;`. */
   private readEntityReference(): string {
     const start = this.position;
-    while (this.position < this.sourceLength && this.position - start <= LONGEST_PREDEFINED_ENTITY_NAME_LENGTH && this.source.charCodeAt(this.position) !== SEMICOLON) this.position++;
-    const replacement = this.source.charCodeAt(this.position) === SEMICOLON ? PREDEFINED_ENTITIES[this.source.slice(start, this.position)] : undefined;
+    while (
+      this.position < this.sourceLength &&
+      this.position - start <= LONGEST_PREDEFINED_ENTITY_NAME_LENGTH &&
+      this.source.charCodeAt(this.position) !== SEMICOLON
+    )
+      this.position++;
+    const replacement =
+      this.source.charCodeAt(this.position) === SEMICOLON
+        ? PREDEFINED_ENTITIES[this.source.slice(start, this.position)]
+        : undefined;
     if (replacement === undefined) throw xmlRefusal("entity reference other than the five predefined ones");
     this.position++;
     return replacement;
@@ -300,7 +324,10 @@ class Lexer {
     this.position += 4;
     for (;;) {
       if (this.position >= this.sourceLength) throw xmlRefusal("unterminated comment");
-      if (this.source.charCodeAt(this.position) === HYPHEN_MINUS && this.source.charCodeAt(this.position + 1) === HYPHEN_MINUS) {
+      if (
+        this.source.charCodeAt(this.position) === HYPHEN_MINUS &&
+        this.source.charCodeAt(this.position + 1) === HYPHEN_MINUS
+      ) {
         if (this.source.charCodeAt(this.position + 2) !== GREATER_THAN) throw xmlRefusal("'--' inside a comment");
         this.position += 3;
         return;
@@ -499,7 +526,12 @@ class Lexer {
   /** One pseudo-attribute of the declaration at `position`, after the rank `previousRank` of the previous one; returns its own rank. */
   private readPseudoAttribute(previousRank: number): number {
     const start = this.position;
-    while (this.position < this.sourceLength && this.source.charCodeAt(this.position) >= 0x61 && this.source.charCodeAt(this.position) <= 0x7a) this.position++;
+    while (
+      this.position < this.sourceLength &&
+      this.source.charCodeAt(this.position) >= 0x61 &&
+      this.source.charCodeAt(this.position) <= 0x7a
+    )
+      this.position++;
     const pseudoAttributeName = this.source.slice(start, this.position);
     const rank = DECLARATION_ORDER.indexOf(pseudoAttributeName);
     if (rank <= previousRank || (previousRank < 0 && rank !== 0)) throw xmlRefusal("malformed XML declaration");
@@ -517,9 +549,15 @@ class Lexer {
     const quote = this.source.charCodeAt(this.position);
     if (quote !== QUOTATION_MARK && quote !== APOSTROPHE) throw xmlRefusal("malformed XML declaration");
     let closingQuoteIndex = this.position + 1;
-    while (closingQuoteIndex < this.sourceLength && closingQuoteIndex - this.position <= DECLARATION_VALUE_SEARCH && this.source.charCodeAt(closingQuoteIndex) !== quote) closingQuoteIndex++;
+    while (
+      closingQuoteIndex < this.sourceLength &&
+      closingQuoteIndex - this.position <= DECLARATION_VALUE_SEARCH &&
+      this.source.charCodeAt(closingQuoteIndex) !== quote
+    )
+      closingQuoteIndex++;
     // Our own ceiling (a value of 64 characters or more), not a well-formedness violation: told apart from a quote missing at end of input.
-    if (closingQuoteIndex - this.position > DECLARATION_VALUE_SEARCH) throw xmlRefusal("XML declaration value too long");
+    if (closingQuoteIndex - this.position > DECLARATION_VALUE_SEARCH)
+      throw xmlRefusal("XML declaration value too long");
     if (this.source.charCodeAt(closingQuoteIndex) !== quote) throw xmlRefusal("malformed XML declaration");
     const value = this.source.slice(this.position + 1, closingQuoteIndex);
     this.position = closingQuoteIndex + 1;

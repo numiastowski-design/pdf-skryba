@@ -42,7 +42,8 @@ export const CENTRE_WINDOW: GlyphWindowOptions = { anchor: "centre", leftSlackEm
 export const START_WINDOW: GlyphWindowOptions = { anchor: "start", leftSlackEm: 0.25, rightTrimEm: 0.1 };
 
 /** `glyphs` sorted by `y` (stable): the list `glyphsOfRun` bisects. The caller filters (spaces in or out) first. */
-export const sortedByBaseline = (glyphs: readonly GlyphFragment[]): GlyphFragment[] => [...glyphs].sort((a, b) => a.y - b.y);
+export const sortedByBaseline = (glyphs: readonly GlyphFragment[]): GlyphFragment[] =>
+  [...glyphs].sort((a, b) => a.y - b.y);
 
 /** The glyphs of a run, left to right. `byY` is sorted by `y` (`sortedByBaseline`). Same baseline: |dy| < 0.25 em. */
 export const glyphsOfRun = (

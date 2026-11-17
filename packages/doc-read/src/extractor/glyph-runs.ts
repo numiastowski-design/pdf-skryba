@@ -37,7 +37,15 @@
  * l. 35866-35903 of 6.2.108) or Poppler (0.1 em); the bench says whether they move.
  */
 
-import { buildGlyphFragments, readGlyphs, type FontScaleOf, type GlyphFragment, type HidePolicy, type NamedOp, type SymbolFontOf } from "./glyph-positions";
+import {
+  buildGlyphFragments,
+  readGlyphs,
+  type FontScaleOf,
+  type GlyphFragment,
+  type HidePolicy,
+  type NamedOp,
+  type SymbolFontOf,
+} from "./glyph-positions";
 import { dropsModeHidden } from "./pdf-hidden-text";
 import { WORD_GAP_EM } from "doc-ir/layout/word-gap";
 import type { PdfTextRun } from "./pdf-source";
@@ -105,11 +113,25 @@ interface OpenRun {
   trail: BlankSpan | undefined;
 }
 
-const baseOf = (g: GlyphFragment): { x: number; y: number } => ({ x: g.x - (g.rise?.x ?? 0), y: g.y - (g.rise?.y ?? 0) });
+const baseOf = (g: GlyphFragment): { x: number; y: number } => ({
+  x: g.x - (g.rise?.x ?? 0),
+  y: g.y - (g.rise?.y ?? 0),
+});
 
 function openRun(g: GlyphFragment, base: { x: number; y: number }): OpenRun {
   const ink = !isBlank(g);
-  return { first: g, axis: axisOf(g), size: g.height, text: ink ? g.text : "", hasInk: ink, lastInk: g, lastInkBase: base, prev: g, lead: ink ? undefined : { first: g, last: g }, trail: undefined };
+  return {
+    first: g,
+    axis: axisOf(g),
+    size: g.height,
+    text: ink ? g.text : "",
+    hasInk: ink,
+    lastInk: g,
+    lastInkBase: base,
+    prev: g,
+    lead: ink ? undefined : { first: g, last: g },
+    trail: undefined,
+  };
 }
 
 /** What closes a run before glyph `g`. The font, the section and the size are compared with the previous glyph; the GEOMETRY
@@ -118,10 +140,16 @@ function openRun(g: GlyphFragment, base: { x: number; y: number }): OpenRun {
  *  measured the same way. `base` is `g`'s baseline. */
 type Cut = "same-run" | "cut" | "new-line";
 
-function cutBefore(run: OpenRun, g: GlyphFragment, base: { x: number; y: number }, sameFont: NonNullable<GlyphRunOptions["sameFont"]>): { cut: Cut; gap: number } {
+function cutBefore(
+  run: OpenRun,
+  g: GlyphFragment,
+  base: { x: number; y: number },
+  sameFont: NonNullable<GlyphRunOptions["sameFont"]>,
+): { cut: Cut; gap: number } {
   const { prev } = run;
   const axis = axisOf(g);
-  if (Math.abs(axis.x - run.axis.x) > SAME_RELATIVE || Math.abs(axis.y - run.axis.y) > SAME_RELATIVE) return { cut: "cut", gap: 0 };
+  if (Math.abs(axis.x - run.axis.x) > SAME_RELATIVE || Math.abs(axis.y - run.axis.y) > SAME_RELATIVE)
+    return { cut: "cut", gap: 0 };
   const dx = base.x - run.lastInkBase.x;
   const dy = base.y - run.lastInkBase.y;
   const along = dx * run.axis.x + dy * run.axis.y;
@@ -130,8 +158,10 @@ function cutBefore(run: OpenRun, g: GlyphFragment, base: { x: number; y: number 
   // Font and size are read BEFORE the line change, so `hasEOL` stays what it was with pdf.js's runs: a smaller superscript raised 0.33 em
   // is a cut, not a new line (`pipeline/text-conservation.ts#joinRuns` reads `hasEOL`; review of 14/10/2026). The blank run
   // is kept off a line change in `runsOfGlyphs` instead, by the baselines.
-  if (!sameFont(g.font, prev.font) || g.section !== prev.section || g.artifact !== prev.artifact) return { cut: "cut", gap: 0 };
-  if (Math.abs(g.height - run.size) > SAME_RELATIVE * Math.max(run.size, g.height) + 1e-9) return { cut: "cut", gap: 0 };
+  if (!sameFont(g.font, prev.font) || g.section !== prev.section || g.artifact !== prev.artifact)
+    return { cut: "cut", gap: 0 };
+  if (Math.abs(g.height - run.size) > SAME_RELATIVE * Math.max(run.size, g.height) + 1e-9)
+    return { cut: "cut", gap: 0 };
   if (Math.abs(across) > BASELINE_SHIFT_EM * run.size) return { cut: "new-line", gap };
   if (gap < -STEP_BACK_EM * run.size || gap > RUN_GAP_EM * run.size) return { cut: "cut", gap };
   return { cut: "same-run", gap };
@@ -247,7 +277,11 @@ export function runsOfGlyphs(glyphs: readonly GlyphFragment[], options: GlyphRun
 
 /** The one space between two letter runs a cut separates: at the first blank glyph, as wide as the blanks, in their font. */
 function blankRunOf({ first, last }: BlankSpan, options: GlyphRunOptions): PdfTextRun {
-  return runOf({ first, lastInk: last, axis: axisOf(first), size: first.height, text: " ", lastInkBase: baseOf(last) }, false, options);
+  return runOf(
+    { first, lastInk: last, axis: axisOf(first), size: first.height, text: " ", lastInkBase: baseOf(last) },
+    false,
+    options,
+  );
 }
 
 /** A SHEAR OF THE TEXT MATRIX IS AN ITALIC THE PDF DECLARES BY ITS GEOMETRY (05/11/2026): the caption of the newspaper's
@@ -255,9 +289,14 @@ function blankRunOf({ first, last }: BlankSpan, options: GlyphRunOptions): PdfTe
  *  A rotation leans too, but with b ≠ 0; a shear keeps b at zero. Below `MIN_ITALIC_SHEAR` the lean is float noise. */
 export const MIN_ITALIC_SHEAR = 0.05;
 
-const shearedItalic = (m: { b: number; c: number; d: number }): boolean => Math.abs(m.b) < MIN_ITALIC_SHEAR * Math.abs(m.d) && Math.abs(m.c) >= MIN_ITALIC_SHEAR * Math.abs(m.d);
+const shearedItalic = (m: { b: number; c: number; d: number }): boolean =>
+  Math.abs(m.b) < MIN_ITALIC_SHEAR * Math.abs(m.d) && Math.abs(m.c) >= MIN_ITALIC_SHEAR * Math.abs(m.d);
 
-function runOf(open: Pick<OpenRun, "first" | "lastInk" | "axis" | "size" | "text" | "lastInkBase">, hasEOL: boolean, { pageObjId, normalize }: GlyphRunOptions): PdfTextRun {
+function runOf(
+  open: Pick<OpenRun, "first" | "lastInk" | "axis" | "size" | "text" | "lastInkBase">,
+  hasEOL: boolean,
+  { pageObjId, normalize }: GlyphRunOptions,
+): PdfTextRun {
   const { first, lastInk, axis } = open;
   const firstBase = baseOf(first);
   const along = (open.lastInkBase.x - firstBase.x) * axis.x + (open.lastInkBase.y - firstBase.y) * axis.y;
@@ -288,6 +327,9 @@ export function glyphRuns(
   ops: readonly NamedOp[],
   options: GlyphRunOptions & { hide?: HidePolicy; fontScaleOf?: FontScaleOf; symbolFontOf?: SymbolFontOf } = {},
 ): PdfTextRun[] {
-  const hide: HidePolicy = options.hide ?? { isLayerVisible: () => true, dropModeHidden: dropsModeHidden(readGlyphs(ops, () => true, options.fontScaleOf, options.symbolFontOf)) };
+  const hide: HidePolicy = options.hide ?? {
+    isLayerVisible: () => true,
+    dropModeHidden: dropsModeHidden(readGlyphs(ops, () => true, options.fontScaleOf, options.symbolFontOf)),
+  };
   return runsOfGlyphs(buildGlyphFragments(ops, hide, options.fontScaleOf, options.symbolFontOf), options);
 }

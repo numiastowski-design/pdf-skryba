@@ -129,7 +129,12 @@ function zlibStored(raw: Uint8Array): Uint8Array {
  * and guessing the bit order without being able to check it would produce a
  * wrong image. It therefore returns `undefined`, as before.
  */
-export function encodePng(width: number, height: number, format: PixelFormat, data: ArrayLike<number>): Uint8Array | undefined {
+export function encodePng(
+  width: number,
+  height: number,
+  format: PixelFormat,
+  data: ArrayLike<number>,
+): Uint8Array | undefined {
   if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) return undefined;
   if (format === "gray-1") return encodeGrey1(width, height, data);
   const channels = format === "rgb-24" ? 3 : format === "rgba-32" ? 4 : 0;
@@ -170,7 +175,12 @@ function encodeGrey1(width: number, height: number, data: ArrayLike<number>): Ui
  * fixture 24, against 18 to 123 KB here. `deflateSync` is deterministic for the same
  * Node version: same pixels, same bytes, same `sha256`.
  */
-export function encodePngDeflate(width: number, height: number, channels: 1 | 2 | 3 | 4, pixels: Uint8Array): Uint8Array | undefined {
+export function encodePngDeflate(
+  width: number,
+  height: number,
+  channels: 1 | 2 | 3 | 4,
+  pixels: Uint8Array,
+): Uint8Array | undefined {
   if (!Number.isInteger(width) || !Number.isInteger(height) || width <= 0 || height <= 0) return undefined;
   const stride = width * channels;
   if (pixels.length < stride * height) return undefined; // longer is fine: only stride * height bytes are read

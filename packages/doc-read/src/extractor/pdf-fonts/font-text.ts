@@ -19,6 +19,7 @@ import { builtInType1Encoding } from "./type1-encoding";
 import { textOfUnicodeCode, unicodeCodeForm } from "./predefined-cmaps";
 import { chargeTableEntries, type TableBudget } from "./table-budget";
 import { readToUnicode, type ToUnicode } from "./to-unicode";
+import { PdfObjectsRefusal } from "../pdf-objects/refusal";
 
 /** What this layer needs of a document: two lookups and the bytes of a stream. */
 export interface FontReader {
@@ -82,13 +83,21 @@ function programEncodingOf(reader: FontReader, font: PdfDict): readonly string[]
   if (file?.kind !== "stream") return undefined;
   try {
     return builtInType1Encoding(reader.streamBytes(file));
-  } catch {
-    // A stream we cannot decode says nothing, and the abstention stands: never a guessed encoding.
-    return undefined;
+  } catch (error) {
+    // A stream OUR reader refuses to decode says nothing, and the abstention stands: never a guessed encoding.
+    // Anything else is a defect, and is not turned into the standard encoding, which can INVENT letters (16/11/2026,
+    // docs/CONCEPTION-AVIS-TEXTE-PDF.md, question 5): it leaves the font, whose caller drops its glyphs
+    // (`pdf-glyph-source.ts`, « A font we cannot read »). Losing words visibly rather than inventing them silently.
+    if (error instanceof PdfObjectsRefusal) return undefined;
+    throw error;
   }
 }
 
-export function encodingChoiceOf(reader: FontReader, font: PdfDict, builtIn?: string): Parameters<typeof encodingNames>[0] {
+export function encodingChoiceOf(
+  reader: FontReader,
+  font: PdfDict,
+  builtIn?: string,
+): Parameters<typeof encodingNames>[0] {
   const encoding = reader.resolve(font.get("Encoding"));
   const dict = encoding?.kind === "dict" ? encoding.entries : undefined;
   const named = nameOf(encoding) ?? nameOf(reader.resolve(dict?.get("BaseEncoding")));
@@ -112,15 +121,23 @@ export function encodingChoiceOf(reader: FontReader, font: PdfDict, builtIn?: st
 export type FontTextMemo = Map<number, ToUnicode | undefined>;
 
 /** The `/ToUnicode` table of a font, or `undefined` when it has none or it cannot be read. */
-function toUnicodeOf(reader: FontReader, font: PdfDict, memo: FontTextMemo | undefined, budget: TableBudget | undefined): ToUnicode | undefined {
+function toUnicodeOf(
+  reader: FontReader,
+  font: PdfDict,
+  memo: FontTextMemo | undefined,
+  budget: TableBudget | undefined,
+): ToUnicode | undefined {
   const stream = reader.resolve(font.get("ToUnicode"));
   if (stream?.kind !== "stream") return undefined;
   if (memo?.has(stream.start) === true) return memo.get(stream.start);
   let table: ToUnicode | undefined;
   try {
     table = readToUnicode(reader.streamBytes(stream));
-  } catch {
-    // A CMap we refuse says nothing; the encoding may still answer.
+  } catch (error) {
+    // A CMap OUR reader refuses (`to-unicode`, an undecodable stream) says nothing; the encoding may still answer.
+    // Anything else is a defect and leaves the font, as `programEncodingOf` does (16/11/2026): the encoding's
+    // letters would be a guess for a font that declared its own text.
+    if (!(error instanceof PdfObjectsRefusal)) throw error;
     table = undefined;
   }
   // Charged when the table is made, once per OBJECT (the memo answers the others): a table is kept for the whole document.
@@ -134,7 +151,12 @@ function toUnicodeOf(reader: FontReader, font: PdfDict, memo: FontTextMemo | und
  *  Who calls it and why: `extractor/pdf-glyph-source.ts`, the only one to see the sequence of painted codes, pairs these
  *  half-pairs (31/10/2026: "we have to do it ourselves", for emojis). It is therefore not a
  *  second reading of the CMap: it is the SAME table, whose refused part is exposed. */
-export function fontDeclaredText(reader: FontReader, font: PdfDict, memo?: FontTextMemo, budget?: TableBudget): (code: number) => string | undefined {
+export function fontDeclaredText(
+  reader: FontReader,
+  font: PdfDict,
+  memo?: FontTextMemo,
+  budget?: TableBudget,
+): (code: number) => string | undefined {
   const toUnicode = toUnicodeOf(reader, font, memo, budget);
   return (code) => toUnicode?.rejected.get(code);
 }
@@ -142,7 +164,12 @@ export function fontDeclaredText(reader: FontReader, font: PdfDict, memo?: FontT
 /** The text each code of this font paints. Read once per font; the function it returns is pure.
  *  `memo` shares the `/ToUnicode` tables between the fonts of one document; without it, each font re-reads and
  *  retains its own (see `FontTextMemo`). */
-export function fontText(reader: FontReader, font: PdfDict, memo?: FontTextMemo, budget?: TableBudget): (code: number) => string | undefined {
+export function fontText(
+  reader: FontReader,
+  font: PdfDict,
+  memo?: FontTextMemo,
+  budget?: TableBudget,
+): (code: number) => string | undefined {
   const toUnicode = toUnicodeOf(reader, font, memo, budget);
   const composite = nameOf(reader.resolve(font.get("Subtype"))) === "Type0";
 

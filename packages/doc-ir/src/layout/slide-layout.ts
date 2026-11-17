@@ -152,7 +152,9 @@ const readingOrder = <U>(things: readonly U[], boxOf: (u: U) => Box | undefined,
     if (line && p.box.y - line[0]!.box.y <= SLIDE_TOLERANCE_EMU) line.push(p);
     else lines.push([p]);
   }
-  const ordered = lines.flatMap((line) => [...line].sort((a, b) => a.box.x - b.box.x || a.box.y - b.box.y || a.key - b.key));
+  const ordered = lines.flatMap((line) =>
+    [...line].sort((a, b) => a.box.x - b.box.x || a.box.y - b.box.y || a.key - b.key),
+  );
   const unplaced = things.filter((t) => boxOf(t) === undefined).sort((a, b) => keyOf(a) - keyOf(b));
   return [...ordered.map((p) => p.t), ...unplaced];
 };
@@ -172,7 +174,11 @@ const unitsOf = <T>(elements: readonly SlideElement<T>[]): Unit<T>[] => {
   for (const [key, members] of groups) {
     const box = union(members.flatMap((m) => (m.box ? [m.box] : [])));
     units.push({
-      members: readingOrder(members, (m) => m.box, (m) => m.spTreeIndex),
+      members: readingOrder(
+        members,
+        (m) => m.box,
+        (m) => m.spTreeIndex,
+      ),
       ...(box ? { box } : {}),
       picture: false,
       key,
@@ -268,7 +274,12 @@ export const layoutSlide = <T>(input: SlideLayoutInput<T>): SlideLayout<T> => {
   const units = unitsOf(input.elements);
   const hosts = hostsOf(units, input.slide);
 
-  const ordered = (indices: readonly number[]): number[] => readingOrder(indices, (i) => units[i]!.box, (i) => units[i]!.key);
+  const ordered = (indices: readonly number[]): number[] =>
+    readingOrder(
+      indices,
+      (i) => units[i]!.box,
+      (i) => units[i]!.key,
+    );
   /** A unit's items followed by the items of the units posed on it. */
   const withPosed = (i: number): T[] => {
     const posed = units.flatMap((_, j) => (hosts[j] === i ? [j] : []));
@@ -303,7 +314,10 @@ export const layoutSlide = <T>(input: SlideLayoutInput<T>): SlideLayout<T> => {
     const used = new Set(centres2.map((c) => bandOf(starts, c)));
     return starts.filter((_, i) => used.has(i));
   };
-  const cols = inhabited(columnGroups.map((g) => g.first), centresX);
+  const cols = inhabited(
+    columnGroups.map((g) => g.first),
+    centresX,
+  );
   if (cols.length < 2) return { form: "flow", reason: "one-column", items: inFlow(free) };
   const rows = inhabited(rowStarts(grid.map((i) => units[i]!.box!.y)), centresY);
   const colCount = cols.length;
@@ -359,7 +373,8 @@ export const layoutSlide = <T>(input: SlideLayoutInput<T>): SlideLayout<T> => {
   ];
   const height = rowCount + offset;
   const at: (Rect<T> | undefined)[][] = Array.from({ length: height }, () => Array<Rect<T> | undefined>(colCount));
-  for (const r of all) for (let y = r.row; y < r.row + r.rowspan; y++) for (let x = r.col; x < r.col + r.colspan; x++) at[y]![x] = r;
+  for (const r of all)
+    for (let y = r.row; y < r.row + r.rowspan; y++) for (let x = r.col; x < r.col + r.colspan; x++) at[y]![x] = r;
 
   // `buildMergeMap` lays the empty slots out and gives the cells in reading
   // order: per row, the spans of every slot left to right (a slot covered
@@ -367,7 +382,7 @@ export const layoutSlide = <T>(input: SlideLayoutInput<T>): SlideLayout<T> => {
   // rectangle covers both slots.
   const columnSpans = at.map((line) => {
     const spans: number[] = [];
-    for (let x = 0; x < colCount; ) {
+    for (let x = 0; x < colCount;) {
       const span = line[x]?.colspan ?? 1;
       spans.push(span);
       x += span;

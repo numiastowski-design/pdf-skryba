@@ -17,7 +17,11 @@ import { placeholderOf } from "./placeholder";
 import { bulletOf, type PptxListPlace } from "./text";
 import { placeholderStyles, type TextStyleSources } from "./text-color";
 
-export const inheritedBullet = (element: XNode, body: XNode, sources: TextStyleSources): ((level: number) => PptxListPlace | undefined) => {
+export const inheritedBullet = (
+  element: XNode,
+  body: XNode,
+  sources: TextStyleSources,
+): ((level: number) => PptxListPlace | undefined) => {
   const ph = placeholderOf(element);
   if (ph === undefined || ph.type === "title" || ph.type === "ctrTitle") return () => undefined;
   const chain = [findChild(body, "a:lstStyle"), ...placeholderStyles(ph, sources)];

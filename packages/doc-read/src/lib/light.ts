@@ -27,20 +27,64 @@ export { sha256Hex } from "doc-ir/lib/digest";
 export { mapInlines, walkBlocks, walkInlines } from "doc-ir/lib/ir-walk";
 export { DIAGRAM_TEXT_SEPARATOR, diagramParagraphs } from "doc-ir/lib/ir";
 export type { DiagramTextSection } from "doc-ir/lib/ir";
-export type { BlockAlign, ChartDrawing, ColumnsLayout, IRBlock, IRDoc, IRTab, ImageRef, Inline, InlineMark, TableData } from "doc-ir/lib/ir";
+export type {
+  BlockAlign,
+  ChartDrawing,
+  ColumnsLayout,
+  IRBlock,
+  IRDoc,
+  IRTab,
+  ImageRef,
+  Inline,
+  InlineMark,
+  TableData,
+} from "doc-ir/lib/ir";
 export { PUBLISHED_SCHEME } from "doc-ir/lib/link-schemes";
-export { DOCX_MIME, EXT_BY_MIME, GOOGLE_DOC, GOOGLE_FOLDER, GOOGLE_SHEET, GOOGLE_SLIDES, PPTX_MIME, SOURCE_TYPE_BY_EXTENSION, XLSX_MIME, isGoogleNative, listedMimeType } from "./mime-types";
+export {
+  DOCX_MIME,
+  EXT_BY_MIME,
+  GOOGLE_DOC,
+  GOOGLE_FOLDER,
+  GOOGLE_SHEET,
+  GOOGLE_SLIDES,
+  PPTX_MIME,
+  SOURCE_TYPE_BY_EXTENSION,
+  XLSX_MIME,
+  isGoogleNative,
+  listedMimeType,
+} from "./mime-types";
 export { ReaderError } from "doc-ir/lib/reader-error";
 export type { ReaderCountDetail } from "doc-ir/lib/reader-error";
-export { MAX_PAYLOAD_BYTES, cutNoticeName } from "doc-ir/lib/reader-limits";
+export { MAX_NOTICE_PAGE_RANGES, MAX_PAYLOAD_BYTES, cutNoticeName } from "doc-ir/lib/reader-limits";
 export type { ReaderLimits } from "doc-ir/lib/reader-limits";
-export type { DocumentConservation, DocumentNotice, DocumentStructure, MissingWordCause, PageLanguage, PdfToolLabel, PictureRefusal, StructureCounts } from "doc-ir/lib/reader-types";
+export type {
+  DocumentConservation,
+  DocumentNotice,
+  DocumentStructure,
+  MissingWordCause,
+  PageLanguage,
+  PdfToolLabel,
+  PictureRefusal,
+  StructureCounts,
+} from "doc-ir/lib/reader-types";
 export type { SlideImage, SlideImagePort, SlidePage } from "./slide-image-port";
 export { withoutEmptyTableParts } from "doc-ir/lib/table-empty-parts";
 // The CHECKS, which an app file reads a render with (09/11/2026: everything that reads or writes a render is app
 // code, so what it needs crosses a door). Values and types only — none of this loads a reader.
-export { conservationKey, letterCounts, lostWords, textConservation, wordKeysOf } from "doc-ir/pipeline/text-conservation";
-export type { ConservationRule, ConservationRun, ConservationVerdict, PageEdit, PublishedPage } from "doc-ir/pipeline/text-conservation";
+export {
+  conservationKey,
+  letterCounts,
+  lostWords,
+  textConservation,
+  wordKeysOf,
+} from "doc-ir/pipeline/text-conservation";
+export type {
+  ConservationRule,
+  ConservationRun,
+  ConservationVerdict,
+  PageEdit,
+  PublishedPage,
+} from "doc-ir/pipeline/text-conservation";
 export { gluedWordEdits, noWorse } from "../pipeline/glued-word-repair";
 // La décision du texte perdu : elle ne lit que des mots, donc elle passe par la porte LÉGÈRE. Celle du recollage est
 // sur la porte de lecture : elle a besoin du repérage des puces (`layout/list.ts`), et cette porte-ci doit rester
@@ -49,7 +93,14 @@ export { placeLostPassages } from "../pipeline/lost-text-repair";
 export type { LostTextAbstention } from "../pipeline/lost-text-repair";
 export { conservationFromMissingWordGroups, missingWordGroups } from "../pipeline/declared-format-conservation";
 export { isDeclaredFormatSource, isReadFailure } from "../pipeline/conservation-source";
-export type { ConservationNumericCell, ConservationSourceReadFailure, DeclaredFormatConservationSource, MissingWordCauseGroup, StructureFormat, UnitStructure } from "../pipeline/conservation-source";
+export type {
+  ConservationNumericCell,
+  ConservationSourceReadFailure,
+  DeclaredFormatConservationSource,
+  MissingWordCauseGroup,
+  StructureFormat,
+  UnitStructure,
+} from "../pipeline/conservation-source";
 /** What the PDF reader produces, in its own file so the PDF package can publish its types without carrying those of
  *  the declared formats (`pipeline/pdf-conservation-source.ts`). */
 export type { ReferenceCycle } from "../pipeline/pdf-conservation-source";

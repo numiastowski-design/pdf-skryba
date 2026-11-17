@@ -109,8 +109,8 @@
  * does a glyph of a vertical font (its advance runs down the page; 0 pages of
  * the corpus measured). Returning made-up coordinates in silence on the first
  * document that uses them is exactly what this repository refuses everywhere
- * else. The page then falls back to flat text, and `PdfSourcePage.
- * glyphsUnavailable` says why.
+ * else. The page then keeps no text at all, `PdfSourcePage.glyphsUnavailable`
+ * says why (`unsupported`), and a `pdf-text-unread` notice names the page.
  *
  * `width` stays the ADVANCE, spacing included. Tried on 22/09/2026 and set
  * aside: the ink width alone (`w0` without `Tc`/`Tw`). No table on the 19
@@ -139,6 +139,26 @@ export { GRAPHICS_STATE_MAX_DEPTH };
  *  now the only file to know the encoding of the arguments (the shape inherited from pdf.js).
  *  Alias kept for the callers; the type lives behind the boundary. */
 export type NamedOp = PdfOp;
+
+/** What the glyph builder REFUSES to guess, as a closed tag set where it throws: the caller classifies the abstention by
+ *  its class and tag (`pdf-source.ts#textUnreadReasonOf`), never by reading its message, which it drops. */
+export type GlyphAbstentionTag = "vertical-writing" | "text-operator";
+
+export class GlyphBuilderAbstention extends ReaderError {
+  /** `operator`: the name our operator decoder gave, for a test or a development tool; read by nothing in production. */
+  constructor(
+    readonly tag: GlyphAbstentionTag,
+    operator?: string,
+  ) {
+    super(
+      "EXTRACT_FAILED",
+      tag === "vertical-writing"
+        ? "vertical writing: its advances run down the page and are not computed, refusing to guess"
+        : `unsupported text operator ${operator ?? ""}: not covered by the glyph builder, and guessing a position would be worse than failing`,
+    );
+    this.name = "GlyphBuilderAbstention";
+  }
+}
 
 export interface GlyphFragment {
   /**
@@ -231,6 +251,10 @@ export interface GlyphFragment {
   mcid?: number;
   /** Is any open marked-content level an `/Artifact`? */
   artifact?: boolean;
+  /** Set ONLY by `readGlyphs`, on the stand-in of a glyph whose font could not be read (`read: "not-ours"`, 17/11/2026): its
+   *  text is empty, `filteredGlyphs` never publishes it. It is placed and marked like any other glyph so that ONE filter
+   *  says whether that glyph would have been published (`unreadFontKept`). */
+  unreadFont?: true;
 }
 
 /** The glyph-space scale of a font, `FontMatrix[0]`, for a font whose advance is NOT in thousandths of an em (Type 3);
@@ -247,6 +271,8 @@ interface GlyphLike {
   isSpace?: boolean;
   /** Set on a glyph of a VERTICAL font only (`pdf-ops-ours.ts`; formerly pdf.js). */
   vmetric?: unknown;
+  /** Who read the glyph (`pdf-glyph-source.ts#OurGlyph.read`): `"not-ours"` for a font we could not read. */
+  read?: unknown;
 }
 
 /**
@@ -297,13 +323,17 @@ const LIGATURE_PRESENTATION_FORMS = /^[\uFB00-\uFB06]$/;
  *  a link walking the glyphs of a word (`pdf-links.ts`) and a table cell all count the same characters. A mark painted
  *  as a glyph of its own after its base is not composed. */
 const glyphText = (unicode: string): string =>
-  LIGATURE_PRESENTATION_FORMS.test(unicode) ? unicode.normalize("NFKC") : unicode.length > 1 ? unicode.normalize("NFC") : unicode;
+  LIGATURE_PRESENTATION_FORMS.test(unicode)
+    ? unicode.normalize("NFKC")
+    : unicode.length > 1
+      ? unicode.normalize("NFC")
+      : unicode;
 
 /** Operators that MOVE the text and that this module does not cover. Throwing
  *  rather than ignoring: ignoring them would give wrong positions in silence.
  *
  *  `'` and `"` are here although our reader never emits them (see the header): if
- *  that changes, the page falls back to flat text instead of being misplaced.
+ *  that changes, the page keeps no text (and says so) instead of being misplaced.
  *
  *  `nextLine` (`T*`) left this set on 09/09/2026: the five PDF fixtures of the
  *  time emitted `T*` and never `Td`, the real document measured the reverse, so
@@ -412,14 +442,23 @@ const looksLikeTextOp = (op: string): boolean => /text|font|leading|charspac|wor
  *  build on an invented geometry. */
 const asMatrix = (args: unknown, op: string): Matrix2D => {
   const m = args as Partial<Matrix2D> | undefined;
-  if (m === undefined || typeof m.a !== "number" || typeof m.b !== "number" || typeof m.c !== "number" || typeof m.d !== "number" || typeof m.e !== "number" || typeof m.f !== "number") {
-    throw new ReaderError("EXTRACT_FAILED", `${op}: expected a decoded matrix (see pdf-ops.decodeOps), got something else`);
+  if (
+    m === undefined ||
+    typeof m.a !== "number" ||
+    typeof m.b !== "number" ||
+    typeof m.c !== "number" ||
+    typeof m.d !== "number" ||
+    typeof m.e !== "number" ||
+    typeof m.f !== "number"
+  ) {
+    // An INTERNAL contract broken, never the file's fault: `UNKNOWN`, which a page's reason reads as `unexpected` (17/11/2026).
+    throw new ReaderError("UNKNOWN", `${op}: expected a decoded matrix (see pdf-ops.decodeOps), got something else`);
   }
   return { a: m.a, b: m.b, c: m.c, d: m.d, e: m.e, f: m.f };
 };
 
 const numberArg = (args: unknown, index: number): number => {
-  const v = Array.isArray(args) ? args[index] : undefined;
+  const v: unknown = Array.isArray(args) ? args[index] : undefined;
   return typeof v === "number" ? v : 0;
 };
 
@@ -430,30 +469,52 @@ const numberArg = (args: unknown, index: number): number => {
  * uncovered text move: better a document that visibly fails than a
  * table published on invented coordinates.
  */
-export function buildGlyphFragments(ops: readonly NamedOp[], hide?: HidePolicy, fontScaleOf?: FontScaleOf, symbolFontOf?: SymbolFontOf): GlyphFragment[] {
+export function buildGlyphFragments(
+  ops: readonly NamedOp[],
+  hide?: HidePolicy,
+  fontScaleOf?: FontScaleOf,
+  symbolFontOf?: SymbolFontOf,
+): GlyphFragment[] {
   return filteredGlyphs(readGlyphs(ops, hide?.isLayerVisible, fontScaleOf, symbolFontOf), hide);
 }
 
 /** The second half of `buildGlyphFragments`: the glyphs `readGlyphs` gave, the hidden ones left out, overpaint merged. A caller that has already
  *  read the glyphs (to decide the hide policy from them) passes them here instead of walking the operators a second time. */
 export function filteredGlyphs(all: GlyphFragment[], hide?: HidePolicy): GlyphFragment[] {
-  // 🔴 AU NIVEAU DE LA PAGE, comme la règle du mode 3 et pour la même raison : une page dont TOUT le texte est sous le
-  // plancher n'est pas une injection, c'est une page dessinée à une échelle (une imposition, un `cm` de 0,05). On ne
-  // jette un glyphe minuscule que si la page en porte un qui ne l'est pas.
-  // Le même « la page porte-t-elle du texte lisible ? » que la règle du mode 3 (`pdf-hidden-text.ts#dropsModeHidden`).
-  const readable = all.some((g) => g.hidden === undefined && g.unpainted === undefined && !g.isSpace && g.text.trim() !== "");
+  const readable = pageIsReadable(all);
   const kept: GlyphFragment[] = [];
   // `unpainted` is a marker for the filter only: it is taken out of the published glyph. `hidden` too — and it is
   // stripped on BOTH paths, since a size mark is set whether or not the page has a hiding policy.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars, sonarjs/no-unused-vars -- rest-destructure to omit a key from the published glyph
   for (const { hidden, unpainted: _unpainted, ...glyph } of all) {
-    // « size » et « clip » valent SANS politique de masquage : ni une taille ni un détourage vide ne se trahit par un
-    // opérateur, donc aucun pré-balayage ne peut les annoncer (`pdf-source.ts#scanHiddenCandidates`).
-    if (hidden === "size" || hidden === "clip" ? readable : hide !== undefined && isGlyphDropped(hidden, hide.dropModeHidden)) continue;
+    // The stand-in of an unreadable font's glyph is never published: it only feeds `unreadFontKept`.
+    if (glyph.unreadFont === true || isFilteredOut(hidden, readable, hide)) continue;
     kept.push(glyph);
   }
   return composeAccents(dropDoubleDraws(collapseOverpaint(kept)));
 }
+
+/** Would a glyph of a font we could not read have been PUBLISHED, its font readable? The one filter of the published
+ *  text (`isFilteredOut`, the same page-level `readable`) decides, on the stand-ins `readGlyphs` places (17/11/2026: nothing
+ *  invisible in the source is published nor expected, so an invisible glyph of such a font is no missing word). */
+export function unreadFontKept(all: readonly GlyphFragment[], hide?: HidePolicy): boolean {
+  const readable = pageIsReadable(all);
+  return all.some((glyph) => glyph.unreadFont === true && !isFilteredOut(glyph.hidden, readable, hide));
+}
+
+/** 🔴 AU NIVEAU DE LA PAGE, comme la règle du mode 3 et pour la même raison : une page dont TOUT le texte est sous le
+ *  plancher n'est pas une injection, c'est une page dessinée à une échelle (une imposition, un `cm` de 0,05). On ne
+ *  jette un glyphe minuscule que si la page en porte un qui ne l'est pas.
+ *  Le même « la page porte-t-elle du texte lisible ? » que la règle du mode 3 (`pdf-hidden-text.ts#dropsModeHidden`). A
+ *  stand-in of an unreadable font has no text, so it never makes a page readable. */
+const pageIsReadable = (all: readonly GlyphFragment[]): boolean =>
+  all.some((g) => g.hidden === undefined && g.unpainted === undefined && !g.isSpace && g.text.trim() !== "");
+
+/** Is a glyph with this mark left out of the published text? « size » et « clip » valent SANS politique de masquage : ni une
+ *  taille ni un détourage vide ne se trahit par un opérateur, donc aucun pré-balayage ne peut les annoncer
+ *  (`pdf-source.ts#scanHiddenCandidates`). */
+const isFilteredOut = (hidden: GlyphFragment["hidden"], readable: boolean, hide: HidePolicy | undefined): boolean =>
+  hidden === "size" || hidden === "clip" ? readable : hide !== undefined && isGlyphDropped(hidden, hide.dropModeHidden);
 
 /** The open marked-content levels of a page: their `/MCID`s and which are an `/Artifact`. Both answers a glyph needs are kept
  *  up to date on push and pop, so that reading them is O(1) however deep the stack (a hostile page opens a million `BDC`
@@ -572,13 +633,18 @@ export const MAX_SHELTER_BOXES_PER_PAGE = 20_000;
 const FILL_PAINTS = new Set(["fill", "eoFill", "fillStroke", "eoFillStroke", "closeFillStroke", "closeEOFillStroke"]);
 /** Les tracés qui montrent de l'encre sans remplir : le mode 7 est jugé sur eux aussi (un titre détouré puis tracé). */
 const STROKE_PAINTS = new Set(["stroke", "closeStroke"]);
-const UNIT_SQUARE = [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }];
+const UNIT_SQUARE = [
+  { x: 0, y: 0 },
+  { x: 1, y: 0 },
+  { x: 1, y: 1 },
+  { x: 0, y: 1 },
+];
 const IMAGE_PAINTS = new Set(["paintImageXObject", "paintInlineImageXObject"]);
 
 /** The fill colour in force (`rg`, `g`, `k`, or a space we do not convert). Returns false for any other operator. */
 function applyColourOp(op: string, args: unknown, walk: GlyphWalk): boolean {
   if (op === "setFillRGBColor") {
-    const hex = Array.isArray(args) ? args[0] : args;
+    const hex: unknown = Array.isArray(args) ? args[0] : args;
     if (typeof hex === "string") walk.stack.current.fill = hex.toLowerCase();
     return true;
   }
@@ -625,7 +691,15 @@ function rememberDarkFill(args: unknown, walk: GlyphWalk): void {
   if (path === null || typeof path !== "object" || path.paint === undefined || !FILL_PAINTS.has(path.paint)) return;
   const box = path.minMax;
   if (box !== undefined && box.length === 4) {
-    rememberShelter([{ x: box[0]!, y: box[1]! }, { x: box[2]!, y: box[1]! }, { x: box[2]!, y: box[3]! }, { x: box[0]!, y: box[3]! }], walk);
+    rememberShelter(
+      [
+        { x: box[0]!, y: box[1]! },
+        { x: box[2]!, y: box[1]! },
+        { x: box[2]!, y: box[3]! },
+        { x: box[0]!, y: box[3]! },
+      ],
+      walk,
+    );
     return;
   }
   if (Array.isArray(path.subpaths)) rememberShelter(path.subpaths.flat(), walk);
@@ -650,7 +724,10 @@ function rememberShelter(points: readonly { x: number; y: number }[], walk: Glyp
 
 /** Is a glyph at (x, y) painted WHITE on the bare page — over no non-white box painted before it? Then a viewer does not show it. */
 const whiteOnPageAt = (walk: GlyphWalk, x: number, y: number): boolean =>
-  walk.stack.current.fill === WHITE && !walk.sheltersFull && !STROKING_MODES.has(walk.stack.current.textRenderMode) && !walk.darkFills.some((box) => x >= box.xMin && x <= box.xMax && y >= box.yMin && y <= box.yMax);
+  walk.stack.current.fill === WHITE &&
+  !walk.sheltersFull &&
+  !STROKING_MODES.has(walk.stack.current.textRenderMode) &&
+  !walk.darkFills.some((box) => x >= box.xMin && x <= box.xMax && y >= box.yMin && y <= box.yMax);
 
 /** The begin and end of a form XObject. Returns false for any other operator. */
 function applyFormOp(op: string, args: unknown, walk: GlyphWalk): boolean {
@@ -673,14 +750,22 @@ function applyFormOp(op: string, args: unknown, walk: GlyphWalk): boolean {
 }
 
 /** `BMC`/`BDC`/`EMC`: the marked-content operators. Returns false for any other operator. */
-function applyMarkedContentOp(op: string, args: unknown, walk: GlyphWalk, isLayerVisible: ((group: unknown) => boolean) | undefined): boolean {
+function applyMarkedContentOp(
+  op: string,
+  args: unknown,
+  walk: GlyphWalk,
+  isLayerVisible: ((group: unknown) => boolean) | undefined,
+): boolean {
   if (op === "beginMarkedContent" || op === "beginMarkedContentProps") {
     walk.layers.enter(op, args, isLayerVisible);
     // `BDC`: [tag, MCID or null], the tag already a string; `BMC`: [tag] with the tag still a name object `{ name }`
     // (the operator list, not a text-content view: fixture 33, page 6, tags its footer that way).
     const list = Array.isArray(args) ? (args as unknown[]) : [];
     const tag = typeof list[0] === "string" ? list[0] : (list[0] as { name?: unknown } | null | undefined)?.name;
-    walk.marked.push(typeof list[1] === "number" && Number.isInteger(list[1]) ? list[1] : undefined, tag === "Artifact");
+    walk.marked.push(
+      typeof list[1] === "number" && Number.isInteger(list[1]) ? list[1] : undefined,
+      tag === "Artifact",
+    );
     walk.section += 1;
   } else if (op === "endMarkedContent") {
     walk.layers.leave();
@@ -693,8 +778,19 @@ function applyMarkedContentOp(op: string, args: unknown, walk: GlyphWalk, isLaye
 }
 
 /** The operators of the graphics state, of form XObjects and of marked content. Returns false for any other operator. */
-function applyGraphicsOp(op: string, args: unknown, walk: GlyphWalk, isLayerVisible: ((group: unknown) => boolean) | undefined): boolean {
-  return applyStateOp(op, args, walk) || applyColourOp(op, args, walk) || applyShelterOp(op, args, walk) || applyFormOp(op, args, walk) || applyMarkedContentOp(op, args, walk, isLayerVisible);
+function applyGraphicsOp(
+  op: string,
+  args: unknown,
+  walk: GlyphWalk,
+  isLayerVisible: ((group: unknown) => boolean) | undefined,
+): boolean {
+  return (
+    applyStateOp(op, args, walk) ||
+    applyColourOp(op, args, walk) ||
+    applyShelterOp(op, args, walk) ||
+    applyFormOp(op, args, walk) ||
+    applyMarkedContentOp(op, args, walk, isLayerVisible)
+  );
 }
 
 /** The operators that place the text and line matrices: `BT`, `Tm`, `Td`, `TD`, `T*`. Returns false for any other operator. */
@@ -747,7 +843,8 @@ function applyTextStateOp(op: string, args: unknown, state: TextState): boolean 
 }
 
 /** Is this an operator that moves or sets text and that no branch above covers? Guessing a position would be worse than failing. */
-const isUnsupportedTextOp = (op: string): boolean => UNSUPPORTED_MOVING_OPS.has(op) || (looksLikeTextOp(op) && !IGNORED_TEXT_OPS.has(op));
+const isUnsupportedTextOp = (op: string): boolean =>
+  UNSUPPORTED_MOVING_OPS.has(op) || (looksLikeTextOp(op) && !IGNORED_TEXT_OPS.has(op));
 
 /** The marks a glyph carries when the caller asked to know what a viewer does not show (`GlyphFragment.hidden`). */
 const NO_MARK = {};
@@ -756,6 +853,7 @@ const MODE_MARK = { hidden: "mode" as const };
 const PAINT_MARK = { hidden: "paint" as const };
 const SIZE_MARK = { hidden: "size" as const };
 const UNPAINTED_MARK = { unpainted: true as const };
+const UNREAD_FONT_MARK = { unreadFont: true as const };
 /** La marque d'un glyphe, dans l'ORDRE des verdicts : sa taille d'abord (elle vaut sans politique de masquage), puis
  *  son calque, son mode, et le blanc sur blanc. Sa propre fonction depuis le 09/11/2026 : écrite en ligne dans la
  *  boucle des glyphes, elle poussait `showGlyphs` au-dessus du cliquet de complexité, qu'on ne relève jamais pour
@@ -772,7 +870,11 @@ function markOfGlyph(
   return hiddenMarkOf(walk.layers.hidden, textRenderMode, whiteOnPageAt(walk, origin.x, origin.y));
 }
 
-function hiddenMarkOf(layerHidden: boolean, textRenderMode: number, whiteOnPage: boolean): Pick<GlyphFragment, "hidden" | "unpainted"> {
+function hiddenMarkOf(
+  layerHidden: boolean,
+  textRenderMode: number,
+  whiteOnPage: boolean,
+): Pick<GlyphFragment, "hidden" | "unpainted"> {
   if (layerHidden) return LAYER_MARK;
   if (INVISIBLE_TEXT_MODES.has(textRenderMode)) return MODE_MARK;
   if (NOT_PAINTED_MODES.has(textRenderMode)) return UNPAINTED_MARK;
@@ -800,7 +902,8 @@ function isSymbolFontOfWalk(walk: GlyphWalk, fontName: string): boolean {
 }
 
 /** The glyph's Unicode text, its private-use points translated when the font is Symbol. */
-const glyphUnicode = (unicode: string | undefined, inSymbolFont: boolean): string => (inSymbolFont ? symbolFontText(unicode ?? "") : (unicode ?? ""));
+const glyphUnicode = (unicode: string | undefined, inSymbolFont: boolean): string =>
+  inSymbolFont ? symbolFontText(unicode ?? "") : (unicode ?? "");
 
 /** 🔴 WE ABSTAIN RATHER THAN PUBLISH WHAT pdf.js INVENTED (31/10/2026: "we abstain").
  *  When nothing says what a code paints — a glyph named `g03`, a CID without `/ToUnicode` — pdf.js returned the CODE
@@ -816,15 +919,34 @@ const glyphUnicode = (unicode: string | undefined, inSymbolFont: boolean): strin
 const INVENTED_CONTROL = /^[\u0000-\u0008\u000a-\u001f\u007f-\u009f]+$/u;
 const isInventedControl = (text: string): boolean => INVENTED_CONTROL.test(text);
 
+/** What a shown glyph places: its text, or — for a glyph of a font we could not read (`read: "not-ours"`, 17/11/2026) — a
+ *  stand-in with no text, placed and marked like the others so the filter of the published text can judge it
+ *  (`unreadFontKept`); `undefined` for a glyph that places nothing (no text, or an invented control character). */
+function placedTextOf(g: GlyphLike, inSymbolFont: boolean): { text: string; unreadFont?: true } | undefined {
+  const unicode = glyphUnicode(g.unicode, inSymbolFont);
+  if (unicode.length === 0) return g.read === "not-ours" ? { text: "", ...UNREAD_FONT_MARK } : undefined;
+  return isInventedControl(unicode) ? undefined : { text: glyphText(unicode) };
+}
+
 /** How far the text rise moved the origin: the gap to where the same glyph would sit with a rise of zero. */
-function riseShiftOf(rise: number, params: Matrix2D, textToDevice: Matrix2D, origin: { x: number; y: number }): { x: number; y: number } {
+function riseShiftOf(
+  rise: number,
+  params: Matrix2D,
+  textToDevice: Matrix2D,
+  origin: { x: number; y: number },
+): { x: number; y: number } {
   if (rise === 0) return NO_RISE;
   const flat = applyMatrix(composeMatrix({ ...params, f: 0 }, textToDevice), 0, 0);
   return { x: origin.x - flat.x, y: origin.y - flat.y };
 }
 
 /** `Tj`/`TJ`: one fragment per glyph of the shown items, the text matrix moving on after each. `runId` is the index of the operator. */
-function showGlyphs(args: unknown, runId: number, walk: GlyphWalk, isLayerVisible: ((group: unknown) => boolean) | undefined): void {
+function showGlyphs(
+  args: unknown,
+  runId: number,
+  walk: GlyphWalk,
+  isLayerVisible: ((group: unknown) => boolean) | undefined,
+): void {
   const items = (Array.isArray(args) ? args[0] : undefined) as unknown[] | undefined;
   if (!Array.isArray(items)) return;
   const { ctm, fontSize, fontName, rise, textRenderMode, hScale, charSpacing, wordSpacing } = walk.stack.current;
@@ -835,7 +957,7 @@ function showGlyphs(args: unknown, runId: number, walk: GlyphWalk, isLayerVisibl
   for (const item of items) {
     if (typeof item === "number") {
       // Kerning of a TJ: a NEGATIVE number moves to the right.
-      const tx = ((-item / 1000) * fontSize) * hScale;
+      const tx = (-item / 1000) * fontSize * hScale;
       walk.textMatrix = composeMatrix(translateMatrix(tx, 0), walk.textMatrix);
       continue;
     }
@@ -843,7 +965,7 @@ function showGlyphs(args: unknown, runId: number, walk: GlyphWalk, isLayerVisibl
     if (g.vmetric !== undefined && g.vmetric !== null) {
       // A vertical font advances DOWN the page, by an amount this module
       // does not compute: a named abstention, never a guessed position.
-      throw new ReaderError("EXTRACT_FAILED", "vertical writing: its advances run down the page and are not computed, refusing to guess");
+      throw new GlyphBuilderAbstention("vertical-writing");
     }
     const params: Matrix2D = { a: fontSize * hScale, b: 0, c: 0, d: fontSize, e: 0, f: rise };
     const trm = composeMatrix(params, composeMatrix(walk.textMatrix, ctm));
@@ -857,12 +979,11 @@ function showGlyphs(args: unknown, runId: number, walk: GlyphWalk, isLayerVisibl
     const nextOrigin = applyMatrix(composeMatrix(params, composeMatrix(nextTextMatrix, ctm)), 0, 0);
     const width = Math.hypot(nextOrigin.x - origin.x, nextOrigin.y - origin.y);
 
-    const unicode = glyphUnicode(g.unicode, inSymbolFont);
-    if (unicode.length > 0 && !isInventedControl(unicode)) {
-
+    const placed = placedTextOf(g, inSymbolFont);
+    if (placed !== undefined) {
       const riseShift = riseShiftOf(rise, params, composeMatrix(walk.textMatrix, ctm), origin);
       walk.out.push({
-        text: glyphText(unicode),
+        ...placed,
         x: origin.x,
         y: origin.y,
         width,
@@ -880,7 +1001,8 @@ function showGlyphs(args: unknown, runId: number, walk: GlyphWalk, isLayerVisibl
         ...markOfGlyph(walk, isLayerVisible, textRenderMode, Math.hypot(trm.c, trm.d), origin),
       });
       // Son verdict attend ce qui sera peint : `settleClipGlyphs` le rend au `Q` qui referme son détourage.
-      if (textRenderMode === CLIP_ONLY_MODE) walk.clipGlyphs.push({ index: walk.out.length - 1, depth: walk.depth, paintsAt: walk.paints });
+      if (textRenderMode === CLIP_ONLY_MODE)
+        walk.clipGlyphs.push({ index: walk.out.length - 1, depth: walk.depth, paintsAt: walk.paints });
     }
     walk.textMatrix = nextTextMatrix;
   }
@@ -892,12 +1014,26 @@ function showGlyphs(args: unknown, runId: number, walk: GlyphWalk, isLayerVisibl
  * stack is independent of `q`/`Q` (ISO 32000-1 §14.6), so it has its own stack: a `BDC /OC` hides every glyph until
  * its `EMC`, whatever the graphics state does meanwhile.
  */
-export function readGlyphs(ops: readonly NamedOp[], isLayerVisible?: (group: unknown) => boolean, fontScaleOf?: FontScaleOf, symbolFontOf?: SymbolFontOf): GlyphFragment[] {
+export function readGlyphs(
+  ops: readonly NamedOp[],
+  isLayerVisible?: (group: unknown) => boolean,
+  fontScaleOf?: FontScaleOf,
+  symbolFontOf?: SymbolFontOf,
+): GlyphFragment[] {
   const walk: GlyphWalk = {
     layers: new HiddenLayerStack(),
-    stack: new GraphicsStateStack<TextState>(
-      { ctm: IDENTITY_MATRIX, fontSize: 0, fontName: "", rise: 0, textRenderMode: 0, leading: 0, hScale: 1, charSpacing: 0, wordSpacing: 0, fill: "#000000" },
-    ),
+    stack: new GraphicsStateStack<TextState>({
+      ctm: IDENTITY_MATRIX,
+      fontSize: 0,
+      fontName: "",
+      rise: 0,
+      textRenderMode: 0,
+      leading: 0,
+      hScale: 1,
+      charSpacing: 0,
+      wordSpacing: 0,
+      fill: "#000000",
+    }),
     textMatrix: IDENTITY_MATRIX,
     lineMatrix: IDENTITY_MATRIX,
     out: [],
@@ -918,12 +1054,13 @@ export function readGlyphs(ops: readonly NamedOp[], isLayerVisible?: (group: unk
     const { op, args } = ops[i]!;
     if (op === "showText" || op === "showSpacedText") {
       showGlyphs(args, i, walk, isLayerVisible);
-    } else if (!(applyGraphicsOp(op, args, walk, isLayerVisible) || applyTextPlacementOp(op, args, walk) || applyTextStateOp(op, args, walk.stack.current))) {
+    } else if (!(
+      applyGraphicsOp(op, args, walk, isLayerVisible) ||
+      applyTextPlacementOp(op, args, walk) ||
+      applyTextStateOp(op, args, walk.stack.current)
+    )) {
       if (isUnsupportedTextOp(op)) {
-        throw new ReaderError(
-          "EXTRACT_FAILED",
-          `unsupported text operator ${op}: not covered by the glyph builder, and guessing a position would be worse than failing`,
-        );
+        throw new GlyphBuilderAbstention("text-operator", op);
       }
     }
   }

@@ -8,4 +8,5 @@
 const TURN_EPSILON = 1e-6;
 
 /** A shear alone (`c` != 0, `b` = 0, `a` > 0: a synthetic italic) does NOT turn the text: its direction is still left to right. */
-export const writingDirectionTurned = ({ a, b }: { a: number; b: number }): boolean => Math.abs(b) > TURN_EPSILON * Math.abs(a) || a < 0;
+export const writingDirectionTurned = ({ a, b }: { a: number; b: number }): boolean =>
+  Math.abs(b) > TURN_EPSILON * Math.abs(a) || a < 0;

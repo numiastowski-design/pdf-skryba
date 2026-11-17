@@ -18,11 +18,15 @@ export const gridBandOf = (grid: { readonly rowBoundaries: readonly number[] }):
 });
 
 /** Is the height `y` (an item's centre) inside any of the bands? Both edges count. */
-export const isInBand = (y: number, bands: readonly GridBand[]): boolean => bands.some((b) => y <= b.top && y >= b.bottom);
+export const isInBand = (y: number, bands: readonly GridBand[]): boolean =>
+  bands.some((b) => y <= b.top && y >= b.bottom);
 
 /** The height of a line's (or item's) vertical middle: its baseline plus half its font size. */
-export const lineMiddle = (line: { readonly y: number; readonly fontSize: number }): number => line.y + line.fontSize / 2;
+export const lineMiddle = (line: { readonly y: number; readonly fontSize: number }): number =>
+  line.y + line.fontSize / 2;
 
 /** Is the middle of this line inside any of the bands? */
-export const lineInBand = (line: { readonly y: number; readonly fontSize: number }, bands: readonly GridBand[]): boolean =>
-  isInBand(lineMiddle(line), bands);
+export const lineInBand = (
+  line: { readonly y: number; readonly fontSize: number },
+  bands: readonly GridBand[],
+): boolean => isInBand(lineMiddle(line), bands);

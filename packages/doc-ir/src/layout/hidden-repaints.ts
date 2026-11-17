@@ -43,7 +43,8 @@ export const HIDDEN_REPAINT_GROUP_LIMIT = 512;
  *  total, the page is skipped whole — the behaviour from before the rule. Word pages measured: a few hundred fills. */
 export const HIDDEN_REPAINT_PAGE_LIMIT = 4096;
 
-const overlaps = (a: PaintedBox, b: PaintedBox): boolean => Math.min(a.xMax, b.xMax) > Math.max(a.xMin, b.xMin) && Math.min(a.yMax, b.yMax) > Math.max(a.yMin, b.yMin);
+const overlaps = (a: PaintedBox, b: PaintedBox): boolean =>
+  Math.min(a.xMax, b.xMax) > Math.max(a.xMin, b.xMin) && Math.min(a.yMax, b.yMax) > Math.max(a.yMin, b.yMin);
 
 /** Smallest index of `sorted` (ascending) strictly greater than `value`, or `sorted.length`. */
 const firstAbove = (sorted: readonly number[], value: number): number => {
@@ -67,7 +68,12 @@ const firstAbove = (sorted: readonly number[], value: number): number => {
  *  indices of the other-colour fills that overlap it, then a binary search per candidate container ("is one strictly between the two
  *  indices"). O(group x page + pairs x log) instead of O(pairs x page): the review measured about 10^9 operations still possible under
  *  the caps (nested containers plus intervening fills that defeat the early exit), past the 25 s of a Forge invocation. */
-export function hiddenRepaintFills(fills: readonly PaintedBox[], tolerancePt: number, maxInsetPt: number, minWidthRatio: number): Set<PaintedBox> {
+export function hiddenRepaintFills(
+  fills: readonly PaintedBox[],
+  tolerancePt: number,
+  maxInsetPt: number,
+  minWidthRatio: number,
+): Set<PaintedBox> {
   if (fills.length > HIDDEN_REPAINT_PAGE_LIMIT) return new Set<PaintedBox>();
   const hidden = new Set<PaintedBox>();
   const byColor = new Map<string, number[]>();

@@ -29,18 +29,26 @@ export const kidsOf = (n: N): N[] => {
   const v = n[tagOf(n)];
   return Array.isArray(v) ? (v as N[]) : [];
 };
-export const attrOf = (n: N, name: string): string | undefined => (n[":@"] as Record<string, string> | undefined)?.[name];
-export const first = (n: N | undefined, tag: string): N | undefined => (n ? kidsOf(n).find((c) => tagOf(c) === tag) : undefined);
-export const textOf = (n: N): string => kidsOf(n).map((c) => (typeof c["#text"] === "string" ? c["#text"] : "")).join("");
+export const attrOf = (n: N, name: string): string | undefined =>
+  (n[":@"] as Record<string, string> | undefined)?.[name];
+export const first = (n: N | undefined, tag: string): N | undefined =>
+  n ? kidsOf(n).find((c) => tagOf(c) === tag) : undefined;
+export const textOf = (n: N): string =>
+  kidsOf(n)
+    .map((c) => (typeof c["#text"] === "string" ? c["#text"] : ""))
+    .join("");
 
-export const openSourceParts = async (bytes: Uint8Array): Promise<{ xmlOf: (path: string) => Promise<SourceNode | undefined> }> => {
+export const openSourceParts = async (
+  bytes: Uint8Array,
+): Promise<{ xmlOf: (path: string) => Promise<SourceNode | undefined> }> => {
   const pkg = await openPackage(bytes);
-  return { xmlOf: async (path) => (await pkg.readXml(path)) as SourceNode | undefined };
+  return { xmlOf: async (path) => await pkg.readXml(path) };
 };
 
 /** A STYLES part read tolerantly: unreadable (corrupt stream, XML that does not parse) comes back as absent, as the extractors
  *  publish such a file with default formatting (08/10/2026) and this check must not abstain on a document that is published. */
-export const stylesOrAbsent = (read: () => Promise<SourceNode | undefined>): Promise<SourceNode | undefined> => readUnlessDamaged(read);
+export const stylesOrAbsent = (read: () => Promise<SourceNode | undefined>): Promise<SourceNode | undefined> =>
+  readUnlessDamaged(read);
 
 /** Runs a read that ONLY the structure control makes (never the words): when the part is refused (damaged, over a ceiling: a `ReaderError`, which covers
  *  `PartDamagedError` and the inflation ceilings) the structure is `unreadable` and the document's words stay checked as they were; a defect of our own

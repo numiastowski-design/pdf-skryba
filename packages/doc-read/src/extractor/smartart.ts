@@ -35,7 +35,16 @@
 
 import { collapseBlanks } from "doc-ir/lib/blanks";
 import { findInternalTarget, readUnlessDamaged, type OpcPackage, type Relationship } from "./ooxml/package";
-import { attributeOf, findChild, findChildren, findDescendants, childNodesOf, qualifiedNameOf, textContentOf, type XNode } from "./ooxml/xml";
+import {
+  attributeOf,
+  findChild,
+  findChildren,
+  findDescendants,
+  childNodesOf,
+  qualifiedNameOf,
+  textContentOf,
+  type XNode,
+} from "./ooxml/xml";
 
 /** One text body (`dgm:t` or `dsp:txBody`) as one line: its paragraphs'
  *  runs (`a:t`, a field's included), a line break (`a:br`) as a space,
@@ -88,8 +97,14 @@ export const dataModelPieces = (root: XNode): Piece[] => {
   });
   const edges = findChildren(findChild(root, "dgm:cxnLst") ?? {}, "dgm:cxn")
     .filter((c) => (attributeOf(c, "type") ?? "parOf") === "parOf")
-    .map((c, order) => ({ from: byId.get(attributeOf(c, "srcId") ?? ""), to: byId.get(attributeOf(c, "destId") ?? ""), srcOrd: Number(attributeOf(c, "srcOrd") ?? "0"), order }));
-  if (edges.length === 0 || points.length > MAX_SMARTART_POINTS || edges.length > MAX_SMARTART_POINTS) return inDocumentOrder();
+    .map((c, order) => ({
+      from: byId.get(attributeOf(c, "srcId") ?? ""),
+      to: byId.get(attributeOf(c, "destId") ?? ""),
+      srcOrd: Number(attributeOf(c, "srcOrd") ?? "0"),
+      order,
+    }));
+  if (edges.length === 0 || points.length > MAX_SMARTART_POINTS || edges.length > MAX_SMARTART_POINTS)
+    return inDocumentOrder();
   // A tree: every end is a point, a point has at most one parent.
   const parentOf = new Map<number, number>();
   for (const e of edges) {
@@ -103,7 +118,9 @@ export const dataModelPieces = (root: XNode): Piece[] => {
     else same.push(e);
   }
   for (const list of kidsOf.values()) list.sort((a, b) => a.srcOrd - b.srcOrd || a.order - b.order);
-  const doc = findChildren(findChild(root, "dgm:ptLst") ?? {}, "dgm:pt").findIndex((pt) => attributeOf(pt, "type") === "doc");
+  const doc = findChildren(findChild(root, "dgm:ptLst") ?? {}, "dgm:pt").findIndex(
+    (pt) => attributeOf(pt, "type") === "doc",
+  );
   const roots = doc >= 0 ? [doc] : points.map((_, i) => i).filter((i) => !parentOf.has(i));
   const seen = new Set<number>();
   const out: Piece[] = [];
@@ -171,7 +188,11 @@ export interface SmartArtRead {
  *  model's own extension names the drawing cache. `undefined`: no data-model
  *  part (the caller may look for a cache nobody claimed,
  *  `cachesWithoutModel`). */
-export const readSmartArt = async (pkg: OpcPackage, rels: ReadonlyMap<string, Relationship>, dataPart: string | undefined): Promise<SmartArtRead | undefined> => {
+export const readSmartArt = async (
+  pkg: OpcPackage,
+  rels: ReadonlyMap<string, Relationship>,
+  dataPart: string | undefined,
+): Promise<SmartArtRead | undefined> => {
   const data = dataPart === undefined ? undefined : await pkg.readXml(dataPart);
   if (!data) return undefined;
   const ext = findDescendants(data, "dsp:dataModelExt")[0];
@@ -179,7 +200,11 @@ export const readSmartArt = async (pkg: OpcPackage, rels: ReadonlyMap<string, Re
   const cachePart = findInternalTarget(rels, relId);
   const fromModel = dataModelPieces(data);
   if (fromModel.length > 0 || cachePart === undefined)
-    return { words: fromModel.map((p) => p.text), levels: fromModel.map((p) => p.level), ...(cachePart === undefined ? {} : { claimed: cachePart }) };
+    return {
+      words: fromModel.map((p) => p.text),
+      levels: fromModel.map((p) => p.level),
+      ...(cachePart === undefined ? {} : { claimed: cachePart }),
+    };
   // A model with no text: the cache is the only source, and it holds no tree — a flat list.
   const cache = await pkg.readXml(cachePart);
   const words = cache ? drawingPieces(cache) : [];
@@ -187,7 +212,8 @@ export const readSmartArt = async (pkg: OpcPackage, rels: ReadonlyMap<string, Re
 };
 
 /** The number in a part name (`drawing12.xml` gives 12); parts without one sort last. */
-export const partNumberOf = (path: string): number => Number(/(\d{1,15})\.xml$/.exec(path)?.[1] ?? Number.MAX_SAFE_INTEGER);
+export const partNumberOf = (path: string): number =>
+  Number(/(\d{1,15})\.xml$/.exec(path)?.[1] ?? Number.MAX_SAFE_INTEGER);
 
 /** The words of the SmartArts that have NO data model, `frames` of them in
  *  reading order, from the drawing caches no model claimed: the part's
@@ -207,7 +233,9 @@ export const cachesWithoutModel = async (
 ): Promise<string[][]> => {
   if (frames === 0) return [];
   const numberOf = partNumberOf;
-  const targets = [...new Set([...rels.values()].filter((r) => r.kind === "diagramDrawing" && !r.external).map((r) => r.target))]
+  const targets = [
+    ...new Set([...rels.values()].filter((r) => r.kind === "diagramDrawing" && !r.external).map((r) => r.target)),
+  ]
     .filter((t) => !claimed.has(t))
     .sort((a, b) => numberOf(a) - numberOf(b) || a.localeCompare(b));
   const read: string[][] = [];

@@ -25,7 +25,13 @@ import { minOf } from "doc-ir/lib/extent";
 import { WORD_GAP_EM } from "./word-gap";
 import { groupIntoReseatedLines } from "doc-ir/layout/baseline-lines";
 import { clusterPositions, dominantTextSize, type Fragment } from "doc-ir/layout/geometry";
-import { dominantSizeByChars, SUPERSCRIPT_MAX_RISE_EM, SUPERSCRIPT_MAX_SIZE_RATIO, SUPERSCRIPT_MIN_RISE_EM, TRAILING_CALL_GAP_EM } from "doc-ir/layout/superscript";
+import {
+  dominantSizeByChars,
+  SUPERSCRIPT_MAX_RISE_EM,
+  SUPERSCRIPT_MAX_SIZE_RATIO,
+  SUPERSCRIPT_MIN_RISE_EM,
+  TRAILING_CALL_GAP_EM,
+} from "doc-ir/layout/superscript";
 
 /** The column boundaries that delimit the cell, in page space. */
 export interface CellBounds {
@@ -176,7 +182,6 @@ const INDENT_TOLERANCE_RATIO = 3;
  *  invent a scale. */
 const INDENT_TOLERANCE_FALLBACK = 20;
 
-
 /** A run of this many one-glyph tokens in a row (« L I V R E T », « 2 8 5 6 ») is a letter-spaced word or spread figures: its gaps are
  *  not word gaps. Two stay possible (« of a new » is two words around the one-letter « a »).
  *
@@ -250,7 +255,8 @@ const withoutOverdrawnBlanks = (line: readonly Fragment[]): readonly Fragment[] 
       if (f.width > 0) lastInk = f;
       return true;
     }
-    const overPrevious = lastInk !== undefined && lastInk.height > 0 && f.x < lastInk.x + lastInk.width - OVERLAP_EM * lastInk.height;
+    const overPrevious =
+      lastInk !== undefined && lastInk.height > 0 && f.x < lastInk.x + lastInk.width - OVERLAP_EM * lastInk.height;
     const next = following[i];
     const overNext = next !== undefined && next.height > 0 && f.x + f.width > next.x + OVERLAP_EM * next.height;
     return !overPrevious && !overNext;
@@ -272,7 +278,9 @@ export const joinGlyphs = (drawn: readonly Fragment[]): string => {
   });
   const wide = gaps.map((g) => g >= TRACKING_MAX_EM);
   const pairs = gaps.filter((g) => !Number.isNaN(g)).length;
-  const tracked = pairs >= TRACKED_MIN_PAIRS && gaps.filter((g, i) => g > TRACKED_GAP_EM && !wide[i]).length > TRACKED_LINE_SHARE * pairs;
+  const tracked =
+    pairs >= TRACKED_MIN_PAIRS &&
+    gaps.filter((g, i) => g > TRACKED_GAP_EM && !wide[i]).length > TRACKED_LINE_SHARE * pairs;
   const cut = gaps.map((g, i) => (tracked ? wide[i]! : g > WORD_GAP_EM));
   // Tokens: the glyphs between two gaps. A run of one-glyph tokens is letter-spaced text; the gaps INSIDE the run are cancelled.
   let tokenStart = 0;
@@ -283,10 +291,11 @@ export const joinGlyphs = (drawn: readonly Fragment[]): string => {
       tokenStart = i + 1;
     }
   });
-  for (let t = 0; t < tokens.length; ) {
+  for (let t = 0; t < tokens.length;) {
     let end = t;
     while (end < tokens.length && tokens[end]![0] === tokens[end]![1]) end++;
-    if (end - t >= LETTER_SPACED_TOKENS) for (let k = t; k < end - 1; k++) if (!wide[tokens[k]![1]]) cut[tokens[k]![1]] = false;
+    if (end - t >= LETTER_SPACED_TOKENS)
+      for (let k = t; k < end - 1; k++) if (!wide[tokens[k]![1]]) cut[tokens[k]![1]] = false;
     t = Math.max(end, t + 1);
   }
   return line.map((f, i) => (cut[i] === true ? `${f.text} ` : f.text)).join("");
@@ -299,7 +308,7 @@ interface VisualLine {
   /** End abscissa of the last glyph. */
   end: number;
   /** Share of the useful width actually occupied, 0 if the cell is degenerate. */
-  fill: number;  /** Vertical middle of the first fragment. */
+  fill: number; /** Vertical middle of the first fragment. */
   middle: number;
   /** Body size of this visual line, in points. */
   size: number;
@@ -316,7 +325,11 @@ const isInk = (f: Fragment): boolean => f.text.trim().length > 0 && f.height > 0
 const raisedCallsOf = (line: readonly Fragment[]): ReadonlySet<Fragment> => {
   const raised = new Set<Fragment>();
   const ink = line.filter(isInk);
-  const hostSize = dominantSizeByChars(ink, (f) => f.text, (f) => f.height);
+  const hostSize = dominantSizeByChars(
+    ink,
+    (f) => f.text,
+    (f) => f.height,
+  );
   const host = ink.find((f) => f.height === hostSize);
   if (host === undefined) return raised;
   for (const f of ink) {
@@ -403,6 +416,28 @@ const wrapSeparator = (upperLine: string, lowerLine: string): string => {
   return oneToken && /[\p{L}\p{N}]$/u.test(upper) && /^\p{Ll}/u.test(lower) ? "" : " ";
 };
 
+/** One visual line of a cell (its glyphs, left to right) with its measures; `width` is the cell's. */
+const visualLineOf = (line: Fragment[], width: number): VisualLine => {
+  const first = line[0]!;
+  const last = line[line.length - 1]!;
+  const span = last.x + last.width - first.x;
+  return {
+    text: joinGlyphs(line),
+    start: first.x,
+    end: last.x + last.width,
+    middle: first.y + first.height / 2,
+    size: dominantTextSize(line) ?? 0,
+    firstWordWidth: firstWordWidthOf(line),
+    fragments: line,
+    raised: raisedCallsOf(line),
+    // A cell of zero or negative width cannot say whether a
+    // line "fills": `fill: 0` makes it read as a true break, so
+    // we separate. Never join by default — joining wrongly glues two
+    // data, separating wrongly adds a visible break.
+    fill: width > 0 ? span / width : 0,
+  };
+};
+
 /**
  * The glyphs of a cell → its logical lines, in reading order.
  *
@@ -431,26 +466,7 @@ export function recomposeCellText(
   // joined at the end of the line above (07, physical page 10: « data held by 345 HMCTS »). The page flow's rule
   // (`./superscript.ts`, same two readings, same constants) hangs each back on the line below it.
   const visual: VisualLine[] = groupIntoReseatedLines(fragments, (f) => f.height, TRAILING_CALL_GAP_EM)
-    .map((line) => {
-      const first = line[0]!;
-      const last = line[line.length - 1]!;
-      const span = last.x + last.width - first.x;
-      return {
-        text: joinGlyphs(line),
-        start: first.x,
-        end: last.x + last.width,
-        middle: first.y + first.height / 2,
-        size: dominantTextSize(line) ?? 0,
-        firstWordWidth: firstWordWidthOf(line),
-        fragments: line,
-        raised: raisedCallsOf(line),
-        // A cell of zero or negative width cannot say whether a
-        // line "fills": `fill: 0` makes it read as a true break, so
-        // we separate. Never join by default — joining wrongly glues two
-        // data, separating wrongly adds a visible break.
-        fill: width > 0 ? span / width : 0,
-      };
-    })
+    .map((line) => visualLineOf(line, width))
     .filter((l) => l.text.length > 0);
   if (visual.length === 0) return [];
 
@@ -527,18 +543,33 @@ export function recomposeCellText(
   }
 
   // `pendingWrap` is a building state, not an output field.
-  return out.map(({ text, depth, middle, endMiddle, left, right, widest, fontSize, startFontSize, firstWordWidth, fragments, raised }) => ({
-    text,
-    depth,
-    middle,
-    endMiddle,
-    left,
-    right,
-    widest,
-    fontSize,
-    startFontSize,
-    firstWordWidth,
-    ...(fragments !== undefined ? { fragments } : {}),
-    ...(raised !== undefined ? { raised } : {}),
-  }));
+  return out.map(
+    ({
+      text,
+      depth,
+      middle,
+      endMiddle,
+      left,
+      right,
+      widest,
+      fontSize,
+      startFontSize,
+      firstWordWidth,
+      fragments,
+      raised,
+    }) => ({
+      text,
+      depth,
+      middle,
+      endMiddle,
+      left,
+      right,
+      widest,
+      fontSize,
+      startFontSize,
+      firstWordWidth,
+      ...(fragments !== undefined ? { fragments } : {}),
+      ...(raised !== undefined ? { raised } : {}),
+    }),
+  );
 }

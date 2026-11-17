@@ -62,7 +62,10 @@ export class ZipEntryRefusal extends ReaderError {
     readonly reason: ZipCeilingReason = "package",
   ) {
     // A ceiling is a bomb, not damage: its own code, which proposes nothing (a damaged entry stays an ordinary read failure).
-    super(kind === "ceiling" ? "FILE_UNSAFE" : "EXTRACT_FAILED", kind === "ceiling" ? "zip: entry exceeds the inflation ceiling" : "zip: entry data is damaged");
+    super(
+      kind === "ceiling" ? "FILE_UNSAFE" : "EXTRACT_FAILED",
+      kind === "ceiling" ? "zip: entry exceeds the inflation ceiling" : "zip: entry data is damaged",
+    );
     this.name = "ZipEntryRefusal";
   }
 }
@@ -126,9 +129,13 @@ export function openZip(bytes: Uint8Array, limits: ZipReadLimits): ZipPackage {
       // all; zlib calls that damage, we read 0 bytes (as jszip did).
       out = new Uint8Array();
     } else {
-      out = await inflateCounted(data, (chunk) => {
-        spent.bytes += chunk;
-      }, (produced) => ceilingHit(produced, cap));
+      out = await inflateCounted(
+        data,
+        (chunk) => {
+          spent.bytes += chunk;
+        },
+        (produced) => ceilingHit(produced, cap),
+      );
     }
     if (out.length !== entry.uncompressedSize) throw new ZipEntryRefusal("damaged");
     return out;

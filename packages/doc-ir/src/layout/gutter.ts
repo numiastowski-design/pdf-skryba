@@ -125,7 +125,11 @@ const spanOf = (items: readonly GutterItem[]): number =>
  * left lines ending at 279 — the cut moves from 266 to 296. A fragment that crosses the whole white stays a transverse
  * and is ignored, as before. Undefined when the lines close the white below `MIN_GUTTER_PT`: the old middle stands.
  */
-const whiteOfEveryLine = (real: readonly GutterItem[], start: number, end: number): { start: number; end: number } | undefined => {
+const whiteOfEveryLine = (
+  real: readonly GutterItem[],
+  start: number,
+  end: number,
+): { start: number; end: number } | undefined => {
   let from = start;
   let to = end;
   for (const it of real) {
@@ -166,7 +170,13 @@ export function findGutters(items: readonly GutterItem[]): Gutter[] {
     const left = kept.filter((it) => it.x + it.width <= x);
     const right = kept.filter((it) => it.x >= x);
     if (left.length < MIN_SIDE_ITEMS || right.length < MIN_SIDE_ITEMS) continue;
-    found.push({ x, itemsLeft: left.length, itemsRight: right.length, widthPt: white === undefined ? widthPt : white.end - white.start, columnPt: Math.min(spanOf(left), spanOf(right)) });
+    found.push({
+      x,
+      itemsLeft: left.length,
+      itemsRight: right.length,
+      widthPt: white === undefined ? widthPt : white.end - white.start,
+      columnPt: Math.min(spanOf(left), spanOf(right)),
+    });
   }
   return found.filter((g, i) => i === 0 || g.x - found[i - 1]!.x > GUTTER_APART_PT);
 }

@@ -68,15 +68,21 @@ export const spanSingleFirstRows = (table: Table): Table => {
     cells.length > 1 && holdsContent(cells[0]!) && cells.slice(1).every((c) => !holdsContent(c));
   // A RAGGED row (summing under the table's width) ABSTAINS: the rule cannot read why it is short, so it must not widen it
   // (hardening, evening review 27/10/2026 — every current builder emits rectangular rows, pinned by span-single-first.test.ts).
-  const fullWidth = (cells: Table["rows"][number]["cells"]): boolean => cells.reduce((n, c) => n + (c.colspan ?? 1), 0) === width;
+  const fullWidth = (cells: Table["rows"][number]["cells"]): boolean =>
+    cells.reduce((n, c) => n + (c.colspan ?? 1), 0) === width;
   return {
     ...table,
     rows: rows.map((row, at) =>
-      covered.has(at) || row.cells.some((c) => c.header === true) || !isSingleFirst(row.cells) || !fullWidth(row.cells) ? row : { cells: [{ ...row.cells[0]!, colspan: width }] },
+      covered.has(at) || row.cells.some((c) => c.header === true) || !isSingleFirst(row.cells) || !fullWidth(row.cells)
+        ? row
+        : { cells: [{ ...row.cells[0]!, colspan: width }] },
     ),
   };
 };
 
 /** The visible text of a table cell (paragraph and heading inlines, joined, trimmed): the ONE definition, the tests import it too. */
 export const cellText = (cell: Table["rows"][number]["cells"][number]): string =>
-  cell.blocks.map((b) => (b.kind === "paragraph" || b.kind === "heading" ? b.inlines.map((i) => i.text).join("") : "")).join("").trim();
+  cell.blocks
+    .map((b) => (b.kind === "paragraph" || b.kind === "heading" ? b.inlines.map((i) => i.text).join("") : ""))
+    .join("")
+    .trim();

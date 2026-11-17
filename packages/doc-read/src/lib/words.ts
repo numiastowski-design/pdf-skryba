@@ -12,9 +12,14 @@ const UNSPACED = String.raw`[\p{scx=Han}\p{scx=Hiragana}\p{scx=Katakana}\p{scx=H
 /** A script written without spaces never shares a token with Latin letters or digits: "国際会議SC23における" is "国際会議", "sc23",
  *  "における". Word puts the automatic space there in its PDF and the Confluence search splits there too, so both sides of every
  *  comparison cut the same way (CONCEPTION-MESURE-MOTS-PDF [C1], 20/10/2026). */
-const WORD = new RegExp(String.raw`(?:(?=${LETTER_OR_DIGIT})${UNSPACED})+|(?:(?!${UNSPACED})${LETTER_OR_DIGIT})+`, "gu");
+const WORD = new RegExp(
+  String.raw`(?:(?=${LETTER_OR_DIGIT})${UNSPACED})+|(?:(?!${UNSPACED})${LETTER_OR_DIGIT})+`,
+  "gu",
+);
 
 /** U+200B (zero-width space) is no break, on either side: the renderer writes one before a superscript glued to a word
  *  (`renderer/storage.ts#renderInlines`, PLATFORM-STATUS §81) and the source reading joins the runs (« 4 » + « ème » is « 4ème »);
  *  one already in the source text is dropped the same way. A PDF's reading is the other way round (`render-lint.ts#toWords`). */
-export const wordsOf = (text: string): string[] => text.replaceAll("​", "").normalize("NFKC").toLowerCase().match(WORD) ?? [];
+export const wordsOf = (text: string): string[] =>
+  // eslint-disable-next-line sonarjs/prefer-regexp-exec -- `WORD` has the `g` flag: `match` returns every word, `exec` would return one.
+  text.replaceAll("​", "").normalize("NFKC").toLowerCase().match(WORD) ?? [];

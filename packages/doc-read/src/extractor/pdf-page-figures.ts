@@ -77,8 +77,10 @@ export const pageFigures = (
     for (const block of blocks) {
       const raw = documentImages.get(block);
       if (raw !== undefined) store.keep(raw);
-      if (block.kind === "table") for (const row of block.rows) for (const cell of row.cells) placeDocumentImages(cell.blocks);
-      else if (block.kind === "columns" || block.kind === "list") for (const part of block.kind === "columns" ? block.cells : block.items) placeDocumentImages(part);
+      if (block.kind === "table")
+        for (const row of block.rows) for (const cell of row.cells) placeDocumentImages(cell.blocks);
+      else if (block.kind === "columns" || block.kind === "list")
+        for (const part of block.kind === "columns" ? block.cells : block.items) placeDocumentImages(part);
     }
   };
 
@@ -109,13 +111,19 @@ export const pageFigures = (
     const samples = pixels.data instanceof Uint8Array ? pixels.data : Uint8Array.from(pixels.data);
     const channels = pixels.format === "rgb-24" ? 3 : 4;
     const encoded =
-      pixels.format === "gray-1" ? encodePng(pixels.width, pixels.height, "gray-1", samples) : encodePngDeflate(pixels.width, pixels.height, channels, samples);
+      pixels.format === "gray-1"
+        ? encodePng(pixels.width, pixels.height, "gray-1", samples)
+        : encodePngDeflate(pixels.width, pixels.height, channels, samples);
     const png = encoded === undefined ? undefined : { bytes: encoded, mimeType: "image/png" };
     encodedPixels.set(pixels, { png });
     return png;
   };
 
-  const lostPlacements: { slow: number; unreadable: number; places: LostPlace[] } = { slow: 0, unreadable: 0, places: [] };
+  const lostPlacements: { slow: number; unreadable: number; places: LostPlace[] } = {
+    slow: 0,
+    unreadable: 0,
+    places: [],
+  };
   /** Called only for a placed image. */
   const readBlockImage = (b: BlockImage, order: number): IRBlock[] | undefined => {
     const img = readEmbedded?.(b.ref) ?? readOurPixels(b.name);
@@ -125,7 +133,10 @@ export const pageFigures = (
       // the detector kept without one, is its ORDER on the page, composed here: the resource name is written by the file,
       // so it is client content and never goes in a notice (review 06/11/2026). `bytes` when the boundary has no reason
       // to give: the shape was ours to read and the reading failed, which is exactly what that word means.
-      lostPlacements.places.push({ id: b.ref.length > 0 ? b.ref : `#${String(order + 1)}`, why: sourcePage?.imageRefusal(b.name) ?? "bytes" });
+      lostPlacements.places.push({
+        id: b.ref.length > 0 ? b.ref : `#${String(order + 1)}`,
+        why: sourcePage?.imageRefusal(b.name) ?? "bytes",
+      });
       return undefined;
     }
     count(cost, "imagesRead");
@@ -133,7 +144,17 @@ export const pageFigures = (
   };
   const imageCandidates: ImageCandidate[] = blockImages
     // Which images a rendered table takes is decided in `renderPageTables`: only it knows which tables render.
-    .map((b, order) => ({ top: b.yMax, bottom: b.yMin, xMin: b.xMin, xMax: b.xMax, read: () => readBlockImage(b, order) }));
+    .map((b, order) => ({
+      top: b.yMax,
+      bottom: b.yMin,
+      xMin: b.xMin,
+      xMax: b.xMax,
+      read: () => readBlockImage(b, order),
+    }));
 
-  return { candidates: imageCandidates, place: placeDocumentImages, lost: () => ({ ...lostPlacements, places: [...lostPlacements.places] }) };
+  return {
+    candidates: imageCandidates,
+    place: placeDocumentImages,
+    lost: () => ({ ...lostPlacements, places: [...lostPlacements.places] }),
+  };
 };

@@ -30,7 +30,14 @@ import { maxOf, minOf } from "doc-ir/lib/extent";
 import { type ExtractionCost } from "./extraction-cost";
 import { NOT_PAINTED_MODES } from "./glyph-positions";
 import { toFragment, type LostPlace } from "./pdf-model";
-import { GRAPHICS_STATE_MAX_DEPTH, GraphicsStateStack, HiddenLayerStack, readFormMatrix, type PdfOp, type PdfPathArg } from "./pdf-ops";
+import {
+  GRAPHICS_STATE_MAX_DEPTH,
+  GraphicsStateStack,
+  HiddenLayerStack,
+  readFormMatrix,
+  type PdfOp,
+  type PdfPathArg,
+} from "./pdf-ops";
 import { readPdfSource, type PdfSource, type PdfSourcePage } from "./pdf-source";
 import { encodePng } from "doc-ir/extractor/png";
 
@@ -91,7 +98,6 @@ export { GRAPHICS_STATE_MAX_DEPTH };
  * overlaps — not done, recorded.
  */
 const FULL_PAGE_IMAGE_COVERAGE = 0.8;
-
 
 /** A painted image, identified by its object name and its footprint in
  *  page coordinates. */
@@ -215,13 +221,28 @@ interface PageWalk {
   ocrLayer: boolean;
 }
 
-
 /** The painting operations, BY NAME. `decodeOps` translates the code of
  *  `constructPath` — it lives in the same space as `OPS` — so this file no
  *  longer needs pdf.js's numeric table (14/09/2026). */
-const PAINT_OPS = new Set(["stroke", "closeStroke", "fill", "eoFill", "fillStroke", "eoFillStroke", "closeFillStroke", "closeEOFillStroke"]);
+const PAINT_OPS = new Set([
+  "stroke",
+  "closeStroke",
+  "fill",
+  "eoFill",
+  "fillStroke",
+  "eoFillStroke",
+  "closeFillStroke",
+  "closeEOFillStroke",
+]);
 const FILL_OPS = new Set(["fill", "eoFill", "fillStroke", "eoFillStroke", "closeFillStroke", "closeEOFillStroke"]);
-const STROKE_OPS = new Set(["stroke", "closeStroke", "fillStroke", "eoFillStroke", "closeFillStroke", "closeEOFillStroke"]);
+const STROKE_OPS = new Set([
+  "stroke",
+  "closeStroke",
+  "fillStroke",
+  "eoFillStroke",
+  "closeFillStroke",
+  "closeEOFillStroke",
+]);
 
 /** Bounding box of every point of the sub-paths under `matrix`, by a loop (no
  *  argument-count limit, unlike `Math.max(...xs)`); `undefined` when there is no point. */
@@ -321,7 +342,10 @@ function applyStateOp(op: string, args: unknown, walker: PageWalker): void {
     // concatenated to the current one before its content (ISO 32000-1 8.10.1).
     // Past the depth cap the form is not isolated; its End is paired the same way.
     const formMatrix = readFormMatrix(args);
-    stack.form((cur) => ({ ...cur, matrix: formMatrix === undefined ? cur.matrix : composeMatrix(formMatrix, cur.matrix) }));
+    stack.form((cur) => ({
+      ...cur,
+      matrix: formMatrix === undefined ? cur.matrix : composeMatrix(formMatrix, cur.matrix),
+    }));
   } else if (op === "paintFormXObjectEnd") {
     stack.restore();
   } else if (op === "transform") {
@@ -343,7 +367,12 @@ function applyStateOp(op: string, args: unknown, walker: PageWalker): void {
 }
 
 /** `BDC`/`BMC` and `EMC`: the artifact stack and the optional-content stack move together. */
-function applyMarkedContentOp(op: string, args: unknown, walker: PageWalker, isLayerVisible: ((group: unknown) => boolean) | undefined): void {
+function applyMarkedContentOp(
+  op: string,
+  args: unknown,
+  walker: PageWalker,
+  isLayerVisible: ((group: unknown) => boolean) | undefined,
+): void {
   if (op === "endMarkedContent") {
     if (walker.markedIsArtifact.pop() === true) walker.artifactDepth -= 1;
     walker.layers.leave();
@@ -418,7 +447,8 @@ function recordPath(walker: PageWalker, args: unknown): void {
   const top = walker.stack.current;
   const edgesFrom = walker.segments.length;
   // A loop, not a spread: a spread of a huge path overflows the argument limit.
-  for (const segment of subpathsToSegments(subpaths, top.matrix, pathThickness(paint, subpaths, top))) walker.segments.push(segment);
+  for (const segment of subpathsToSegments(subpaths, top.matrix, pathThickness(paint, subpaths, top)))
+    walker.segments.push(segment);
 
   // THE FLAT FILL ITSELF, kept in addition to its edges (gap 15). A flat fill
   // carries a datum that the text does not carry — the bars of the base
@@ -452,7 +482,12 @@ function recordPath(walker: PageWalker, args: unknown): void {
  *  removal was verified against the Word truth (9 -> 79 exact row counts, 27/10/2026). The container and fills of another colour
  *  keep all their edges. */
 function withoutHiddenRepaintHorizontals(walker: PageWalker): LineSegment[] {
-  const hidden = hiddenRepaintFills(walker.filled, REPAINT_CONTAINMENT_LIMIT_PT, REPAINT_MAX_INSET_PT, REPAINT_WIDTH_RATIO_LIMIT);
+  const hidden = hiddenRepaintFills(
+    walker.filled,
+    REPAINT_CONTAINMENT_LIMIT_PT,
+    REPAINT_MAX_INSET_PT,
+    REPAINT_WIDTH_RATIO_LIMIT,
+  );
   const dropped = new Set<number>();
   for (const { fill, from, to } of walker.fillEdges) {
     if (!hidden.has(fill)) continue;
@@ -485,9 +520,20 @@ function withoutHiddenRepaintHorizontals(walker: PageWalker): LineSegment[] {
  *
  *  `isLayerVisible` is the optional-content verdict of the document (`HidePolicy.isLayerVisible`): text inside a layer
  *  that is switched off is invisible ("Rien d'invisible"), so it counts as neither visible nor invisible text here. */
-export function walkPage(ops: readonly PdfOp[], pageWidth: number, pageHeight: number, isLayerVisible?: (group: unknown) => boolean): PageWalk {
+export function walkPage(
+  ops: readonly PdfOp[],
+  pageWidth: number,
+  pageHeight: number,
+  isLayerVisible?: (group: unknown) => boolean,
+): PageWalk {
   const walker: PageWalker = {
-    stack: new GraphicsStateStack<WalkState>({ matrix: IDENTITY_MATRIX, textMode: 0, lineWidth: 1, fillColor: "#000000", fillAlpha: 1 }),
+    stack: new GraphicsStateStack<WalkState>({
+      matrix: IDENTITY_MATRIX,
+      textMode: 0,
+      lineWidth: 1,
+      fillColor: "#000000",
+      fillAlpha: 1,
+    }),
     markedIsArtifact: [],
     artifactDepth: 0,
     layers: new HiddenLayerStack(),
@@ -510,8 +556,10 @@ export function walkPage(ops: readonly PdfOp[], pageWidth: number, pageHeight: n
     // « échec déguisé » the rule of 06/10/2026 forbids. Recorded here, it goes through the ordinary road and comes out
     // counted and named, with the cause `mask`. Measured first: ZERO stencil in the 57 fixtures and the 251 documents
     // of the corpus, so this adds no notice to any document we know — it adds one the day a stencil turns up.
-    else if (op === "paintImageXObject" || op === "paintInlineImageXObject" || op === "paintImageMaskXObject") recordImage(walker, args);
-    else if (op === "beginMarkedContent" || op === "beginMarkedContentProps" || op === "endMarkedContent") applyMarkedContentOp(op, args, walker, isLayerVisible);
+    else if (op === "paintImageXObject" || op === "paintInlineImageXObject" || op === "paintImageMaskXObject")
+      recordImage(walker, args);
+    else if (op === "beginMarkedContent" || op === "beginMarkedContentProps" || op === "endMarkedContent")
+      applyMarkedContentOp(op, args, walker, isLayerVisible);
     else applyStateOp(op, args, walker);
   }
 
@@ -519,7 +567,8 @@ export function walkPage(ops: readonly PdfOp[], pageWidth: number, pageHeight: n
     segments: withoutHiddenRepaintHorizontals(walker),
     filled: walker.filled,
     imageBoxes: walker.imageBoxes,
-    ocrLayer: walker.invisibleTextOps > 0 && walker.visibleTextOps === 0 && walker.maxImageCoverage >= FULL_PAGE_IMAGE_COVERAGE,
+    ocrLayer:
+      walker.invisibleTextOps > 0 && walker.visibleTextOps === 0 && walker.maxImageCoverage >= FULL_PAGE_IMAGE_COVERAGE,
   };
 }
 
@@ -701,7 +750,10 @@ function boundedCutAboveGrids(
   fragmentsByLine: readonly Fragment[][],
   grids: readonly TableGrid[],
 ): { cut: number; above: number } | undefined {
-  const gridTop = maxOf(grids.flatMap((g) => g.rowBoundaries), (b) => b);
+  const gridTop = maxOf(
+    grids.flatMap((g) => g.rowBoundaries),
+    (b) => b,
+  );
   const band = fragmentsByLine.filter((line) => line.every((f) => f.y > gridTop));
   if (band.length === 0) return undefined;
 
@@ -714,7 +766,9 @@ function boundedCutAboveGrids(
   // only has edges located above it: restricting the input gives the
   // SAME result for a fraction of the work.
   const aboveGrid = classified.filter((l) => (l.orientation === "vertical" ? l.yMin > gridTop : l.y > gridTop));
-  const edges = [...new Set(findCellsByIntersection(aboveGrid).flatMap((c) => [c.xLeft, c.xRight]))].sort((a, b) => a - b);
+  const edges = [...new Set(findCellsByIntersection(aboveGrid).flatMap((c) => [c.xLeft, c.xRight]))].sort(
+    (a, b) => a - b,
+  );
 
   let best: { cut: number; straddling: number } | undefined;
   for (const cut of edges) {
@@ -818,7 +872,12 @@ export async function detectPdfPageSignals(
 
   /** The page's pictures, sorted by their drawn height: a marker in a line below `inlineMaxHeight` (encoded here), a block
    *  above it (read later by its PDF object, `pdf-embedded-images`; one with no object is counted as dropped, by cause). */
-  const classifyImages = (pageIndex: number, page: PdfSourcePage, imageBoxes: readonly ImageBox[], inlineMaxHeight: number): void => {
+  const classifyImages = (
+    pageIndex: number,
+    page: PdfSourcePage,
+    imageBoxes: readonly ImageBox[],
+    inlineMaxHeight: number,
+  ): void => {
     const inlineImages: InlineImage[] = [];
     const blockImages: BlockImage[] = [];
     for (const [order, box] of imageBoxes.entries()) {
@@ -865,7 +924,8 @@ export async function detectPdfPageSignals(
       // nor counted. Tried first, then dropped (07/10/2026): sorting against the DOCUMENT's body size. Ugly and visible
       // (a 1-point rule published as a picture) rather than wrong and invisible. A scan's page has no named operator
       // (`pdf-open.ts`): it walks nothing and pays nothing, as before.
-      if (page.ops.length > 0) classifyImages(pageIndex, page, walkPage(page.ops, page.width, page.height, page.isLayerVisible).imageBoxes, 0);
+      if (page.ops.length > 0)
+        classifyImages(pageIndex, page, walkPage(page.ops, page.width, page.height, page.isLayerVisible).imageBoxes, 0);
       continue;
     }
 
@@ -874,7 +934,9 @@ export async function detectPdfPageSignals(
     // of the text, paired with the first by an `(x, y, text)` key; the
     // boundary carries them directly.
     const bold = new Set(
-      page.runs.filter((r) => r.weight === "bold" && r.text.trim().length > 0).map((r) => positionKey(r.x, r.y, r.text)),
+      page.runs
+        .filter((r) => r.weight === "bold" && r.text.trim().length > 0)
+        .map((r) => positionKey(r.x, r.y, r.text)),
     );
     if (bold.size > 0) boldByPage.set(pageIndex, bold);
     // Rotated runs come out BEFORE any geometric reading: their bounding
@@ -886,7 +948,12 @@ export async function detectPdfPageSignals(
     );
     if (fragmentsByLine.length === 0) continue;
 
-    const { segments: rawSegments, filled, imageBoxes, ocrLayer } = walkPage(page.ops, page.width, page.height, page.isLayerVisible);
+    const {
+      segments: rawSegments,
+      filled,
+      imageBoxes,
+      ocrLayer,
+    } = walkPage(page.ops, page.width, page.height, page.isLayerVisible);
     if (filled.length > 0) filledByPage.set(pageIndex, filled);
 
     // IMAGES THE SIZE OF A CHARACTER (11/09/2026). A report card places two
@@ -903,7 +970,8 @@ export async function detectPdfPageSignals(
     // Large images no longer go through this encoder: they are blocks,
     // read from the PDF structure (15/09/2026).
     const body = dominantTextSize(allFragments);
-    if (body !== undefined && body > 0) classifyImages(pageIndex, page, imageBoxes, INLINE_IMAGE_MAX_HEIGHT_RATIO * body);
+    if (body !== undefined && body > 0)
+      classifyImages(pageIndex, page, imageBoxes, INLINE_IMAGE_MAX_HEIGHT_RATIO * body);
     if (ocrLayer) ocrLayerPages.push(pageIndex);
     const classified = rawSegments.map(classifyLineSegment).filter((l): l is ClassifiedLine => l !== undefined);
     // Every CLOSED rectangle the page draws: the containers the centred-pair
@@ -939,7 +1007,10 @@ export async function detectPdfPageSignals(
       const fragmentCenters = inExtent.map((f) => f.x + f.width / 2);
       // The text PASSES OVER the pair: a fragment starts before its lower boundary and ends after the upper one.
       const crosses = (low: number, high: number): boolean => inExtent.some((f) => f.x < low && f.x + f.width > high);
-      return { ...grid, colBoundaries: mergeDoubledBoundaries(cols, fragmentCenters, DOUBLED_RAIL_MAX_GAP_PT, crosses) };
+      return {
+        ...grid,
+        colBoundaries: mergeDoubledBoundaries(cols, fragmentCenters, DOUBLED_RAIL_MAX_GAP_PT, crosses),
+      };
     });
     const vectorGrids = allVectorGrids.filter((grid) => !isBoxesInVoidsRegion(grid, boxes));
     if (allVectorGrids.length > 0 && vectorGrids.length === 0) {
@@ -948,7 +1019,9 @@ export async function detectPdfPageSignals(
       // (a diagram or a banner box beside two columns of text): the gutter stage runs, and ONLY it (the alignment path
       // stays closed, as before). Same rule as stage 3, no new threshold. WRITTEN LIMIT: a page whose region is an
       // edge frame is accepted here as a one-cell table (the retired edge-frame pass used to remove it); it does not get this cut.
-      const rejectedCut = proseColumnCut(fragmentsByLine, detectColumnGutter(fragmentsByLine), () => hasRepeatedSecondRhythm(fragmentsByLine));
+      const rejectedCut = proseColumnCut(fragmentsByLine, detectColumnGutter(fragmentsByLine), () =>
+        hasRepeatedSecondRhythm(fragmentsByLine),
+      );
       if (rejectedCut !== undefined) columnCuts.push({ pageIndex, cut: rejectedCut });
       continue;
     }
@@ -1041,11 +1114,17 @@ export async function detectPdfPageSignals(
       // as a table, which is yet another thing. The `vector-borders`
       // path (`05a`) does not suffer from it.
       const lineRange = secondRhythm ? identifyAlignedTableLines(fragmentsByLine, aligned) : undefined;
-      const candidate = lineRange ? buildGridFromAlignedRows(fragmentsByLine.slice(lineRange.startLine, lineRange.endLine + 1), aligned) : undefined;
+      const candidate = lineRange
+        ? buildGridFromAlignedRows(fragmentsByLine.slice(lineRange.startLine, lineRange.endLine + 1), aligned)
+        : undefined;
       // The SECOND OPINION — see `gridHoldsItsContent`. A grid discarded here costs
       // no table: it would have been refused at rendering anyway.
       const grid = candidate && gridHoldsItsContent(candidate, fragmentsByLine) ? candidate : undefined;
-      results.push({ pageIndex, origin: "alignment-no-borders", ...(grid && lineRange ? { grid, lineRange, regions: [{ grid }] } : {}) });
+      results.push({
+        pageIndex,
+        origin: "alignment-no-borders",
+        ...(grid && lineRange ? { grid, lineRange, regions: [{ grid }] } : {}),
+      });
     } else if (hasWeakTabularitySignal(fragmentsByLine)) {
       // No clean grid or alignment, but real reason to suspect a table is
       // here anyway (§8's 04/09/2026 correction: this case must never be
@@ -1055,7 +1134,17 @@ export async function detectPdfPageSignals(
     }
     // Neither branch: ordinary prose, nothing worth reporting for this page.
   }
-  return { grids: results, ocrLayerPages, columnCuts, boldByPage, filledByPage, inlineImagesByPage, blockImagesByPage, droppedImagesByPage, boxesByPage };
+  return {
+    grids: results,
+    ocrLayerPages,
+    columnCuts,
+    boldByPage,
+    filledByPage,
+    inlineImagesByPage,
+    blockImagesByPage,
+    droppedImagesByPage,
+    boxesByPage,
+  };
 }
 
 /** The original form — table detection alone. Kept because

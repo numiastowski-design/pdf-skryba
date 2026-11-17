@@ -295,7 +295,10 @@ const PAGE_NUMBER_AFTER_WORD = new RegExp(
   "giu",
 );
 /** The figure BEFORE a page word, after a bar: « 12 | Page ». The bar is the evidence; « 3 page » alone is prose. */
-const PAGE_NUMBER_BEFORE_WORD = new RegExp(`(?<![\\p{L}\\p{N}])${PAGE_FIGURE}\\s*\\|\\s*(?:${PAGE_WORDS})(?![\\p{L}\\p{N}])`, "giu");
+const PAGE_NUMBER_BEFORE_WORD = new RegExp(
+  `(?<![\\p{L}\\p{N}])${PAGE_FIGURE}\\s*\\|\\s*(?:${PAGE_WORDS})(?![\\p{L}\\p{N}])`,
+  "giu",
+);
 /** Four letters or more, each alone between single spaces (« P a g e », « G l o s s a i r e »): the way Word spaces out some footers. */
 const LETTER_SPACED = /(?<![\p{L}\p{N}])\p{L}(?: \p{L}){3,}(?![\p{L}\p{N}])/gu;
 export const normalizeText = (text: string): string => {
@@ -316,7 +319,8 @@ const within = (a: PageLine, b: PageLine, ratio: number): boolean => {
 const contiguous = (a: PageLine, b: PageLine): boolean => within(a, b, MAX_RUN_GAP_RATIO);
 
 /** Does a run of this length swallow its page (see `MAX_FURNITURE_RUN_LINES`)? */
-const swallowsPage = (length: number, pageLines: number): boolean => length > MAX_FURNITURE_RUN_LINES && length * 2 > pageLines;
+const swallowsPage = (length: number, pageLines: number): boolean =>
+  length > MAX_FURNITURE_RUN_LINES && length * 2 > pageLines;
 
 /** What the edge walk and its acceptance tests read about one page. */
 interface RunContext {
@@ -337,17 +341,14 @@ interface RunContext {
  * The lines of one edge run (walked from `from` by `step`) that are furniture, or none. See the walk's comment in
  * `detectPageFurniture` for the rules: loose repeats, one exact anchor, the bounded gap crossing, the page-swallowing bound.
  */
-const edgeRun = (
-  page: RunContext,
-  from: number,
-  step: 1 | -1,
-): number[] => {
+const edgeRun = (page: RunContext, from: number, step: 1 | -1): number[] => {
   const { lines, loose, exact, mostlyRepeated } = page;
   const run: number[] = [];
   let beforeGap: number | undefined;
   for (let i = from; i >= 0 && i < lines.length && loose[i] === true; i += step) {
     if (i !== from && !contiguous(lines[i - step]!, lines[i]!)) {
-      const mayCross = beforeGap === undefined && !mostlyRepeated && exact[i] === true && run.some((j) => exact[j] === true);
+      const mayCross =
+        beforeGap === undefined && !mostlyRepeated && exact[i] === true && run.some((j) => exact[j] === true);
       if (!mayCross || !within(lines[i - step]!, lines[i]!, MAX_BANNER_GAP_RATIO)) break;
       beforeGap = run.length;
     }
@@ -407,19 +408,28 @@ const supportedEdgePrefix = (run: readonly number[], page: RunContext): number[]
 /** Does this line repeat on enough pages, by itself, to be furniture inside a long block (`LONG_BLOCK_PAGES_THRESHOLD`, or its parity)? */
 const isEnoughSupported = (i: number, page: RunContext): boolean => {
   const pagesNeeded = Math.min(LONG_BLOCK_PAGES_THRESHOLD, page.textPages);
-  return page.support[i]! >= pagesNeeded || (page.sameParityTextPages >= MIN_PAGES && page.paritySupport[i]! >= page.sameParityTextPages);
+  return (
+    page.support[i]! >= pagesNeeded ||
+    (page.sameParityTextPages >= MIN_PAGES && page.paritySupport[i]! >= page.sameParityTextPages)
+  );
 };
 
 /** Does this walked run stand: it does not swallow its page, holds an exact anchor, and is not an under-supported block? */
 const isFurnitureRun = (run: readonly number[], page: RunContext): boolean =>
-  !swallowsPage(run.length, page.lines.length) && run.some((i) => page.exact[i] === true) && !isUnderSupportedBlock(run, page);
+  !swallowsPage(run.length, page.lines.length) &&
+  run.some((i) => page.exact[i] === true) &&
+  !isUnderSupportedBlock(run, page);
 
 /** Is this run a BLOCK (`LONG_BLOCK_*_THRESHOLD`) that either covers every line of its page or repeats on too few pages? */
-const isUnderSupportedBlock = (
-  run: readonly number[],
-  page: RunContext,
-): boolean => {
-  const words = run.reduce((sum, i) => sum + page.lines[i]!.text.replace(LETTER_SPACED, (spaced) => spaced.replace(/ /g, "")).split(/[^\p{L}\p{N}]+/u).filter((w) => w !== "").length, 0);
+const isUnderSupportedBlock = (run: readonly number[], page: RunContext): boolean => {
+  const words = run.reduce(
+    (sum, i) =>
+      sum +
+      page.lines[i]!.text.replace(LETTER_SPACED, (spaced) => spaced.replace(/ /g, ""))
+        .split(/[^\p{L}\p{N}]+/u)
+        .filter((w) => w !== "").length,
+    0,
+  );
   if (run.length < LONG_BLOCK_LINES_THRESHOLD && words < LONG_BLOCK_WORDS_THRESHOLD) return false;
   // ACCEPTED COST (laid bias, pinned by a test): in a 3-4 page document a real block of 4 lines or more that opens pages 1 and 3 only
   // is indistinguishable from a mirrored odd-page header, and is removed.
@@ -464,7 +474,12 @@ const counterLinesOf = (
   const relaxedGroups = new Map<string, CounterEntry[]>();
   pagesLines.forEach((lines, page) => {
     for (const line of lines) {
-      const entry = counterEntryOf(line, keys(line), { page, pageCount: pagesLines.length, edge: atEdge(line, page), bodySize });
+      const entry = counterEntryOf(line, keys(line), {
+        page,
+        pageCount: pagesLines.length,
+        edge: atEdge(line, page),
+        bodySize,
+      });
       if (entry === undefined) continue;
       if (entry.digits.length > 0) pushTo(groups, keys(line).loose, entry);
       pushTo(relaxedGroups, entry.relaxed.key, entry);
@@ -474,11 +489,17 @@ const counterLinesOf = (
   // Strict: enough words around the figure, and the figure at a place a counter stands.
   for (const group of groups.values()) {
     const texty = group.filter((e) => e.enoughText);
-    if (risesWithPage(texty, (e) => ({ digits: e.digits, standalone: e.strict }))) for (const e of texty) found.add(e.line);
+    if (risesWithPage(texty, (e) => ({ digits: e.digits, standalone: e.strict })))
+      for (const e of texty) found.add(e.line);
   }
   // Relaxed: a second, constant figure in the line, the same position inside the edge band, on enough pages.
   for (const group of relaxedGroups.values()) {
-    if (group.length >= EDGE_COUNTER_PAGES_THRESHOLD && group.every((e) => e.edge && !e.oversize) && group[0]!.relaxed.digits.length >= 2 && risesWithPage(group, (e) => e.relaxed)) {
+    if (
+      group.length >= EDGE_COUNTER_PAGES_THRESHOLD &&
+      group.every((e) => e.edge && !e.oversize) &&
+      group[0]!.relaxed.digits.length >= 2 &&
+      risesWithPage(group, (e) => e.relaxed)
+    ) {
       for (const e of group) found.add(e.line);
     }
   }
@@ -488,10 +509,11 @@ const counterLinesOf = (
 /** The document's body size: the font size that carries the most characters. */
 const furnitureBodySizeOf = (pagesLines: readonly (readonly PageLine[])[]): number => {
   const chars = new Map<number, number>();
-  for (const lines of pagesLines) for (const l of lines) {
-    const b = bucket(l.size, SIZE_TOLERANCE);
-    chars.set(b, (chars.get(b) ?? 0) + l.text.length);
-  }
+  for (const lines of pagesLines)
+    for (const l of lines) {
+      const b = bucket(l.size, SIZE_TOLERANCE);
+      chars.set(b, (chars.get(b) ?? 0) + l.text.length);
+    }
   let best = 0;
   let bestChars = -1;
   for (const [b, n] of chars) if (n > bestChars || (n === bestChars && b > best)) [best, bestChars] = [b, n];
@@ -536,29 +558,41 @@ const counterEntryOf = (
     digits: runs.map((m) => Number(m[0])),
     // A figure glued to letters (« fr5/21 ») is not a page counter, whatever it does from page to page.
     standalone: runs.map((m) => isStandalone(text, m.index, m[0].length)),
-    strict: runs.map((m) => isStandalone(text, m.index, m[0].length) && inCounterPlace(text, m.index, m[0].length, pageCount)),
+    strict: runs.map(
+      (m) => isStandalone(text, m.index, m[0].length) && inCounterPlace(text, m.index, m[0].length, pageCount),
+    ),
     enoughText: hasCounterText(line.text.trim()),
     edge,
     oversize: line.size > bodySize * MAX_COUNTER_SIZE_RATIO,
     relaxed: {
       key: `${romanised.replace(/\d+/g, "#")}|${romanised === text}|${bucket(line.y, POSITION_TOLERANCE)}|${bucket(line.size, SIZE_TOLERANCE)}`,
       digits: romanRuns.map((m) => Number(m[0])),
-      standalone: romanRuns.map((m) => isStandalone(romanised, m.index, m[0].length) || closesWithTotal(romanised, m.index, m[0].length)),
+      standalone: romanRuns.map(
+        (m) => isStandalone(romanised, m.index, m[0].length) || closesWithTotal(romanised, m.index, m[0].length),
+      ),
     },
   };
 };
 
 /** Is there a digit run that rises by one per page while every other run stays put, over one entry per page? */
-const risesWithPage = (group: readonly CounterEntry[], read: (e: CounterEntry) => { digits: number[]; standalone: readonly boolean[] }): boolean => {
+const risesWithPage = (
+  group: readonly CounterEntry[],
+  read: (e: CounterEntry) => { digits: number[]; standalone: readonly boolean[] },
+): boolean => {
   if (new Set(group.map((e) => e.page)).size !== group.length || group.length < MIN_PAGES) return false;
   const first = read(group[0]!);
   const firstPage = group[0]!.page;
   const followsPage = (j: number): boolean =>
     group.every((e) => {
       const r = read(e);
-      return r.standalone[j] === true && r.digits[j]! <= MAX_COUNTER_FIGURE && r.digits[j]! - e.page === first.digits[j]! - firstPage;
+      return (
+        r.standalone[j] === true &&
+        r.digits[j]! <= MAX_COUNTER_FIGURE &&
+        r.digits[j]! - e.page === first.digits[j]! - firstPage
+      );
     });
-  const othersStay = (j: number): boolean => first.digits.every((_, m) => m === j || group.every((e) => read(e).digits[m] === first.digits[m]));
+  const othersStay = (j: number): boolean =>
+    first.digits.every((_, m) => m === j || group.every((e) => read(e).digits[m] === first.digits[m]));
   return first.digits.some((_, j) => followsPage(j) && othersStay(j));
 };
 
@@ -596,12 +630,17 @@ const closesWithTotal = (text: string, index: number | undefined, length: number
 
 /** Is the digit run at `index` a token of its own (no letter or digit touching it)? */
 const isStandalone = (text: string, index: number | undefined, length: number): boolean =>
-  index !== undefined && !/[\p{L}\p{N}]/u.test(text[index - 1] ?? " ") && !/[\p{L}\p{N}]/u.test(text[index + length] ?? " ");
+  index !== undefined &&
+  !/[\p{L}\p{N}]/u.test(text[index - 1] ?? " ") &&
+  !/[\p{L}\p{N}]/u.test(text[index + length] ?? " ");
 
 /** Enough words of text around the figure(s) to be a running line and not a title (one letter counts as a word, as
  *  Word spaces out some footers). */
 const hasCounterText = (text: string): boolean =>
-  text.replace(/\d+/g, " ").split(/[^\p{L}]+/u).filter((w) => w !== "").length >= COUNTER_TEXT_WORDS_THRESHOLD;
+  text
+    .replace(/\d+/g, " ")
+    .split(/[^\p{L}]+/u)
+    .filter((w) => w !== "").length >= COUNTER_TEXT_WORDS_THRESHOLD;
 
 /** For each key, the set of DISTINCT pages whose items carry it. */
 const pagesByKeyOf = <T>(pages: readonly (readonly T[])[], key: (item: T) => string): Map<string, Set<number>> => {
@@ -638,6 +677,46 @@ const inUpperHalfOfBand = (y: number, bands: readonly TableBand[]): boolean =>
  *
  * Pur : ni I/O, ni horloge, ni aléa. Ne mute jamais son entrée.
  */
+/** The keys of a line (exact, loose, normalized text), computed once per line. */
+const lineKeysMemo = (): ((line: PageLine) => LineKeys) => {
+  const keysOf = new WeakMap<PageLine, LineKeys>();
+  return (line) => {
+    let k = keysOf.get(line);
+    if (k === undefined) {
+      const text = normalizeText(line.text);
+      const where = `|${bucket(line.y, POSITION_TOLERANCE)}|${bucket(line.x, POSITION_TOLERANCE)}|${bucket(line.size, SIZE_TOLERANCE)}`;
+      // Loose key: every digit run of the normalized text becomes one placeholder.
+      k = { exact: text + where, loose: text.replace(/\d+/g, "#") + where, text };
+      keysOf.set(line, k);
+    }
+    return k;
+  };
+};
+
+/** The position key of a line (digits free, no abscissa), computed once per line. */
+const placeKeyMemo = (keys: (line: PageLine) => LineKeys): ((line: PageLine) => string) => {
+  const placeKeysOf = new WeakMap<PageLine, string>();
+  return (line) => {
+    let k = placeKeysOf.get(line);
+    if (k === undefined) {
+      k = `${keys(line).text.replace(/\d+/g, "#")}|${bucket(line.y, POSITION_TOLERANCE)}|${bucket(line.size, SIZE_TOLERANCE)}`;
+      placeKeysOf.set(line, k);
+    }
+    return k;
+  };
+};
+
+/** Per position key: how many pages [even, odd] (by index) carry it. */
+const parityCountsOf = (pagesByPlaceKey: ReadonlyMap<string, ReadonlySet<number>>): Map<string, [number, number]> => {
+  const parityCountsByPlaceKey = new Map<string, [number, number]>();
+  for (const [key, pagesOfKey] of pagesByPlaceKey) {
+    const counts: [number, number] = [0, 0];
+    for (const p of pagesOfKey) counts[p % 2]!++;
+    parityCountsByPlaceKey.set(key, counts);
+  }
+  return parityCountsByPlaceKey;
+};
+
 export function detectPageFurniture(
   pagesLines: readonly (readonly PageLine[])[],
   tableBands: readonly (readonly TableBand[])[] = [],
@@ -649,51 +728,32 @@ export function detectPageFurniture(
 ): boolean[][] {
   if (pagesLines.length < MIN_PAGES) return pagesLines.map((lines) => lines.map(() => false));
 
-  const keysOf = new WeakMap<PageLine, LineKeys>();
-  const keys = (line: PageLine): LineKeys => {
-    let k = keysOf.get(line);
-    if (k === undefined) {
-      const text = normalizeText(line.text);
-      const where = `|${bucket(line.y, POSITION_TOLERANCE)}|${bucket(line.x, POSITION_TOLERANCE)}|${bucket(line.size, SIZE_TOLERANCE)}`;
-      // Loose key: every digit run of the normalized text becomes one placeholder.
-      k = { exact: text + where, loose: text.replace(/\d+/g, "#") + where, text };
-      keysOf.set(line, k);
-    }
-    return k;
-  };
+  const keys = lineKeysMemo();
 
   /** On how many DISTINCT pages does each form appear? Two occurrences on the same
    *  page prove nothing: furniture repeats across pages, not within one. */
   const pagesByKey = pagesByKeyOf(pagesLines, (line) => keys(line).exact);
   const pagesByLooseKey = pagesByKeyOf(pagesLines, (line) => keys(line).loose);
-  const placeKeysOf = new WeakMap<PageLine, string>();
-  const placeKeyOf = (line: PageLine): string => {
-    let k = placeKeysOf.get(line);
-    if (k === undefined) {
-      k = `${keys(line).text.replace(/\d+/g, "#")}|${bucket(line.y, POSITION_TOLERANCE)}|${bucket(line.size, SIZE_TOLERANCE)}`;
-      placeKeysOf.set(line, k);
-    }
-    return k;
-  };
+  const placeKeyOf = placeKeyMemo(keys);
   const pagesByPlaceKey = pagesByKeyOf(pagesLines, placeKeyOf);
-  /** Per position key: how many pages [even, odd] (by index) carry it. */
-  const parityCountsByPlaceKey = new Map<string, [number, number]>();
-  for (const [key, pagesOfKey] of pagesByPlaceKey) {
-    const counts: [number, number] = [0, 0];
-    for (const p of pagesOfKey) counts[p % 2]!++;
-    parityCountsByPlaceKey.set(key, counts);
-  }
-  const counterLines = counterLinesOf(pagesLines, keys, (line, page) => atPageEdge(line, pageHeights[page], pageBottoms[page] ?? 0));
+  const parityCountsByPlaceKey = parityCountsOf(pagesByPlaceKey);
+  const counterLines = counterLinesOf(pagesLines, keys, (line, page) =>
+    atPageEdge(line, pageHeights[page], pageBottoms[page] ?? 0),
+  );
 
   // A counter line proved itself by rising with the page: it counts for every page. The position is compared WITHOUT its abscissa:
   // a right-aligned counter moves with its digit count (« Page 9 sur 11 » at x=489, « Page 10 sur 11 » at x=485) and is still
   // the same line of the same block.
   const textPages = pagesLines.filter((l) => l.length > 0).length;
-  const textPagesByParity = [0, 1].map((parity) => pagesLines.filter((l, p) => l.length > 0 && p % 2 === parity).length);
+  const textPagesByParity = [0, 1].map(
+    (parity) => pagesLines.filter((l, p) => l.length > 0 && p % 2 === parity).length,
+  );
   const paritySupportOf = (line: PageLine, page: number): number =>
     counterLines.has(line) ? Infinity : (parityCountsByPlaceKey.get(placeKeyOf(line))?.[page % 2] ?? 0);
   const supportOf = (line: PageLine): number =>
-    counterLines.has(line) ? Infinity : Math.max(pagesByKey.get(keys(line).exact)?.size ?? 0, pagesByPlaceKey.get(placeKeyOf(line))?.size ?? 0);
+    counterLines.has(line)
+      ? Infinity
+      : Math.max(pagesByKey.get(keys(line).exact)?.size ?? 0, pagesByPlaceKey.get(placeKeyOf(line))?.size ?? 0);
 
   return pagesLines.map((lines, page) => {
     const bands = tableBands[page] ?? [];
@@ -703,14 +763,20 @@ export function detectPageFurniture(
     // unless the line repeats exactly AT THE PAGE EDGE: a letterhead boxed in a one-row grid (074) is not a table header.
     // A band whose lines ALL repeat exactly at the page edge is a banner. A band with any other line is a real table, whose
     // repeated header stays: its words are content, and removing the header on every page loses them (review 14/10/2026).
-    const edgeRepeat = (line: PageLine): boolean => repeatsExactly(line) && atPageEdge(line, pageHeights[page], pageBottoms[page] ?? 0);
+    const edgeRepeat = (line: PageLine): boolean =>
+      repeatsExactly(line) && atPageEdge(line, pageHeights[page], pageBottoms[page] ?? 0);
     // A band that reaches the page edge is a page-wide frame (a cover's border), not a table: it never protects.
     const height = pageHeights[page];
     const bottom = pageBottoms[page] ?? 0;
-    const frames = (b: TableBand): boolean => height !== undefined && (b.top - bottom >= height - 1 || b.bottom - bottom <= 1);
-    const bannerBands = bands.filter((b) => frames(b) || lines.every((l) => !isInBand(l.y + l.size / 2, [b]) || edgeRepeat(l)));
+    const frames = (b: TableBand): boolean =>
+      height !== undefined && (b.top - bottom >= height - 1 || b.bottom - bottom <= 1);
+    const bannerBands = bands.filter(
+      (b) => frames(b) || lines.every((l) => !isInBand(l.y + l.size / 2, [b]) || edgeRepeat(l)),
+    );
     const protectedByTable = lines.map(
-      (line) => inUpperHalfOfBand(line.y + line.size / 2, bands) && !(edgeRepeat(line) && isInBand(line.y + line.size / 2, bannerBands)),
+      (line) =>
+        inUpperHalfOfBand(line.y + line.size / 2, bands) &&
+        !(edgeRepeat(line) && isInBand(line.y + line.size / 2, bannerBands)),
     );
     const exact = lines.map((line, i) => !protectedByTable[i]! && repeatsExactly(line));
     // Inside a band (either half) only an EXACT repeat counts: amortisation rows at a fixed pitch repeat on every
@@ -762,7 +828,21 @@ export function detectPageFurniture(
     const support = lines.map(supportOf);
     const paritySupport = lines.map((line) => paritySupportOf(line, page));
     const mark = (from: number, step: 1 | -1): void => {
-      for (const i of edgeRun({ lines, loose, exact, mostlyRepeated, support, paritySupport, textPages, sameParityTextPages: textPagesByParity[page % 2]! }, from, step)) furniture[i] = true;
+      for (const i of edgeRun(
+        {
+          lines,
+          loose,
+          exact,
+          mostlyRepeated,
+          support,
+          paritySupport,
+          textPages,
+          sameParityTextPages: textPagesByParity[page % 2]!,
+        },
+        from,
+        step,
+      ))
+        furniture[i] = true;
     };
     mark(0, 1);
     mark(lines.length - 1, -1);
@@ -845,7 +925,8 @@ export function detectRepeatedHeadBlocks(
       const height = pageHeights[page];
       // The descent stops at the first line never seen at the head, and (heights known) at the first outside the edge band.
       const repeated = (line: PageLine): boolean =>
-        seenInHead.get(line.text.trim())?.has(sizeKey(line)) === true && (height === undefined || atPageEdge(line, height, pageBottoms[page] ?? 0));
+        seenInHead.get(line.text.trim())?.has(sizeKey(line)) === true &&
+        (height === undefined || atPageEdge(line, height, pageBottoms[page] ?? 0));
       for (let i = 0; i < head && repeated(lines[i]!); i++) flags[i] = true;
     }
 

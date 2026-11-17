@@ -13,7 +13,15 @@ import { isXsdTrue } from "../lib/ooxml-bool";
 import { externalLinkTarget } from "doc-ir/lib/link-schemes";
 import { ReaderError } from "doc-ir/lib/reader-error";
 import { type OpcPackage, readOrFlag, findRelationshipOfKind } from "./ooxml/package";
-import { attributeOf, findChild, findChildren, childNodesOf, qualifiedNameOf, textContentOf, type XNode } from "./ooxml/xml";
+import {
+  attributeOf,
+  findChild,
+  findChildren,
+  childNodesOf,
+  qualifiedNameOf,
+  textContentOf,
+  type XNode,
+} from "./ooxml/xml";
 
 /** Zero-based, like `sheet-grid.ts`. */
 interface CellAddress {
@@ -31,7 +39,11 @@ interface CellRange {
  *  date cell (`t="d"`) is turned into the serial number the formatter
  *  reads, in the workbook's own date system. An error keeps the text the
  *  file writes (`#DIV/0!`). */
-type CellValue = { readonly t: "n"; readonly v: number } | { readonly t: "s"; readonly v: string } | { readonly t: "b"; readonly v: boolean } | { readonly t: "e"; readonly v: string };
+type CellValue =
+  | { readonly t: "n"; readonly v: number }
+  | { readonly t: "s"; readonly v: string }
+  | { readonly t: "b"; readonly v: boolean }
+  | { readonly t: "e"; readonly v: string };
 
 export interface WorksheetCell {
   readonly value: CellValue;
@@ -142,12 +154,14 @@ const isTrueAttribute = isXsdTrue;
 
 const writeColumnName = (colIndex: number): string => {
   let name = "";
-  for (let columnNumber = colIndex + 1; columnNumber > 0; columnNumber = Math.floor((columnNumber - 1) / 26)) name = String.fromCharCode(65 + ((columnNumber - 1) % 26)) + name;
+  for (let columnNumber = colIndex + 1; columnNumber > 0; columnNumber = Math.floor((columnNumber - 1) / 26))
+    name = String.fromCharCode(65 + ((columnNumber - 1) % 26)) + name;
   return name;
 };
 
 /** `{ rowIndex: 0, columnIndex: 0 }` → `A1`. */
-export const formatCellReference = (rowIndex: number, colIndex: number): string => `${writeColumnName(colIndex)}${rowIndex + 1}`;
+export const formatCellReference = (rowIndex: number, colIndex: number): string =>
+  `${writeColumnName(colIndex)}${rowIndex + 1}`;
 
 const CELL_REFERENCE = /^\$?([A-Za-z]{1,3})\$?([0-9]{1,7})$/;
 
@@ -168,7 +182,16 @@ export const parseCellRangeReference = (reference: string | undefined): CellRang
   const first = parseCellReference(firstText ?? "");
   const second = parseCellReference(secondText ?? "");
   if (!first || !second) return undefined;
-  return { start: { rowIndex: Math.min(first.rowIndex, second.rowIndex), columnIndex: Math.min(first.columnIndex, second.columnIndex) }, end: { rowIndex: Math.max(first.rowIndex, second.rowIndex), columnIndex: Math.max(first.columnIndex, second.columnIndex) } };
+  return {
+    start: {
+      rowIndex: Math.min(first.rowIndex, second.rowIndex),
+      columnIndex: Math.min(first.columnIndex, second.columnIndex),
+    },
+    end: {
+      rowIndex: Math.max(first.rowIndex, second.rowIndex),
+      columnIndex: Math.max(first.columnIndex, second.columnIndex),
+    },
+  };
 };
 
 /** §22.9.2.19 ST_Xstring: a character XML cannot carry is written
@@ -228,7 +251,15 @@ const serialOf = (iso: string, date1904: boolean): number | undefined => {
   const match = ISO_DATE.exec(iso.trim());
   if (!match) return undefined;
   const seconds = Number(match[6] ?? "0");
-  const utc = Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), Number(match[4] ?? "0"), Number(match[5] ?? "0")) + seconds * 1000;
+  const utc =
+    Date.UTC(
+      Number(match[1]),
+      Number(match[2]) - 1,
+      Number(match[3]),
+      Number(match[4] ?? "0"),
+      Number(match[5] ?? "0"),
+    ) +
+    seconds * 1000;
   if (date1904) return (utc - Date.UTC(1904, 0, 1)) / DAY_MS;
   const serial = (utc - Date.UTC(1899, 11, 30)) / DAY_MS;
   return serial < 61 ? serial - 1 : serial;
@@ -248,7 +279,9 @@ const customFormatsOf = (styles: XNode): Map<number, string> => {
 };
 
 /** The per-style tables (format code, built-in date 14, bold) of a styles part, indexed like `cellXfs`. */
-const styleTablesOf = (styles: XNode): Pick<SharedStringsAndStyles, "cellXfsFormatCodes" | "cellXfsIsBuiltinNumFmt14" | "cellXfsIsBold"> => {
+const styleTablesOf = (
+  styles: XNode,
+): Pick<SharedStringsAndStyles, "cellXfsFormatCodes" | "cellXfsIsBuiltinNumFmt14" | "cellXfsIsBold"> => {
   const styleFormats: (string | undefined)[] = [];
   const styleBuiltinDate14: boolean[] = [];
   const styleBold: boolean[] = [];
@@ -283,7 +316,10 @@ const sharedStringsOf = (sst: XNode | undefined): Pick<SharedStringsAndStyles, "
 /** The workbook-wide tables every sheet reads through: shared strings,
  *  style formats, date system. `workbookXml`: the caller's own parse, when
  *  it has one. */
-export async function readSharedStringsAndStyles(opcPackage: OpcPackage, workbookXml?: XNode): Promise<SharedStringsAndStyles> {
+export async function readSharedStringsAndStyles(
+  opcPackage: OpcPackage,
+  workbookXml?: XNode,
+): Promise<SharedStringsAndStyles> {
   const workbook = workbookXml ?? (await opcPackage.readXml(opcPackage.mainPart));
   const workbookPr = workbook ? findChild(workbook, "workbookPr") : undefined;
   const date1904 = isTrueAttribute(workbookPr ? attributeOf(workbookPr, "date1904") : undefined);
@@ -296,12 +332,27 @@ export async function readSharedStringsAndStyles(opcPackage: OpcPackage, workboo
   const { sharedStrings, sharedRuns } = sharedStringsOf(sst);
 
   const { styles, stylesUnreadable } = await readStylesPart(opcPackage, partOf("styles"));
-  const { cellXfsFormatCodes: styleFormats, cellXfsIsBuiltinNumFmt14: styleBuiltinDate14, cellXfsIsBold: styleBold } = styles ? styleTablesOf(styles) : { cellXfsFormatCodes: [], cellXfsIsBuiltinNumFmt14: [], cellXfsIsBold: [] };
-  return { date1904, sharedStrings, cellXfsFormatCodes: styleFormats, cellXfsIsBuiltinNumFmt14: styleBuiltinDate14, cellXfsIsBold: styleBold, sharedRuns, isStylesPartUnreadable: stylesUnreadable };
+  const {
+    cellXfsFormatCodes: styleFormats,
+    cellXfsIsBuiltinNumFmt14: styleBuiltinDate14,
+    cellXfsIsBold: styleBold,
+  } = styles ? styleTablesOf(styles) : { cellXfsFormatCodes: [], cellXfsIsBuiltinNumFmt14: [], cellXfsIsBold: [] };
+  return {
+    date1904,
+    sharedStrings,
+    cellXfsFormatCodes: styleFormats,
+    cellXfsIsBuiltinNumFmt14: styleBuiltinDate14,
+    cellXfsIsBold: styleBold,
+    sharedRuns,
+    isStylesPartUnreadable: stylesUnreadable,
+  };
 }
 
 /** The styles part, parsed; `isStylesPartUnreadable` when it is declared but damaged. */
-const readStylesPart = async (opcPackage: OpcPackage, stylesPart: string | undefined): Promise<{ styles: XNode | undefined; stylesUnreadable: boolean }> => {
+const readStylesPart = async (
+  opcPackage: OpcPackage,
+  stylesPart: string | undefined,
+): Promise<{ styles: XNode | undefined; stylesUnreadable: boolean }> => {
   if (stylesPart === undefined) return { styles: undefined, stylesUnreadable: false };
   // A damaged styles part does not refuse the workbook: values come out unformatted, the caller says so (08/10/2026).
   const { value, damaged } = await readOrFlag(() => opcPackage.readXml(stylesPart));
@@ -367,7 +418,11 @@ const createExtentTracker = (): ExtentTracker => {
   let extent: CellRange | undefined;
   return {
     grow: (rowIndex, colIndex) => {
-      if (!extent) extent = { start: { rowIndex: rowIndex, columnIndex: colIndex }, end: { rowIndex: rowIndex, columnIndex: colIndex } };
+      if (!extent)
+        extent = {
+          start: { rowIndex: rowIndex, columnIndex: colIndex },
+          end: { rowIndex: rowIndex, columnIndex: colIndex },
+        };
       else {
         extent.start.rowIndex = Math.min(extent.start.rowIndex, rowIndex);
         extent.start.columnIndex = Math.min(extent.start.columnIndex, colIndex);
@@ -389,13 +444,25 @@ interface RowsAccumulator {
 
 /** A formula cell with no cached value: an EMPTY `<v>` and an absent one both mean « no cached value ». */
 const isFormulaWithoutValue = (cellNode: XNode, address: CellAddress | undefined): boolean => {
-  if (address === undefined || attributeOf(cellNode, "r") === undefined || findChild(cellNode, "f") === undefined || findChild(cellNode, "is") !== undefined) return false;
+  if (
+    address === undefined ||
+    attributeOf(cellNode, "r") === undefined ||
+    findChild(cellNode, "f") === undefined ||
+    findChild(cellNode, "is") !== undefined
+  )
+    return false;
   const valueNode = findChild(cellNode, "v");
   return valueNode === undefined || (textContentOf(valueNode).length === 0 && attributeOf(cellNode, "t") !== "str");
 };
 
 /** One `<c>`: notes its extent and a missing cached value, stores its value when it has one. Returns the cell's column. */
-const readCell = (cellNode: XNode, rowIndex: number, previousCol: number, workbook: SharedStringsAndStyles, accumulator: RowsAccumulator): number => {
+const readCell = (
+  cellNode: XNode,
+  rowIndex: number,
+  previousCol: number,
+  workbook: SharedStringsAndStyles,
+  accumulator: RowsAccumulator,
+): number => {
   const address = parseCellReference(attributeOf(cellNode, "r") ?? "");
   const cellRowIndex = address?.rowIndex ?? rowIndex;
   const colIndex = address?.columnIndex ?? previousCol + 1;
@@ -422,7 +489,8 @@ const readRows = (sheetXml: XNode, workbook: SharedStringsAndStyles, accumulator
       rowIndex = Number.isInteger(declaredRow) && declaredRow >= 1 ? declaredRow - 1 : rowIndex + 1;
       if (isTrueAttribute(attributeOf(row, "hidden"))) accumulator.hiddenRows.add(rowIndex);
       let colIndex = -1;
-      for (const cellNode of findChildren(row, "c")) colIndex = readCell(cellNode, rowIndex, colIndex, workbook, accumulator);
+      for (const cellNode of findChildren(row, "c"))
+        colIndex = readCell(cellNode, rowIndex, colIndex, workbook, accumulator);
     }
   }
 };
@@ -434,7 +502,14 @@ const hiddenColsOf = (sheetXml: XNode): { min: number; max: number }[] => {
     for (const col of findChildren(cols, "col")) {
       const min = Number(attributeOf(col, "min"));
       const max = Number(attributeOf(col, "max"));
-      if (isTrueAttribute(attributeOf(col, "hidden")) && Number.isInteger(min) && Number.isInteger(max) && min >= 1 && max >= min) hiddenCols.push({ min: min - 1, max: max - 1 });
+      if (
+        isTrueAttribute(attributeOf(col, "hidden")) &&
+        Number.isInteger(min) &&
+        Number.isInteger(max) &&
+        min >= 1 &&
+        max >= min
+      )
+        hiddenCols.push({ min: min - 1, max: max - 1 });
     }
   }
   return hiddenCols;
@@ -449,7 +524,8 @@ const mergesOf = (sheetXml: XNode): CellRange[] => {
   const merges: CellRange[] = [];
   for (const mergeCells of findChildren(sheetXml, "mergeCells")) {
     for (const mergeCell of findChildren(mergeCells, "mergeCell")) {
-      if (merges.length >= MAX_MERGE_CELLS_PER_SHEET) throw new ReaderError("FILE_UNSAFE", "the sheet declares more merged ranges than any real workbook");
+      if (merges.length >= MAX_MERGE_CELLS_PER_SHEET)
+        throw new ReaderError("FILE_UNSAFE", "the sheet declares more merged ranges than any real workbook");
       const range = parseCellRangeReference(attributeOf(mergeCell, "ref"));
       if (range) merges.push(range);
     }
@@ -458,9 +534,15 @@ const mergesOf = (sheetXml: XNode): CellRange[] => {
 };
 
 /** The hyperlinks of the sheet, their targets resolved through the sheet's relationships. */
-const hyperlinksOf = async (opcPackage: OpcPackage, sheetPartPath: string, sheetXml: XNode): Promise<SheetHyperlink[]> => {
+const hyperlinksOf = async (
+  opcPackage: OpcPackage,
+  sheetPartPath: string,
+  sheetXml: XNode,
+): Promise<SheetHyperlink[]> => {
   const hyperlinks: SheetHyperlink[] = [];
-  const hyperlinkNodes = findChildren(sheetXml, "hyperlinks").flatMap((hyperlinksElement) => findChildren(hyperlinksElement, "hyperlink"));
+  const hyperlinkNodes = findChildren(sheetXml, "hyperlinks").flatMap((hyperlinksElement) =>
+    findChildren(hyperlinksElement, "hyperlink"),
+  );
   if (hyperlinkNodes.length === 0) return hyperlinks;
   const relationships = await opcPackage.relationships(sheetPartPath);
   for (const hyperlinkNode of hyperlinkNodes) {
@@ -483,21 +565,45 @@ const sheetRefOf = (sheetXml: XNode, extent: CellRange | undefined): CellRange |
   const declared = parseCellRangeReference(dimensionNode ? attributeOf(dimensionNode, "ref") : undefined);
   if (!declared || !extent) return declared ?? extent;
   return {
-    start: { rowIndex: Math.min(declared.start.rowIndex, extent.start.rowIndex), columnIndex: Math.min(declared.start.columnIndex, extent.start.columnIndex) },
-    end: { rowIndex: Math.max(declared.end.rowIndex, extent.end.rowIndex), columnIndex: Math.max(declared.end.columnIndex, extent.end.columnIndex) },
+    start: {
+      rowIndex: Math.min(declared.start.rowIndex, extent.start.rowIndex),
+      columnIndex: Math.min(declared.start.columnIndex, extent.start.columnIndex),
+    },
+    end: {
+      rowIndex: Math.max(declared.end.rowIndex, extent.end.rowIndex),
+      columnIndex: Math.max(declared.end.columnIndex, extent.end.columnIndex),
+    },
   };
 };
 
 /** One worksheet part's cells. `sheetXml`: the part as the caller already
  *  parsed it (one inflate per part). */
-export async function readWorksheetCells(opcPackage: OpcPackage, sheetPartPath: string, sheetXml: XNode, workbook: SharedStringsAndStyles): Promise<WorksheetCells> {
-  const accumulator: RowsAccumulator = { cells: new Map(), noValue: new Map(), hiddenRows: new Set(), extent: createExtentTracker() };
+export async function readWorksheetCells(
+  opcPackage: OpcPackage,
+  sheetPartPath: string,
+  sheetXml: XNode,
+  workbook: SharedStringsAndStyles,
+): Promise<WorksheetCells> {
+  const accumulator: RowsAccumulator = {
+    cells: new Map(),
+    noValue: new Map(),
+    hiddenRows: new Set(),
+    extent: createExtentTracker(),
+  };
   readRows(sheetXml, workbook, accumulator);
   const hiddenCols = hiddenColsOf(sheetXml);
   const merges = mergesOf(sheetXml);
   const hyperlinks = await hyperlinksOf(opcPackage, sheetPartPath, sheetXml);
   const ref = sheetRefOf(sheetXml, accumulator.extent.get());
-  return { cells: accumulator.cells, dimensionRange: ref, mergeCells: merges, hiddenRows: accumulator.hiddenRows, hiddenColumns: hiddenCols, hyperlinks, formulasWithoutValue: [...accumulator.noValue.values()] };
+  return {
+    cells: accumulator.cells,
+    dimensionRange: ref,
+    mergeCells: merges,
+    hiddenRows: accumulator.hiddenRows,
+    hiddenColumns: hiddenCols,
+    hyperlinks,
+    formulasWithoutValue: [...accumulator.noValue.values()],
+  };
 }
 
 /** `hiddenColumns` sorted and merged (disjoint, ascending), built once per
@@ -537,13 +643,23 @@ const hyperlinkAt = (sheet: WorksheetCells, rowIndex: number, colIndex: number):
   for (let linkIndex = sheet.hyperlinks.length - 1; linkIndex >= 0; linkIndex--) {
     const link = sheet.hyperlinks[linkIndex]!;
     const { range } = link;
-    if (rowIndex >= range.start.rowIndex && rowIndex <= range.end.rowIndex && colIndex >= range.start.columnIndex && colIndex <= range.end.columnIndex) return link;
+    if (
+      rowIndex >= range.start.rowIndex &&
+      rowIndex <= range.end.rowIndex &&
+      colIndex >= range.start.columnIndex &&
+      colIndex <= range.end.columnIndex
+    )
+      return link;
   }
   return undefined;
 };
 
-export const findHyperlinkTargetAt = (sheet: WorksheetCells, rowIndex: number, colIndex: number): string | undefined => hyperlinkAt(sheet, rowIndex, colIndex)?.target;
+export const findHyperlinkTargetAt = (sheet: WorksheetCells, rowIndex: number, colIndex: number): string | undefined =>
+  hyperlinkAt(sheet, rowIndex, colIndex)?.target;
 
 /** The same cell's link, kept only if it may become an href (`lib/link-schemes.ts#externalLinkTarget`). */
-export const findExternalHyperlinkTargetAt = (sheet: WorksheetCells, rowIndex: number, colIndex: number): string | undefined =>
-  externalLinkTarget(hyperlinkAt(sheet, rowIndex, colIndex));
+export const findExternalHyperlinkTargetAt = (
+  sheet: WorksheetCells,
+  rowIndex: number,
+  colIndex: number,
+): string | undefined => externalLinkTarget(hyperlinkAt(sheet, rowIndex, colIndex));

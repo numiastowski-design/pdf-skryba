@@ -73,7 +73,11 @@ export const smartArtPieces = async (
 };
 
 /** The shapes' texts (one string per `dsp:sp` with text, document order) of the drawing cache the data model `data` names. */
-const cachePiecesOf = async (xmlOf: (path: string) => Promise<N | undefined>, data: N, partOf: PartOfRelId): Promise<string[]> => {
+const cachePiecesOf = async (
+  xmlOf: (path: string) => Promise<N | undefined>,
+  data: N,
+  partOf: PartOfRelId,
+): Promise<string[]> => {
   const extension = allOf(data, "dsp:dataModelExt")[0];
   const cachePart = extension ? partOf(attrOf(extension, "relId")) : undefined;
   const cache = cachePart === undefined ? undefined : await stylesOrAbsent(() => xmlOf(cachePart));

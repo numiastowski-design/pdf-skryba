@@ -46,7 +46,14 @@
  * ⚠️ CLIENT TEXT, in memory only, like the verdict it reads.
  */
 
-import { conservationKey, wordKeysOf, type LostPassage, type PageEdit, type PageWordAt, type PublishedPage } from "doc-ir/pipeline/text-conservation";
+import {
+  conservationKey,
+  wordKeysOf,
+  type LostPassage,
+  type PageEdit,
+  type PageWordAt,
+  type PublishedPage,
+} from "doc-ir/pipeline/text-conservation";
 
 /** Why a lost passage was not put back — a closed list. */
 export type LostTextAbstention =
@@ -102,7 +109,8 @@ export function placeLostPassages(
     if (before === "unanchored" || after === "unanchored") return "anchor-unmatched";
     if (before === "document-edge" && after === "document-edge") return "no-anchor";
     if (before !== "document-edge" && after !== "document-edge") {
-      if (after.block < before.block || (after.block === before.block && after.word <= before.word)) return "anchors-out-of-order";
+      if (after.block < before.block || (after.block === before.block && after.word <= before.word))
+        return "anchors-out-of-order";
     }
     const u1 = before === "document-edge" ? undefined : edgeOf(before, "before");
     if (typeof u1 === "string") return u1;

@@ -62,7 +62,11 @@ const workRatio = (structure: JpegStructure): number => {
     const covered =
       scan.components.length === 1
         ? blocks[scan.components[0]!.componentIndex]!
-        : mcus * scan.components.reduce((sum, c) => sum + frame.components[c.componentIndex]!.h * frame.components[c.componentIndex]!.v, 0);
+        : mcus *
+          scan.components.reduce(
+            (sum, c) => sum + frame.components[c.componentIndex]!.h * frame.components[c.componentIndex]!.v,
+            0,
+          );
     walked += covered * Math.max(scan.se - scan.ss + 1, MIN_SCAN_COST);
   }
   return walked / (blocks.reduce((sum, b) => sum + b, 0) * 64);
@@ -77,7 +81,12 @@ const workRatio = (structure: JpegStructure): number => {
  */
 export const decodeJpegRgba = (bytes: Uint8Array, guard: JpegDecodeGuard): DecodedJpeg => {
   const { maxResolutionInMP, maxMemoryUsageInMB } = guard;
-  if (!Number.isFinite(maxResolutionInMP) || maxResolutionInMP < 0 || !Number.isFinite(maxMemoryUsageInMB) || maxMemoryUsageInMB < 0) {
+  if (
+    !Number.isFinite(maxResolutionInMP) ||
+    maxResolutionInMP < 0 ||
+    !Number.isFinite(maxMemoryUsageInMB) ||
+    maxMemoryUsageInMB < 0
+  ) {
     throw new Error("decodeJpegRgba: guards must be finite numbers >= 0");
   }
   const structure = parseJpeg(bytes, { maxPixels: maxResolutionInMP * 1000 * 1000 });

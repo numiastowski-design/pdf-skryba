@@ -19,7 +19,7 @@
 /** What the reader meets and knows it cannot draw as the source draws it. */
 export type SkippedElement =
   /** An OMML equation (`m:oMath`, `m:oMathPara`): we publish its characters, never its mathematical layout. */
-  | "equation";
+  "equation";
 
 /** `boundary`: does the page keep a word boundary on each side of it?
  *  - `true`  — proved by a test of this repository.
@@ -46,7 +46,11 @@ export const SKIPPED_ELEMENTS: Readonly<Record<SkippedElement, SkipRule>> = {
  *  Two cases take nothing, and both are measured by tests of this repository: a side with no neighbour (an equation alone in
  *  its paragraph must not gain a space it never had), and a side that already ends on a blank (a source that spaces its own
  *  equation stays untouched). A boundary is a separation between two things, never a decoration. */
-export function framedSkippedText(kind: SkippedElement, text: string, sides: { left: boolean; right: boolean }): string {
+export function framedSkippedText(
+  kind: SkippedElement,
+  text: string,
+  sides: { left: boolean; right: boolean },
+): string {
   const rule = SKIPPED_ELEMENTS[kind];
   if (rule.boundary !== true) return text;
   // AN ELEMENT WHOSE TEXT WE READ AS EMPTY STILL LEAVES ITS BOUNDARY — one, not two (measured 29/10/2026 on the document of

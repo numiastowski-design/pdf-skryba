@@ -50,7 +50,11 @@ export function applyMatrix(m: Matrix2D, x: number, y: number): { x: number; y: 
  *  montée de `pdfjs-dist` pouvait l'invalider. `subpathsToSegments` ci-dessous
  *  reste ici : elle ne connaît que des points. */
 
-export const subpathsToSegments = (subpaths: { x: number; y: number }[][], ctm: Matrix2D, thickness?: number): LineSegment[] => {
+export const subpathsToSegments = (
+  subpaths: { x: number; y: number }[][],
+  ctm: Matrix2D,
+  thickness?: number,
+): LineSegment[] => {
   const segments: LineSegment[] = [];
   const extra = thickness !== undefined ? { thickness } : {};
   for (const points of subpaths) {
@@ -75,10 +79,22 @@ export function classifyLineSegment(seg: LineSegment): ClassifiedLine | undefine
   const dy = Math.abs(seg.y2 - seg.y1);
   const thickness = seg.thickness !== undefined ? { thickness: seg.thickness } : {};
   if (dy <= AXIS_TOLERANCE && dx > AXIS_TOLERANCE) {
-    return { orientation: "horizontal", y: (seg.y1 + seg.y2) / 2, xMin: Math.min(seg.x1, seg.x2), xMax: Math.max(seg.x1, seg.x2), ...thickness };
+    return {
+      orientation: "horizontal",
+      y: (seg.y1 + seg.y2) / 2,
+      xMin: Math.min(seg.x1, seg.x2),
+      xMax: Math.max(seg.x1, seg.x2),
+      ...thickness,
+    };
   }
   if (dx <= AXIS_TOLERANCE && dy > AXIS_TOLERANCE) {
-    return { orientation: "vertical", x: (seg.x1 + seg.x2) / 2, yMin: Math.min(seg.y1, seg.y2), yMax: Math.max(seg.y1, seg.y2), ...thickness };
+    return {
+      orientation: "vertical",
+      x: (seg.x1 + seg.x2) / 2,
+      yMin: Math.min(seg.y1, seg.y2),
+      yMax: Math.max(seg.y1, seg.y2),
+      ...thickness,
+    };
   }
   return undefined;
 }
@@ -86,7 +102,8 @@ export function classifyLineSegment(seg: LineSegment): ClassifiedLine | undefine
 /** Appariement (abscisse, ordonnee, texte) entre deux lectures du MEME
  *  document, qui rendent exactement les memes coordonnees. Jamais un
  *  appariement par indice : les deux listes n'ont pas la meme longueur. */
-export const positionKey = (x: number, y: number, text: string): string => `${Math.round(x * 100)}|${Math.round(y * 100)}|${text}`;
+export const positionKey = (x: number, y: number, text: string): string =>
+  `${Math.round(x * 100)}|${Math.round(y * 100)}|${text}`;
 
 /** The classified lines split by orientation, each side in its input order. */
 export function splitByOrientation(lines: readonly ClassifiedLine[]): {

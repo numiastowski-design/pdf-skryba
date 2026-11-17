@@ -50,4 +50,7 @@ export const SOURCE_TYPE_BY_EXTENSION: Readonly<Record<string, string>> = {
  *  to classify, never relayed. */
 const OCTET_STREAM = "application/octet-stream";
 export const listedMimeType = (declared: string | undefined): string =>
-  declared !== undefined && (Object.hasOwn(EXT_BY_MIME, declared) || Object.values(SOURCE_TYPE_BY_EXTENSION).includes(declared)) ? declared : OCTET_STREAM;
+  declared !== undefined &&
+  (Object.hasOwn(EXT_BY_MIME, declared) || Object.values(SOURCE_TYPE_BY_EXTENSION).includes(declared))
+    ? declared
+    : OCTET_STREAM;

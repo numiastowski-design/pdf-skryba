@@ -156,7 +156,10 @@ export function hasWeakTabularitySignal(fragmentsByLine: readonly Fragment[][]):
  * qui est encore autre chose. Le chemin `vector-borders` (`05a`) n'en souffre
  * pas : sa dernière ligne exclue est à 43 pt, une vraie séparation.
  */
-export function identifyAlignedTableLines(fragmentsByLine: readonly Fragment[][], columnStarts: readonly number[]): { startLine: number; endLine: number } | undefined {
+export function identifyAlignedTableLines(
+  fragmentsByLine: readonly Fragment[][],
+  columnStarts: readonly number[],
+): { startLine: number; endLine: number } | undefined {
   const matchingLineIndices: number[] = [];
   fragmentsByLine.forEach((line, i) => {
     const real = line.filter((f) => f.text.trim().length > 0);
@@ -173,7 +176,10 @@ export function identifyAlignedTableLines(fragmentsByLine: readonly Fragment[][]
  *  vector grid to read, so boundaries are the MIDPOINTS between consecutive
  *  lines/columns, with a half-line-height margin on the outer edges so the
  *  outermost row/column's own content isn't clipped by its own boundary. */
-export function buildGridFromAlignedRows(linesInRange: readonly Fragment[][], columnStarts: readonly number[]): TableGrid | undefined {
+export function buildGridFromAlignedRows(
+  linesInRange: readonly Fragment[][],
+  columnStarts: readonly number[],
+): TableGrid | undefined {
   if (linesInRange.length === 0 || columnStarts.length < MIN_BOUNDARIES) return undefined;
   const allReal = linesInRange.flat().filter((f) => f.text.trim().length > 0);
   if (allReal.length === 0) return undefined;

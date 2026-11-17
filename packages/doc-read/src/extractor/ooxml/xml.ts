@@ -55,7 +55,8 @@ const DECLARES_DTD = /<!DOCTYPE/i;
 
 const ATTRIBUTES_KEY = ":@";
 
-export const qualifiedNameOf = (node: XNode): string | undefined => Object.keys(node).find((key) => key !== ATTRIBUTES_KEY);
+export const qualifiedNameOf = (node: XNode): string | undefined =>
+  Object.keys(node).find((key) => key !== ATTRIBUTES_KEY);
 
 export const childNodesOf = (node: XNode): XNode[] => {
   const tag = qualifiedNameOf(node);
@@ -64,13 +65,16 @@ export const childNodesOf = (node: XNode): XNode[] => {
   return Array.isArray(value) ? (value as XNode[]) : [];
 };
 
-export const attributesOf = (node: XNode): Record<string, string> => (node[ATTRIBUTES_KEY] as Record<string, string> | undefined) ?? {};
+export const attributesOf = (node: XNode): Record<string, string> =>
+  (node[ATTRIBUTES_KEY] as Record<string, string> | undefined) ?? {};
 
 export const attributeOf = (node: XNode, name: string): string | undefined => attributesOf(node)[name];
 
-export const findChild = (node: XNode, tag: string): XNode | undefined => childNodesOf(node).find((kid) => qualifiedNameOf(kid) === tag);
+export const findChild = (node: XNode, tag: string): XNode | undefined =>
+  childNodesOf(node).find((kid) => qualifiedNameOf(kid) === tag);
 
-export const findChildren = (node: XNode, tag: string): XNode[] => childNodesOf(node).filter((kid) => qualifiedNameOf(kid) === tag);
+export const findChildren = (node: XNode, tag: string): XNode[] =>
+  childNodesOf(node).filter((kid) => qualifiedNameOf(kid) === tag);
 
 /** Every descendant tagged `tag`, in document order; a match is not searched inside. */
 export const findDescendants = (node: XNode, tag: string, found: XNode[] = []): XNode[] => {
@@ -82,13 +86,16 @@ export const findDescendants = (node: XNode, tag: string, found: XNode[] = []): 
 };
 
 /** The frame of a `w:drawing`: its `wp:inline`, else its `wp:anchor`. */
-export const findDrawingFrame = (drawing: XNode): XNode | undefined => findChild(drawing, "wp:inline") ?? findChild(drawing, "wp:anchor");
+export const findDrawingFrame = (drawing: XNode): XNode | undefined =>
+  findChild(drawing, "wp:inline") ?? findChild(drawing, "wp:anchor");
 
 /** The `a:graphic/a:graphicData` of a drawing's frame. */
-export const findGraphicData = (frame: XNode): XNode | undefined => findChild(findChild(frame, "a:graphic") ?? {}, "a:graphicData");
+export const findGraphicData = (frame: XNode): XNode | undefined =>
+  findChild(findChild(frame, "a:graphic") ?? {}, "a:graphicData");
 
 /** Whether `predicate` holds for the node ITSELF or for any element below it (depth first, the node first, stopping at the first yes). */
-export const hasMatchingNode = (node: XNode, predicate: (node: XNode) => boolean): boolean => predicate(node) || childNodesOf(node).some((kid) => hasMatchingNode(kid, predicate));
+export const hasMatchingNode = (node: XNode, predicate: (node: XNode) => boolean): boolean =>
+  predicate(node) || childNodesOf(node).some((kid) => hasMatchingNode(kid, predicate));
 
 /** The `w:val` of the child tagged `tag` (undefined when the parent or the child is missing). */
 export const valOfChild = (parent: XNode | undefined, tag: string): string | undefined => {
@@ -121,7 +128,10 @@ const canonicalizeRequires = (value: string, scope: ReadonlyMap<string, string>)
     .join(" ");
 
 /** The scope in force inside an element: `scope` plus the namespaces its own `xmlns` attributes declare (`scope` itself when none). */
-const withNamespaceDeclarations = (attributeEntries: readonly (readonly [string, string])[], scope: ReadonlyMap<string, string>): ReadonlyMap<string, string> => {
+const withNamespaceDeclarations = (
+  attributeEntries: readonly (readonly [string, string])[],
+  scope: ReadonlyMap<string, string>,
+): ReadonlyMap<string, string> => {
   let innerScope: Map<string, string> | undefined;
   for (const [name, value] of attributeEntries) {
     if (name !== "xmlns" && !name.startsWith("xmlns:")) continue;
@@ -131,7 +141,11 @@ const withNamespaceDeclarations = (attributeEntries: readonly (readonly [string,
   return innerScope ?? scope;
 };
 
-const canonicalizeAttributes = (attributeEntries: readonly (readonly [string, string])[], canonicalTag: string, scope: ReadonlyMap<string, string>): Record<string, string> =>
+const canonicalizeAttributes = (
+  attributeEntries: readonly (readonly [string, string])[],
+  canonicalTag: string,
+  scope: ReadonlyMap<string, string>,
+): Record<string, string> =>
   Object.fromEntries(
     attributeEntries.map(([name, value]) => [
       renamed(name, scope, true),
@@ -148,7 +162,8 @@ const canonicalize = (nodes: readonly XNode[], scope: ReadonlyMap<string, string
     const innerScope = withNamespaceDeclarations(attributeEntries, scope);
     const canonicalTag = renamed(tag, innerScope, false);
     const canonicalNode: XNode = { [canonicalTag]: canonicalize(childNodesOf(node), innerScope) };
-    if (attributeEntries.length > 0) canonicalNode[ATTRIBUTES_KEY] = canonicalizeAttributes(attributeEntries, canonicalTag, innerScope);
+    if (attributeEntries.length > 0)
+      canonicalNode[ATTRIBUTES_KEY] = canonicalizeAttributes(attributeEntries, canonicalTag, innerScope);
     return [canonicalNode];
   });
 
@@ -162,6 +177,9 @@ export const parseXml = (input: string | Uint8Array): XNode | undefined => {
   // Bare text (tests) is guessed by the reader.
   const { text, encoding } = typeof input === "string" ? { text: input, encoding: undefined } : decodeXmlPart(input);
   if (DECLARES_DTD.test(text)) throw new Error("docx-reader: a DTD declaration (forbidden by OPC)");
-  const nodes = canonicalize((encoding === undefined ? xmlParser.parse(text) : xmlParser.parse(text, encoding)) as XNode[], new Map());
+  const nodes = canonicalize(
+    encoding === undefined ? xmlParser.parse(text) : xmlParser.parse(text, encoding),
+    new Map(),
+  );
   return nodes.find((node) => qualifiedNameOf(node) !== undefined && !("#text" in node));
 };

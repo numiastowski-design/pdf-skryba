@@ -60,7 +60,7 @@ const besideRun = (anchor: ImageAnchor, lines: readonly PdfTextRun[][]): PdfText
   };
   const anchored = lines.map((_, i) => i).filter((i) => butts(i));
   if (!anchored.some((i) => meets(i))) return [];
-  return lines.slice(anchored[0]!, anchored[anchored.length - 1]! + 1);
+  return lines.slice(anchored[0], anchored[anchored.length - 1]! + 1);
 };
 
 /**
@@ -70,14 +70,21 @@ const besideRun = (anchor: ImageAnchor, lines: readonly PdfTextRun[][]): PdfText
  * line whose centre falls in [bottom, top] — including text standing to the RIGHT of the picture, which belongs to
  * nobody here and would be silently lost. The caller removes the run's own items instead, which loses nothing.
  */
-const figureOf = (anchor: ImageAnchor, lines: readonly PdfTextRun[][], toBlocks: (segment: PdfTextRun[][]) => IRBlock[]): AsideFigure | undefined => {
+const figureOf = (
+  anchor: ImageAnchor,
+  lines: readonly PdfTextRun[][],
+  toBlocks: (segment: PdfTextRun[][]) => IRBlock[],
+): AsideFigure | undefined => {
   const ink = lines.flatMap(inkOf);
   if (ink.length === 0) return undefined;
   const beside = toBlocks(lines.map((line) => [...line]));
   if (beside.length === 0) return undefined;
   const table: IRBlock = { kind: "table", rows: [{ cells: [{ blocks: beside }, { blocks: anchor.blocks }] }] };
   // The table is read where the run STARTS: everything above it comes before, everything below comes after.
-  const top = Math.max(maxOf(ink, (it) => it.y + it.height), anchor.top);
+  const top = Math.max(
+    maxOf(ink, (it) => it.y + it.height),
+    anchor.top,
+  );
   return {
     anchor,
     lines,

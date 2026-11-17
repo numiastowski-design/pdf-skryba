@@ -15,11 +15,24 @@
  *  Called by: the POC's tools (`tools/poc/`), and `document.test.ts`. */
 
 import { standardOutcome, type StandardSecurity } from "../pdf-decrypt";
-import { HEAP_PER_NODE, MAX_DOCUMENT_BYTES, MAX_OBJECT_STREAM_CACHE, MAX_PAGE_TREE_DEPTH, MAX_PAGES, MAX_REF_HOPS } from "./bounds";
+import {
+  HEAP_PER_NODE,
+  MAX_DOCUMENT_BYTES,
+  MAX_OBJECT_STREAM_CACHE,
+  MAX_PAGE_TREE_DEPTH,
+  MAX_PAGES,
+  MAX_REF_HOPS,
+} from "./bounds";
 import type { PdfDict, PdfRef, PdfStream, PdfValue } from "./objects";
 import { parseIndirectObject } from "./parse";
 import { PdfObjectsRefusal } from "./refusal";
-import { decodeStream, decodeToImageFilter, IMAGE_FILTERS, readObjectStream, type ObjectStreamMembers } from "./streams";
+import {
+  decodeStream,
+  decodeToImageFilter,
+  IMAGE_FILTERS,
+  readObjectStream,
+  type ObjectStreamMembers,
+} from "./streams";
 import { readXref, type Xref } from "./xref";
 
 /** One page of the tree, with what it inherited already applied. */
@@ -216,7 +229,12 @@ interface Decryptor {
 /** One stream's bytes: decrypted first when the document is encrypted (§7.6.2 decrypts with the number AND the
  *  generation of the object that HOLDS the stream), then unfiltered — §7.6.1 applies encryption after the
  *  filters, so it is undone before them, on a buffer that now starts at 0. */
-function decodedStream(bytes: Uint8Array, stream: PdfStream, owner: PdfRef | undefined, decryptor: Decryptor | undefined): Uint8Array {
+function decodedStream(
+  bytes: Uint8Array,
+  stream: PdfStream,
+  owner: PdfRef | undefined,
+  decryptor: Decryptor | undefined,
+): Uint8Array {
   if (decryptor === undefined) return decodeStream(bytes, stream);
   // An encrypted stream whose holder we do not know cannot be decrypted, and its raw bytes are not its bytes:
   // a refusal, never plausible-looking wrong data (review of 31/10/2026).
@@ -274,6 +292,7 @@ function decryptionMemo(at: Lookups, trailer: PdfDict): () => Decryptor | undefi
         refusal = error;
       }
     }
+    // eslint-disable-next-line @typescript-eslint/only-throw-error -- the refusal caught on the first call, thrown again as caught (`allowRethrowing` covers only a throw inside the catch).
     if (refusal !== undefined) throw refusal;
     return decryptor;
   };
@@ -298,9 +317,10 @@ function streamReadersOf(
   owners: ReadonlyMap<number, PdfRef>,
   decryptor: () => Decryptor | undefined,
 ): {
-  streamBytes(stream: PdfStream): Uint8Array;
-  rawStreamBytes(stream: PdfStream): Uint8Array;
-  imageStreamOf(stream: PdfStream): { readonly imageFilter: string | undefined; readonly data: Uint8Array };
+  // Function properties, not methods: the caller destructures them, and none reads `this`.
+  streamBytes: (stream: PdfStream) => Uint8Array;
+  rawStreamBytes: (stream: PdfStream) => Uint8Array;
+  imageStreamOf: (stream: PdfStream) => { readonly imageFilter: string | undefined; readonly data: Uint8Array };
 } {
   function streamBytes(stream: PdfStream): Uint8Array {
     const type = stream.dict.get("Type");
@@ -356,6 +376,21 @@ function documentBudget(): (count: number) => void {
   };
 }
 
+/** A value with its references followed through `objectOf`, at most `MAX_REF_HOPS` of them. */
+function followRefs(
+  value: PdfValue | undefined,
+  objectOf: (num: number) => PdfValue | undefined,
+): PdfValue | undefined {
+  let current = value;
+  let hops = 0;
+  while (current?.kind === "ref") {
+    hops += 1;
+    if (hops > MAX_REF_HOPS) throw new PdfObjectsRefusal("ref-hops", current.num);
+    current = objectOf(current.num);
+  }
+  return current;
+}
+
 export function openPdfObjects(bytes: Uint8Array): PdfObjectsDocument {
   /** 🔴 THE ONLY CUMULATIVE BUDGET of the reader (security review of 31/10/2026): all the other ceilings are LOCAL,
    *  so a document could cross them a great number of times — the same member of an object stream parsed
@@ -375,14 +410,7 @@ export function openPdfObjects(bytes: Uint8Array): PdfObjectsDocument {
   const owners = new Map<number, PdfRef>();
 
   function resolve(value: PdfValue | undefined): PdfValue | undefined {
-    let current = value;
-    let hops = 0;
-    while (current?.kind === "ref") {
-      hops += 1;
-      if (hops > MAX_REF_HOPS) throw new PdfObjectsRefusal("ref-hops", current.num);
-      current = objectOf(current.num);
-    }
-    return current;
+    return followRefs(value, objectOf);
   }
 
   function dictOf(value: PdfValue | undefined): PdfDict | undefined {
@@ -426,7 +454,8 @@ export function openPdfObjects(bytes: Uint8Array): PdfObjectsDocument {
     // the generation half of an object's identity, and an incremental update that bumps it while the old object
     // still sits at the offset is exactly how a table goes stale (review of 31/10/2026).
     if (parsed.num !== num || parsed.gen !== gen) throw new PdfObjectsRefusal("xref-stale", num);
-    if (parsed.value.kind === "stream") owners.set(parsed.value.start, { kind: "ref", num: parsed.num, gen: parsed.gen });
+    if (parsed.value.kind === "stream")
+      owners.set(parsed.value.start, { kind: "ref", num: parsed.num, gen: parsed.gen });
     // The `/Encrypt` dictionary is read to BUILD the decryptor, and its own strings are in the clear.
     if (num === encryptNum) return parsed.value;
     const decrypt = decryptor();
@@ -463,7 +492,10 @@ export function openPdfObjects(bytes: Uint8Array): PdfObjectsDocument {
     if (reading.size >= MAX_REF_HOPS) throw new PdfObjectsRefusal("ref-hops", num);
     reading.add(num);
     try {
-      const value = entry.kind === "offset" ? objectAtOffset(num, entry.offset, entry.gen) : objectInContainer(num, entry.container);
+      const value =
+        entry.kind === "offset"
+          ? objectAtOffset(num, entry.offset, entry.gen)
+          : objectInContainer(num, entry.container);
       objects.set(num, value);
       return value;
     } finally {
@@ -479,11 +511,13 @@ export function openPdfObjects(bytes: Uint8Array): PdfObjectsDocument {
 
 /** The one filter of a stream, as a name: `/Filter /X`, or `/Filter [/X]` (a one-element array, the same thing). */
 /** The name a value holds, or `undefined` for anything else. */
-const nameOfValue = (value: PdfValue | undefined): string | undefined => (value?.kind === "name" ? value.value : undefined);
+const nameOfValue = (value: PdfValue | undefined): string | undefined =>
+  value?.kind === "name" ? value.value : undefined;
 
 export function singleFilterOf(doc: PdfObjectsDocument, dict: ReadonlyMap<string, PdfValue>): string | undefined {
   const filter = doc.resolve(dict.get("Filter"));
-  if (filter?.kind === "array") return filter.items.length === 1 ? nameOfValue(doc.resolve(filter.items[0])) : undefined;
+  if (filter?.kind === "array")
+    return filter.items.length === 1 ? nameOfValue(doc.resolve(filter.items[0])) : undefined;
   return nameOfValue(filter);
 }
 

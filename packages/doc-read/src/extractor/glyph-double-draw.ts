@@ -35,7 +35,8 @@ const AXIS_ALIGNED_EPSILON = 1e-6;
 /** Two sizes closer than this (relative) are the same size. */
 const SAME_SIZE = 1e-3;
 
-const isUpright = (g: GlyphFragment): boolean => Math.abs(g.matrix.b) <= AXIS_ALIGNED_EPSILON && Math.abs(g.matrix.c) <= AXIS_ALIGNED_EPSILON;
+const isUpright = (g: GlyphFragment): boolean =>
+  Math.abs(g.matrix.b) <= AXIS_ALIGNED_EPSILON && Math.abs(g.matrix.c) <= AXIS_ALIGNED_EPSILON;
 /** The largest glyph the rule compares: the largest page Acrobat creates (200 in = 14 400 pt). A larger « glyph » is a hostile or broken
  *  matrix, kept as is and never compared: past 2^53 a size bucket no longer grows by one and the lookup never ended (Fable's review of
  *  b8aa99d5, 23/10/2026: a `1e16 Tf`). */
@@ -63,7 +64,9 @@ const cellOf = (g: GlyphFragment, bucket: number): { ix: number; iy: number } =>
 });
 
 const isDouble = (g: GlyphFragment, other: GlyphFragment): boolean =>
-  Math.abs(other.height - g.height) <= SAME_SIZE * g.height && Math.abs(other.x - g.x) < ALONG_EM * g.height && Math.abs(other.y - g.y) < ACROSS_EM * g.height;
+  Math.abs(other.height - g.height) <= SAME_SIZE * g.height &&
+  Math.abs(other.x - g.x) < ALONG_EM * g.height &&
+  Math.abs(other.y - g.y) < ACROSS_EM * g.height;
 
 /** Is there, among the glyphs filed in the cells covering the window of `g` in its bucket and the neighbouring ones, a glyph `g` doubles? */
 function isDoubledIn(filed: ReadonlyMap<string, readonly GlyphFragment[]>, g: GlyphFragment): boolean {
@@ -73,7 +76,9 @@ function isDoubledIn(filed: ReadonlyMap<string, readonly GlyphFragment[]>, g: Gl
     const alongCells = Math.ceil(g.height / bucketSize(bucket));
     const { ix, iy } = cellOf(g, bucket);
     for (let dx = -alongCells; dx <= alongCells; dx++)
-      for (let dy = -alongCells; dy <= alongCells; dy++) if (filed.get(cellKey(g.text, bucket, ix + dx, iy + dy))?.some((other) => isDouble(g, other)) === true) return true;
+      for (let dy = -alongCells; dy <= alongCells; dy++)
+        if (filed.get(cellKey(g.text, bucket, ix + dx, iy + dy))?.some((other) => isDouble(g, other)) === true)
+          return true;
   }
   return false;
 }

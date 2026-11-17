@@ -99,5 +99,7 @@ const cutsOf = (table: Table, word: string): Set<number> => {
 export const legalCutOf = (lang: PageLanguage): ((left: string, right: string) => boolean) => {
   const table = tableOf(lang);
   return (left, right) =>
-    left.length >= table.leftMin && right.length >= table.rightMin && cutsOf(table, `${left}${right}`.toLowerCase()).has(left.length);
+    left.length >= table.leftMin &&
+    right.length >= table.rightMin &&
+    cutsOf(table, `${left}${right}`.toLowerCase()).has(left.length);
 };

@@ -61,7 +61,10 @@ export class PdfObjectsRefusal extends ReaderError {
      *  of bisecting a stream by hand (POC of 31/10/2026). */
     readonly offset?: number,
   ) {
-    super("EXTRACT_FAILED", objectNumber === undefined ? `pdf-objects: ${reason}` : `pdf-objects: ${reason} (object ${objectNumber})`);
+    super(
+      "EXTRACT_FAILED",
+      objectNumber === undefined ? `pdf-objects: ${reason}` : `pdf-objects: ${reason} (object ${objectNumber})`,
+    );
     this.name = "PdfObjectsRefusal";
   }
 }

@@ -41,7 +41,8 @@ export const coversSlide = (box: Box, slide: Size): boolean =>
 
 /** The centre of `inner` lies in `outer`, edges included. Compared at twice
  *  the scale, so a half-unit centre stays an integer. */
-export const centreInside = (inner: Box, outer: Box): boolean => holdsRect(RECT_RULES["centre-in-box"], rawFromBox(outer), rawFromBox(inner));
+export const centreInside = (inner: Box, outer: Box): boolean =>
+  holdsRect(RECT_RULES["centre-in-box"], rawFromBox(outer), rawFromBox(inner));
 
 /** One item of a slide as these facts see it: its box (absent when unknown)
  *  and whether it is a picture. */
@@ -65,7 +66,10 @@ export const slideItemFlags = (
       background: background[i]!,
       posedOnPicture:
         box !== undefined &&
-        items.some((other, j) => j !== i && other.picture && !background[j] && other.box !== undefined && centreInside(box, other.box)),
+        items.some(
+          (other, j) =>
+            j !== i && other.picture && !background[j] && other.box !== undefined && centreInside(box, other.box),
+        ),
     };
   });
 };

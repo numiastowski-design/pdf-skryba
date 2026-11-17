@@ -21,10 +21,10 @@ export interface ChartCellPoint {
   formatCode?: string | undefined;
 }
 
-/** The points of an address, in index order, produced as asked. `extent`, when given, is how many cells the reference can yield, known
- *  without reading one: its length up to its last cell that gives a point (the length of the cache Excel would write; 0 when none does). */
+/** The points of an address, in index order, produced as asked. `extent` is how many cells the reference can yield, known without reading
+ *  one: the length of our dense array of its points, from its first cell to its last cell that gives a point (0 when none does). */
 export interface ChartPoints extends Iterable<ChartCellPoint> {
-  extent?: number;
+  readonly extent: number;
 }
 
 /** The points of an address, or `undefined` for an address outside the grammar or on another sheet, which the chart reader answers by keeping
@@ -114,7 +114,8 @@ const pointLinesOf = (grid: ChartGrid): PointLines => {
     add(lines.byColumn, column, row);
     add(lines.byRow, row, column);
   }
-  for (const places of [...lines.byColumn.values(), ...lines.byRow.values()]) places.sort((earlier, later) => earlier - later);
+  for (const places of [...lines.byColumn.values(), ...lines.byRow.values()])
+    places.sort((earlier, later) => earlier - later);
   return lines;
 };
 
@@ -126,14 +127,20 @@ export const sheetChartResolver = (sheetName: string, grid: ChartGrid): ChartRes
   let lines: PointLines | undefined;
   const pointAt = (row: number, column: number, index: number): ChartCellPoint => {
     const number = grid.numberAt(row, column);
-    return { index, text: grid.textAt(row, column), ...(number === undefined ? {} : { stored: String(number.value), formatCode: number.formatCode }) };
+    return {
+      index,
+      text: grid.textAt(row, column),
+      ...(number === undefined ? {} : { stored: String(number.value), formatCode: number.formatCode }),
+    };
   };
   /** The places along the range's line that give a point, and the range's two ends on that line. */
   const lineOf = (range: ChartRange): { across: boolean; places: readonly number[]; first: number; last: number } => {
     lines ??= pointLinesOf(grid);
     const across = range.firstRow === range.lastRow;
     const places = (across ? lines.byRow.get(range.firstRow) : lines.byColumn.get(range.firstColumn)) ?? [];
-    return across ? { across, places, first: range.firstColumn, last: range.lastColumn } : { across, places, first: range.firstRow, last: range.lastRow };
+    return across
+      ? { across, places, first: range.firstColumn, last: range.lastColumn }
+      : { across, places, first: range.firstRow, last: range.lastRow };
   };
   function* pointsOf(range: ChartRange): Generator<ChartCellPoint> {
     const { across, places, first, last } = lineOf(range);
@@ -142,7 +149,7 @@ export const sheetChartResolver = (sheetName: string, grid: ChartGrid): ChartRes
       yield across ? pointAt(range.firstRow, place, place - first) : pointAt(place, range.firstColumn, place - first);
     }
   }
-  /** The range's length up to its last cell that gives a point (0: none), from the lines alone: the length of the cache Excel would write. */
+  /** The range's length up to its last cell that gives a point (0: none), from the lines alone: our dense length for that reference. */
   const extentOf = (range: ChartRange): number => {
     const { places, first, last } = lineOf(range);
     const end = lowerBound(places, last + 1);

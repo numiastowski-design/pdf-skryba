@@ -9,7 +9,13 @@ import type { PaintedBox } from "doc-ir/layout/hidden-repaints";
 import { detectColumnGutter } from "doc-ir/layout/geometry";
 import { documentColumnCut, documentColumnCuts, documentCutsRanked } from "doc-ir/layout/gutter";
 import { gridCuts } from "doc-ir/layout/column-grid";
-import { bodySizeOf, DEFAULT_HEADING_SIZE_RATIO, MAX_LEVEL, sizeClasses, type HeadingLevel } from "doc-ir/layout/heading-sizes";
+import {
+  bodySizeOf,
+  DEFAULT_HEADING_SIZE_RATIO,
+  MAX_LEVEL,
+  sizeClasses,
+  type HeadingLevel,
+} from "doc-ir/layout/heading-sizes";
 import { isInBand, type GridBand } from "doc-ir/layout/grid-band";
 import { quarterPoint } from "doc-ir/layout/mode";
 import { detectPageFurniture, detectRepeatedHeadBlocks } from "doc-ir/layout/page-furniture";
@@ -93,12 +99,19 @@ interface DocumentCuts {
 /** La grille, pour les deux preuves qui ne sont pas la gouttière. La décision reste à l'échelle du DOCUMENT
  *  (invariant du 16/09/2026) : seule la preuve change. Sans coupe dominante au sens de la gouttière, c'est la
  *  première coupe qui tient ce rôle — elle ne sert qu'aux décisions à deux bandes. */
-const gridOfDocument = (pages: readonly (readonly PdfTextRun[])[], evidence: Exclude<ColumnEvidence, "gutter">): DocumentCuts => {
+const gridOfDocument = (
+  pages: readonly (readonly PdfTextRun[])[],
+  evidence: Exclude<ColumnEvidence, "gutter">,
+): DocumentCuts => {
   const { all, dominant } = documentCutsRanked(pages, (page) => gridCuts(page, evidence));
   return { cut: dominant, all };
 };
 
-const documentGutters = (items: readonly (readonly PdfTextRun[])[], furniture: ReadonlySet<PdfTextRun>, evidence: ColumnEvidence): DocumentCuts => {
+const documentGutters = (
+  items: readonly (readonly PdfTextRun[])[],
+  furniture: ReadonlySet<PdfTextRun>,
+  evidence: ColumnEvidence,
+): DocumentCuts => {
   const pages = items.map((rawItems) => rawItems.filter((it) => !furniture.has(it)));
   if (evidence !== "gutter") return gridOfDocument(pages, evidence);
   return { cut: documentColumnCut(pages), all: documentColumnCuts(pages) };
@@ -153,14 +166,22 @@ const lettersBySizeOf = (items: readonly PdfTextRun[]): Map<number, number> => {
 
 /** The ranks of a page's title sizes, largest first: a size of the same document class as the rank's first joins it; a
  *  lone size within the ratio of a lone first joins it too. The level is the rank, never above the document's. */
-const rankedLevels = (titles: readonly number[], documentLevelOf: (size: number) => HeadingLevel | undefined, ratio: number): Map<number, HeadingLevel> => {
+const rankedLevels = (
+  titles: readonly number[],
+  documentLevelOf: (size: number) => HeadingLevel | undefined,
+  ratio: number,
+): Map<number, HeadingLevel> => {
   const levels = new Map<number, HeadingLevel>();
   let rank = 0;
   let first: number | undefined;
   for (const size of titles) {
     const documentLevel = documentLevelOf(size);
     const sameClass = first !== undefined && documentLevel !== undefined && documentLevelOf(first) === documentLevel;
-    const sameLone = first !== undefined && documentLevel === undefined && documentLevelOf(first) === undefined && first / size < ratio;
+    const sameLone =
+      first !== undefined &&
+      documentLevel === undefined &&
+      documentLevelOf(first) === undefined &&
+      first / size < ratio;
     if (!sameClass && !sameLone) {
       rank += 1;
       first = size;
@@ -182,10 +203,14 @@ const pageBodySizesOf = (items: readonly (readonly PdfTextRun[])[]): Set<number>
   return sizes;
 };
 
-export const scaleOfPage = (items: readonly PdfTextRun[], scale: Pick<DocumentScale, "headingLevelOf" | "isBodySize" | "pageBodySizes">): PageScale => {
+export const scaleOfPage = (
+  items: readonly PdfTextRun[],
+  scale: Pick<DocumentScale, "headingLevelOf" | "isBodySize" | "pageBodySizes">,
+): PageScale => {
   const charsBySize = lettersBySizeOf(items);
   const body = bodySizeOf(charsBySize);
-  if (body === undefined || (charsBySize.get(body) ?? 0) < MIN_PAGE_BODY_LETTERS) return { ...scale, isSmallSize: () => false };
+  if (body === undefined || (charsBySize.get(body) ?? 0) < MIN_PAGE_BODY_LETTERS)
+    return { ...scale, isSmallSize: () => false };
   const ratio = DEFAULT_HEADING_SIZE_RATIO;
   // UNE TAILLE QUE LE DOCUMENT CLASSE RESTE UN TITRE SUR CHAQUE PAGE (même taille → même niveau partout) : seule la
   // bande du corps de LA page la rétrograde. Mesuré en le cassant (bench structure-truth, 05/11/2026) : avec la porte
@@ -206,9 +231,14 @@ export const scaleOfPage = (items: readonly PdfTextRun[], scale: Pick<DocumentSc
   // its Word sections sit at 1.17 of the body, inside the band. The band is too wide; the measured body of a page is not.
   const isTitle = (size: number): boolean => {
     if (scale.pageBodySizes.has(size)) return false;
-    return scale.headingLevelOf(size) !== undefined ? !(size < body * ratio && size * ratio > body) : size >= body * ratio;
+    return scale.headingLevelOf(size) !== undefined
+      ? !(size < body * ratio && size * ratio > body)
+      : size >= body * ratio;
   };
-  const titles = [...charsBySize.entries()].filter(([size, letters]) => letters >= MIN_RANK_LETTERS && isTitle(size)).map(([size]) => size).sort((a, b) => b - a);
+  const titles = [...charsBySize.entries()]
+    .filter(([size, letters]) => letters >= MIN_RANK_LETTERS && isTitle(size))
+    .map(([size]) => size)
+    .sort((a, b) => b - a);
   const levels = rankedLevels(titles, scale.headingLevelOf, ratio);
   return {
     headingLevelOf: (size) => levels.get(quarterPoint(size)),
@@ -218,6 +248,43 @@ export const scaleOfPage = (items: readonly PdfTextRun[], scale: Pick<DocumentSc
     },
     isSmallSize: (size) => quarterPoint(size) * ratio <= body,
   };
+};
+
+/** The runs of the lines that overlap their page's column gutter (`decideDocumentScale`, third exclusion). */
+const gutterStraddlers = (linesByPage: readonly PdfTextRun[][][]): Set<PdfTextRun> => {
+  const straddlesGutter = new Set<PdfTextRun>();
+  linesByPage.forEach((lines) => {
+    const gutter = detectColumnGutter(lines.map((line) => line.map(toFragment)));
+    if (gutter === undefined) return;
+    for (const line of lines) {
+      const real = line.filter((it) => it.text.trim().length > 0);
+      const left = real.some((it) => it.x + it.width <= gutter.start + SAME_LINE_PT);
+      const right = real.some((it) => it.x >= gutter.end - SAME_LINE_PT);
+      if (left && right) for (const it of real) straddlesGutter.add(it);
+    }
+  });
+  return straddlesGutter;
+};
+
+/** The leftmost and rightmost edges of the body-size text of the whole document, furniture and detected grids excluded. */
+const bodyTextAreaOf = (
+  items: readonly PdfTextRun[][],
+  bandsByPage: readonly (readonly GridBand[])[],
+  furniture: ReadonlySet<PdfTextRun>,
+  isBodySize: (size: number) => boolean,
+): { left: number; right: number } | undefined => {
+  let areaLeft = Infinity;
+  let areaRight = -Infinity;
+  for (const [pageIndex, pageItems] of items.entries()) {
+    const bands = bandsByPage[pageIndex] ?? [];
+    for (const it of pageItems) {
+      if (furniture.has(it) || it.rotated || it.text.trim().length === 0 || !isBodySize(it.fontSize)) continue;
+      if (isInBand(it.y + it.fontSize / 2, bands)) continue;
+      areaLeft = Math.min(areaLeft, it.x);
+      areaRight = Math.max(areaRight, it.x + it.width);
+    }
+  }
+  return areaRight > areaLeft ? { left: areaLeft, right: areaRight } : undefined;
 };
 
 export const decideDocumentScale = (
@@ -320,17 +387,7 @@ export const decideDocumentScale = (
    * la DISTRIBUTION, pas seulement de la classification : sans ça, sa taille
    * resterait une classe de titre que plus aucune ligne n'habite.
    */
-  const straddlesGutter = new Set<PdfTextRun>();
-  linesByPage.forEach((lines) => {
-    const gutter = detectColumnGutter(lines.map((line) => line.map(toFragment)));
-    if (gutter === undefined) return;
-    for (const line of lines) {
-      const real = line.filter((it) => it.text.trim().length > 0);
-      const left = real.some((it) => it.x + it.width <= gutter.start + SAME_LINE_PT);
-      const right = real.some((it) => it.x >= gutter.end - SAME_LINE_PT);
-      if (left && right) for (const it of real) straddlesGutter.add(it);
-    }
-  });
+  const straddlesGutter = gutterStraddlers(linesByPage);
   items.forEach((rawItems, pageIndex) => {
     const bands = bandsByPage[pageIndex] ?? [];
     for (const it of rawItems) {
@@ -371,8 +428,11 @@ export const decideDocumentScale = (
   // Passé sur le corpus entier : `15` est le SEUL document où les deux corps
   // divergent, et c'est le seul faux positif connu.
   const proseClasses = sizeClasses(charsBySize, undefined, { pageCount: items.length, lettersBySize, pagesBySize });
-  const proseIsRepresentative = proseClasses.bodySize !== undefined && proseClasses.bodySize === bodySizeOf(charsBySizeAll);
-  const classes = proseIsRepresentative ? proseClasses : { body: new Set<number>(), levels: new Map<number, HeadingLevel>() };
+  const proseIsRepresentative =
+    proseClasses.bodySize !== undefined && proseClasses.bodySize === bodySizeOf(charsBySizeAll);
+  const classes = proseIsRepresentative
+    ? proseClasses
+    : { body: new Set<number>(), levels: new Map<number, HeadingLevel>() };
   const headingLevelOf = (size: number): HeadingLevel | undefined => classes.levels.get(quarterPoint(size));
   const isBodySize = (size: number): boolean => classes.body.has(quarterPoint(size));
 
@@ -380,18 +440,14 @@ export const decideDocumentScale = (
   // every page, and a page carrying only a centred title would otherwise define
   // its area as that title. No constant: the leftmost and rightmost edges of the
   // body-size text, furniture and detected grids excluded.
-  let areaLeft = Infinity;
-  let areaRight = -Infinity;
-  for (const [pageIndex, pageItems] of items.entries()) {
-    const bands = bandsByPage[pageIndex] ?? [];
-    for (const it of pageItems) {
-      if (furniture.has(it) || it.rotated || it.text.trim().length === 0 || !isBodySize(it.fontSize)) continue;
-      if (isInBand(it.y + it.fontSize / 2, bands)) continue;
-      areaLeft = Math.min(areaLeft, it.x);
-      areaRight = Math.max(areaRight, it.x + it.width);
-    }
-  }
-  const bodyTextArea = areaRight > areaLeft ? { left: areaLeft, right: areaRight } : undefined;
+  const bodyTextArea = bodyTextAreaOf(items, bandsByPage, furniture, isBodySize);
 
-  return { headingLevelOf, isBodySize, pageBodySizes: pageBodySizesOf(items), gutterCut: gutters.cut, gutterCuts: gutters.all, bodyTextArea };
+  return {
+    headingLevelOf,
+    isBodySize,
+    pageBodySizes: pageBodySizesOf(items),
+    gutterCut: gutters.cut,
+    gutterCuts: gutters.all,
+    bodyTextArea,
+  };
 };

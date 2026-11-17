@@ -9,7 +9,14 @@ import type { StructureCounts } from "doc-ir/lib/reader-types";
 export type HeadingLevels = StructureCounts["headingsByLevel"];
 
 /** A fresh all-zero count: a caller that increments it owns it. */
-export const emptyCounts = (): StructureCounts => ({ headings: 0, headingsByLevel: [0, 0, 0, 0, 0, 0], tables: 0, cells: 0, items: 0, rows: 0 });
+export const emptyCounts = (): StructureCounts => ({
+  headings: 0,
+  headingsByLevel: [0, 0, 0, 0, 0, 0],
+  tables: 0,
+  cells: 0,
+  items: 0,
+  rows: 0,
+});
 
 const combine = (a: StructureCounts, b: StructureCounts, sign: 1 | -1): StructureCounts => ({
   headings: a.headings + sign * b.headings,
@@ -31,4 +38,9 @@ export const addHeading = (counts: StructureCounts, level: number): void => {
 
 /** True when every number is zero. */
 export const isZeroCounts = (counts: StructureCounts): boolean =>
-  counts.headings === 0 && counts.tables === 0 && counts.cells === 0 && counts.items === 0 && counts.rows === 0 && counts.headingsByLevel.every((n) => n === 0);
+  counts.headings === 0 &&
+  counts.tables === 0 &&
+  counts.cells === 0 &&
+  counts.items === 0 &&
+  counts.rows === 0 &&
+  counts.headingsByLevel.every((n) => n === 0);

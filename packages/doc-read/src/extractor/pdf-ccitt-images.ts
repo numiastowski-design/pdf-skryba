@@ -11,7 +11,6 @@ import { singleFilterOf, type PdfObjectsDocument } from "./pdf-objects/document"
 import { objectRefOf, pictureSizeOk, type PictureScope } from "./pdf-image-pixels";
 import type { PdfValue } from "./pdf-objects/objects";
 
-
 /** The object the image reader reads: `kind` is the value of the former pdf.js `ImageKind.GRAYSCALE_1BPP`, kept as the image reader's code. */
 export interface DecodedImageObject {
   /** The object reference of the image (`<num>R` or `<num>R<gen>`): a block picture is read by it (`imageRef`). */
@@ -27,7 +26,8 @@ export interface DecodedImageObject {
   readonly heldBytes?: number;
 }
 
-const numberOf = (value: PdfValue | undefined): number | undefined => (value?.kind === "number" ? value.value : undefined);
+const numberOf = (value: PdfValue | undefined): number | undefined =>
+  value?.kind === "number" ? value.value : undefined;
 const nameOf = (value: PdfValue | undefined): string | undefined => (value?.kind === "name" ? value.value : undefined);
 
 /** A boolean entry of a dictionary: true only for a literal `true`. */
@@ -49,7 +49,12 @@ function ccittStreamOf(doc: PdfObjectsDocument, declared: PdfValue | undefined) 
 }
 
 /** The image's rows repacked to `width` pixels, whatever the decoder's own layout, with `/Decode [1 0]` applied. */
-function repack(image: { readonly rows: number; readonly pitch: number; readonly bits: Uint8Array }, width: number, height: number, invert: boolean): Uint8Array {
+function repack(
+  image: { readonly rows: number; readonly pitch: number; readonly bits: Uint8Array },
+  width: number,
+  height: number,
+  invert: boolean,
+): Uint8Array {
   const rowBytes = Math.ceil(width / 8);
   const data = new Uint8Array(rowBytes * height);
   for (let y = 0; y < height; y += 1) {
@@ -63,7 +68,13 @@ function repack(image: { readonly rows: number; readonly pitch: number; readonly
 }
 
 /** The CCITT image `name` of the page, as an object the image reader takes, or `undefined` when it is not one we decode. */
-export function ccittImageObjectOf(doc: PdfObjectsDocument, file: Uint8Array, scope: PictureScope, name: string, grey1Kind: number): DecodedImageObject | undefined {
+export function ccittImageObjectOf(
+  doc: PdfObjectsDocument,
+  file: Uint8Array,
+  scope: PictureScope,
+  name: string,
+  grey1Kind: number,
+): DecodedImageObject | undefined {
   const declared = doc.dictOf(scope.resources?.get("XObject"))?.get(name);
   const stream = ccittStreamOf(doc, declared);
   if (stream === undefined) return undefined;

@@ -35,14 +35,18 @@ type Cell = Row["cells"][number];
 
 type Paragraph = Extract<IRBlock, { kind: "paragraph" }>;
 
-const paragraphOf = (block: IRBlock | undefined): Paragraph | undefined => (block?.kind === "paragraph" ? block : undefined);
+const paragraphOf = (block: IRBlock | undefined): Paragraph | undefined =>
+  block?.kind === "paragraph" ? block : undefined;
 const textOf = (paragraph: Paragraph): string => paragraph.inlines.map((inline) => inline.text).join("");
 
 /** Les deux moitiés d'une URL, de la dernière cellule d'une rangée à l'unique cellule de la suivante — RENDUES, pas
  *  seulement reconnues. La lecture qui DÉCIDE est celle qui sert ensuite : personne ne revérifie une précondition déjà
  *  tenue (revue du 30/10/2026 — la jointure relisait les deux blocs et portait une branche morte qui, atteinte, aurait
  *  fait disparaître la rangée au lieu de la joindre). */
-const urlHalves = (above: Cell | undefined, alone: Cell | undefined): { end: Paragraph; start: Paragraph } | undefined => {
+const urlHalves = (
+  above: Cell | undefined,
+  alone: Cell | undefined,
+): { end: Paragraph; start: Paragraph } | undefined => {
   const end = paragraphOf(above?.blocks[above.blocks.length - 1]);
   const start = paragraphOf(alone?.blocks[0]);
   if (end === undefined || start === undefined) return undefined;
@@ -69,7 +73,8 @@ export function joinCutUrlRows(rows: readonly Row[]): Row[] {
   for (const row of rows) {
     const previous = out[out.length - 1];
     // Une rangée d'UNE SEULE cellule sous une rangée qui en a plusieurs : la seule forme que la règle regarde.
-    const alone = row.cells.length === 1 && previous !== undefined && previous.cells.length > 1 ? row.cells[0] : undefined;
+    const alone =
+      row.cells.length === 1 && previous !== undefined && previous.cells.length > 1 ? row.cells[0] : undefined;
     const above = previous?.cells[previous.cells.length - 1];
     const halves = urlHalves(above, alone);
     if (previous === undefined || alone === undefined || above === undefined || halves === undefined) {

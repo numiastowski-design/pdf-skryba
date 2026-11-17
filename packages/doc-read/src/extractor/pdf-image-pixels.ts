@@ -12,8 +12,10 @@ import { decodeRaw } from "./codecs/vendor/jpeg-js-decoder.cjs";
 import type { PdfObjectsDocument } from "./pdf-objects/document";
 import { refKey, type PdfDict, type PdfValue } from "./pdf-objects/objects";
 
-export const nameOf = (value: PdfValue | undefined): string | undefined => (value?.kind === "name" ? value.value : undefined);
-export const numberOf = (value: PdfValue | undefined): number | undefined => (value?.kind === "number" ? value.value : undefined);
+export const nameOf = (value: PdfValue | undefined): string | undefined =>
+  value?.kind === "name" ? value.value : undefined;
+export const numberOf = (value: PdfValue | undefined): number | undefined =>
+  value?.kind === "number" ? value.value : undefined;
 
 /** 🔴 THE VALUE A DICTIONARY REALLY CARRIES for a key, which `dict.has` does NOT tell (security review of
  *  03/11/2026). `parse.ts` drops an entry written as `null` on the spot, so `has` is honest for a DIRECT value; it is
@@ -24,7 +26,6 @@ export const entryOf = (doc: PdfObjectsDocument, dict: PdfDict, key: string): Pd
   const value = doc.resolve(dict.get(key));
   return value === undefined || value.kind === "null" ? undefined : value;
 };
-
 
 /** Declared-size cap (width x height) above which a picture is refused BEFORE any buffer is sized from it (starting value to calibrate).
  *  Incident: an image declared 60000 x 60000 would have been scheduled for decoding. The largest buffer held is this cap x 4 channels.
@@ -41,11 +42,20 @@ export const MAX_EMBEDDED_IMAGE_PIXELS = 25_000_000;
  *  the decoder. */
 export const MAX_JPEG_DECODE_MEMORY_MB = 256;
 
-const DECODE_OPTIONS = { maxResolutionInMP: MAX_EMBEDDED_IMAGE_PIXELS / 1_000_000, maxMemoryUsageInMB: MAX_JPEG_DECODE_MEMORY_MB };
+const DECODE_OPTIONS = {
+  maxResolutionInMP: MAX_EMBEDDED_IMAGE_PIXELS / 1_000_000,
+  maxMemoryUsageInMB: MAX_JPEG_DECODE_MEMORY_MB,
+};
 
 /** Whether a declared picture size may be allocated: two positive integers whose product is within the ceiling. */
 export function pictureSizeOk(width: number, height: number): boolean {
-  return Number.isSafeInteger(width) && Number.isSafeInteger(height) && width > 0 && height > 0 && width * height <= MAX_EMBEDDED_IMAGE_PIXELS;
+  return (
+    Number.isSafeInteger(width) &&
+    Number.isSafeInteger(height) &&
+    width > 0 &&
+    height > 0 &&
+    width * height <= MAX_EMBEDDED_IMAGE_PIXELS
+  );
 }
 
 /** The number of components a JPEG declares in its frame header (SOF), or `undefined` when none is found before the scan. */
@@ -84,7 +94,10 @@ export function componentsOfSpace(doc: PdfObjectsDocument, space: PdfValue | und
 }
 
 /** A RGB or grey JPEG through jpeg-js, as RGB bytes. */
-export function rgbOf(raw: Uint8Array, drawn?: { width: number; height: number }): { width: number; height: number; data: Uint8Array } | undefined {
+export function rgbOf(
+  raw: Uint8Array,
+  drawn?: { width: number; height: number },
+): { width: number; height: number; data: Uint8Array } | undefined {
   let decoded;
   try {
     // Drawn at another size, the JPEG is resampled to it (what pdf.js did for a size that does not match the JPEG).
@@ -131,7 +144,11 @@ function roundToByte(value: number): number {
 
 /** The `/Decode` array, one `[dmin, dmax]` per component: `undefined` when absent or the default `[0 1]` (nothing to do),
  *  `null` when malformed (not decoded here). */
-export function decodeArrayOf(doc: PdfObjectsDocument, dict: ReadonlyMap<string, PdfValue>, components: number): (readonly [number, number])[] | undefined | null {
+export function decodeArrayOf(
+  doc: PdfObjectsDocument,
+  dict: ReadonlyMap<string, PdfValue>,
+  components: number,
+): (readonly [number, number])[] | undefined | null {
   // `entryOf` et non `resolve` : un `/Decode` NUL est un `/Decode` absent, comme pour les trois autres lecteurs. Lu
   // autrement, il tombait dans « tableau malformé » et refusait une image que le chemin Flate décodait — même
   // dictionnaire, deux verdicts, et le compteur annonçait « forme » (contre-revue du 03/11/2026).
@@ -164,7 +181,11 @@ export function withDecode(
 }
 
 /** A CMYK JPEG: the vendored decoder's components, converted with our DeviceCMYK conversion.  A YCCK colour transform is converted as pdf.js did. */
-export function cmykToRgb(raw: Uint8Array, decodes: readonly (readonly [number, number])[] | undefined, drawn: { width: number; height: number }): { width: number; height: number; data: Uint8Array } | undefined {
+export function cmykToRgb(
+  raw: Uint8Array,
+  decodes: readonly (readonly [number, number])[] | undefined,
+  drawn: { width: number; height: number },
+): { width: number; height: number; data: Uint8Array } | undefined {
   let decoded;
   try {
     decoded = decodeRaw(raw, { ...DECODE_OPTIONS, ...drawn });
@@ -203,7 +224,6 @@ export function cmykToRgb(raw: Uint8Array, decodes: readonly (readonly [number, 
   return { width: decoded.width, height: decoded.height, data };
 }
 
-
 /** The `refKey` name of an indirect value, or `undefined` for a direct one. */
 export function objectRefOf(declared: PdfValue | undefined): string | undefined {
   return declared?.kind === "ref" ? refKey(declared) : undefined;
@@ -222,7 +242,10 @@ function paletteBytesOf(doc: PdfObjectsDocument, table: PdfValue | undefined): U
 
 /** An `/Indexed` colour space: its base's component count (1 or 3), its highest index, and its lookup table (the bytes of
  *  the string or the stream). `undefined` when the space is not indexed or its base or table is one we do not read. */
-export function indexedOf(doc: PdfObjectsDocument, space: PdfValue | undefined): { base: number; hival: number; lookup: Uint8Array } | undefined {
+export function indexedOf(
+  doc: PdfObjectsDocument,
+  space: PdfValue | undefined,
+): { base: number; hival: number; lookup: Uint8Array } | undefined {
   if (space?.kind !== "array" || space.items.length !== 4) return undefined;
   if (nameOf(doc.resolve(space.items[0])) !== "Indexed") return undefined;
   const base = componentsOfSpace(doc, doc.resolve(space.items[1]));
@@ -237,7 +260,13 @@ export function indexedOf(doc: PdfObjectsDocument, space: PdfValue | undefined):
 
 /** The samples of an image with 1, 2, 4 or 8 bits per component, one byte per sample (its value, not scaled). Each row
  *  starts on a byte boundary (PDF §8.9.3). `undefined` when the bytes are too few for the image. */
-export function unpackSamples(bytes: Uint8Array, width: number, height: number, components: number, bpc: number): Uint8Array | undefined {
+export function unpackSamples(
+  bytes: Uint8Array,
+  width: number,
+  height: number,
+  components: number,
+  bpc: number,
+): Uint8Array | undefined {
   if (bpc !== 1 && bpc !== 2 && bpc !== 4 && bpc !== 8) return undefined;
   const rowBytes = Math.ceil((width * components * bpc) / 8);
   if (bytes.length < rowBytes * height) return undefined;

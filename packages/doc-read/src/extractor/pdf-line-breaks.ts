@@ -35,7 +35,9 @@ export const firstWordWidthReader =
    *  « Un rôle de vigie / parlementaire » split, the spare room being judged on the wrong word). */
   (y: number, left?: number): number => {
     const sameLine = glyphs
-      .filter((f) => Math.abs(f.y - y) <= SAME_LINE_TOLERANCE && (left === undefined || f.x >= left - SAME_LINE_TOLERANCE))
+      .filter(
+        (f) => Math.abs(f.y - y) <= SAME_LINE_TOLERANCE && (left === undefined || f.x >= left - SAME_LINE_TOLERANCE),
+      )
       .sort((a, b) => a.x - b.x);
     // A glyph flagged `isSpace` (code 32) can carry a non-blank text; it still ends the word.
     return firstWordWidthOf(sameLine.map((g) => (g.isSpace ? { text: " ", width: g.width } : g)));
@@ -124,7 +126,8 @@ export const firstWordWidthReader =
 const DELIBERATE_BREAK_SPARE_EM = 0.45;
 
 export const isDeliberateBreak = (line: Line, next: Line, marginRight: number): boolean =>
-  next.firstWordWidth > 0 && marginRight - line.right - next.firstWordWidth >= DELIBERATE_BREAK_SPARE_EM * line.fontSize;
+  next.firstWordWidth > 0 &&
+  marginRight - line.right - next.firstWordWidth >= DELIBERATE_BREAK_SPARE_EM * line.fontSize;
 
 /**
  * DEUX LIGNES CENTRÉES L'UNE SUR L'AUTRE NE CONTINUENT PAS UN PARAGRAPHE.
@@ -238,8 +241,14 @@ export const centredContainerReader =
     const pair = [line, next];
     let innermost: ContainerBox | undefined;
     for (const box of boxes) {
-      if (!pair.every((l) => l.left >= box.left && l.right <= box.right && l.y >= box.bottom && l.y <= box.top)) continue;
-      if (innermost === undefined || (box.right - box.left) * (box.top - box.bottom) < (innermost.right - innermost.left) * (innermost.top - innermost.bottom)) innermost = box;
+      if (!pair.every((l) => l.left >= box.left && l.right <= box.right && l.y >= box.bottom && l.y <= box.top))
+        continue;
+      if (
+        innermost === undefined ||
+        (box.right - box.left) * (box.top - box.bottom) <
+          (innermost.right - innermost.left) * (innermost.top - innermost.bottom)
+      )
+        innermost = box;
     }
     if (innermost !== undefined) return innermost.right - innermost.left;
     if (area === undefined) return undefined;
@@ -263,7 +272,9 @@ export const centredContainerReader =
     // a column, 6 verdicts change, all toward the document — DeLuca splits,
     // three wrapped « Bill History » values of 0000109 p2 and two wrapped lines
     // of fixture 25 p2 join.
-    const column = valueColumns.find((x) => x > left && [line.valueStart, line.left].some((v) => v !== undefined && Math.abs(v - x) <= ALIGNED));
+    const column = valueColumns.find(
+      (x) => x > left && [line.valueStart, line.left].some((v) => v !== undefined && Math.abs(v - x) <= ALIGNED),
+    );
     if (column !== undefined) return next.left < column - ALIGNED ? undefined : right - line.left;
     return right - left;
   };
@@ -300,7 +311,7 @@ const ALIGNED = SAME_LINE_PT;
 export const valueColumnStarts = (lines: readonly { left: number; valueStart?: number }[]): number[] => {
   const values = lines.flatMap((l) => (l.valueStart === undefined ? [] : [l.valueStart])).sort((a, b) => a - b);
   const columns: number[] = [];
-  for (let i = 0; i < values.length; ) {
+  for (let i = 0; i < values.length;) {
     let j = i;
     while (j + 1 < values.length && values[j + 1]! - values[i]! <= ALIGNED) j++;
     const x = values[i]!;
@@ -383,7 +394,9 @@ const ROMAN_UPPER = "(?=[IVXLC]{1,6}\\s*$)C{0,3}(?:XC|XL|L?X{0,3})(?:IX|IV|V?I{0
 const PAGE_NUMBER = `(?:\\d{1,4}|${ROMAN_LOWER}|${ROMAN_UPPER})`;
 /** The regex is end-anchored: only this many trailing characters can matter, so a hostile 20,000-dot line is never rescanned quadratically. */
 const LEADER_TAIL_CHARS = 40;
-const LEADER_THEN_PAGE = new RegExp(`(?:\\.{${LEADER_DOTS_THRESHOLD},}|…{2,}|(?:\\. ){${LEADER_DOTS_THRESHOLD},})\\s*${PAGE_NUMBER}\\s*$`);
+const LEADER_THEN_PAGE = new RegExp(
+  `(?:\\.{${LEADER_DOTS_THRESHOLD},}|…{2,}|(?:\\. ){${LEADER_DOTS_THRESHOLD},})\\s*${PAGE_NUMBER}\\s*$`,
+);
 
 /**
  * A CONTENTS LINE ENDS ITS PARAGRAPH. A table of contents line reaches the right margin with its page number, at the body size, at the

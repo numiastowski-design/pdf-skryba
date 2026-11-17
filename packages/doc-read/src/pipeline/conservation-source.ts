@@ -102,7 +102,12 @@ export interface SourceStructure {
 }
 
 /** A unit that declares nothing: a fresh value, its owner may increment it. */
-export const emptyUnitStructure = (): UnitStructure => ({ declared: emptyCounts(), withheld: emptyCounts(), flattened: emptyCounts(), added: emptyCounts() });
+export const emptyUnitStructure = (): UnitStructure => ({
+  declared: emptyCounts(),
+  withheld: emptyCounts(),
+  flattened: emptyCounts(),
+  added: emptyCounts(),
+});
 
 /** One more table the page adds for a chart it publishes: the table, its header row and its rows, its cells. */
 export const addChartTable = (unit: UnitStructure, shape: ChartShape): void => {
@@ -186,7 +191,6 @@ export function isReadFailure(source: object): source is ConservationSourceReadF
 
 /* `ReferenceCycle` a quitté `letter-conservation.ts` le 09/11/2026 : elle décrit ce que le LECTEUR PDF produit,
  * donc une forme de SOURCE, et ce fichier-là lit un rendu (code d'app). */
-
 
 /* L'union des trois formes a quitté ce fichier le 09/11/2026 pour `conservation-source-union.ts` : la NOMMER ici
  * faisait partir la déclaration du lecteur PDF avec le paquet des formats déclarés — trouvé par le garde du paquet,

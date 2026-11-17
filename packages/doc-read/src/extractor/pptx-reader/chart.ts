@@ -24,10 +24,25 @@
  *  Called by: `pptx-reader/index.ts`, `extractor/xlsx.ts`, `docx-reader/drawing-objects.ts`
  *  (the read), and `extractor/pptx.ts` (`chartToIr`). */
 
-import { MAX_CHART_CELLS, MAX_CHART_LEVELS, MAX_CHART_POINTS, MAX_CHART_SERIES, type ReaderLimits } from "doc-ir/lib/reader-limits";
+import {
+  MAX_CHART_CELLS,
+  MAX_CHART_LEVELS,
+  MAX_CHART_POINTS,
+  MAX_CHART_SERIES,
+  type ReaderLimits,
+} from "doc-ir/lib/reader-limits";
 import type { ChartAxis, ChartDrawing, ChartDrawingType, ImageRef, IRBlock, TableData } from "doc-ir/lib/ir";
 import { readUnlessDamaged, type OpcPackage } from "../ooxml/package";
-import { attributeOf, findChild, findChildren, findDescendants, childNodesOf as kidsOf, qualifiedNameOf, textContentOf, type XNode } from "../ooxml/xml";
+import {
+  attributeOf,
+  findChild,
+  findChildren,
+  findDescendants,
+  childNodesOf as kidsOf,
+  qualifiedNameOf,
+  textContentOf,
+  type XNode,
+} from "../ooxml/xml";
 import type { ChartCellPoint, ChartPoints, ChartResolver } from "../xlsx-chart-reference";
 import { formatNumberCell } from "../xlsx-number-format";
 
@@ -46,7 +61,8 @@ export interface PptxChart {
 /** The format code a series' values are DISPLAYED with: the series' data labels' `c:numFmt` when it is not source-linked
  *  (ECMA-376 Part 1 §21.2.2.121 `numFmt`, `sourceLinked="0"`; `c:dLbls` §21.2.2.49), else the `c:formatCode` of its `c:numCache`
  *  (§21.2.2.71). An axis `c:numFmt` formats ticks and is never read here. `undefined`: General. */
-const displayFormatCode = (ser: XNode, numCache: XNode | undefined): string | undefined => labelFormatCode(ser) ?? cacheFormatCode(numCache);
+const displayFormatCode = (ser: XNode, numCache: XNode | undefined): string | undefined =>
+  labelFormatCode(ser) ?? cacheFormatCode(numCache);
 
 /** The code of a series' data labels when they do not follow the source (§21.2.2.121); `undefined` otherwise. */
 const labelFormatCode = (ser: XNode): string | undefined => {
@@ -74,7 +90,9 @@ const displayed = (stored: string, code: string | undefined): string => {
 };
 
 /** The bounds of a chart: points, category levels, series and cells: the limits given, else the product's. */
-const boundsOf = (limits: ReaderLimits | undefined): { series: number; cells: number; points: number; levels: number } => ({
+const boundsOf = (
+  limits: ReaderLimits | undefined,
+): { series: number; cells: number; points: number; levels: number } => ({
   series: limits?.chartSeries ?? MAX_CHART_SERIES,
   cells: limits?.chartCells ?? MAX_CHART_CELLS,
   points: limits?.chartPoints ?? MAX_CHART_POINTS,
@@ -98,7 +116,11 @@ const boundsOf = (limits: ReaderLimits | undefined): { series: number; cells: nu
  *  be dropped in silence, a table that looked complete with rows missing).
  *  A LYING `c:ptCount` with no such point withholds nothing: refusing it
  *  would lose readable points over a broken attribute. */
-const pointsFrom = (countNode: XNode | undefined, ptsNode: XNode | undefined, limits: ReaderLimits | undefined): string[] | undefined => {
+const pointsFrom = (
+  countNode: XNode | undefined,
+  ptsNode: XNode | undefined,
+  limits: ReaderLimits | undefined,
+): string[] | undefined => {
   // `c:ptCount` is OPTIONAL in ECMA-376 (CT_NumData/CT_StrData, 0..1) and
   // the reference readers treat it as a HINT: absent (or unreadable), the
   // points PRESENT stand, under `MAX_CHART_POINTS` alone — the old
@@ -122,7 +144,11 @@ function* cachedEntries(ptsNode: XNode | undefined): Generator<{ idx: number; va
 }
 
 /** The dense array of points, cached or read from the sheet: see `pointsFrom` for the rules (the declared count, the bound, the length). */
-const denseFrom = (entries: Iterable<{ idx: number; value: string }>, declared: number | undefined, limits: ReaderLimits | undefined): string[] | undefined => {
+const denseFrom = (
+  entries: Iterable<{ idx: number; value: string }>,
+  declared: number | undefined,
+  limits: ReaderLimits | undefined,
+): string[] | undefined => {
   const kept: { idx: number; value: string }[] = [];
   const pointCap = boundsOf(limits).points;
   let length = 0;
@@ -140,7 +166,8 @@ const denseFrom = (entries: Iterable<{ idx: number; value: string }>, declared: 
   for (const { idx, value } of kept) values[idx] = value;
   return values;
 };
-const points = (cache: XNode | undefined, limits: ReaderLimits | undefined): string[] | undefined => pointsFrom(cache, cache, limits);
+const points = (cache: XNode | undefined, limits: ReaderLimits | undefined): string[] | undefined =>
+  pointsFrom(cache, cache, limits);
 
 /** The points a chart reads from its sheet instead of a cache, by the reference node they stand for. */
 type SheetPoints = ReadonlyMap<XNode, readonly ChartCellPoint[]>;
@@ -161,43 +188,50 @@ const upToBound = (found: Iterable<ChartCellPoint>, limits: ReaderLimits | undef
   return kept;
 };
 
-/** A reference of the chart, parsed: what the resolver answered, whether it names the series (`c:tx`), and how many cells it can yield. */
-interface PlannedReference { ref: XNode; found: ChartPoints; name: boolean; read?: readonly ChartCellPoint[] }
+/** A reference of the chart, parsed: what the resolver answered and whether it names the series (`c:tx`). */
+interface PlannedReference {
+  ref: XNode;
+  found: ChartPoints;
+  name: boolean;
+}
 
-/** How many cells a reference can yield (its `extent`; a resolver that cannot tell, a test's fixed answers, is read up to the bound to count). */
-const plannedOf = (ref: XNode, found: ChartPoints, name: boolean, limits: ReaderLimits | undefined): { planned: PlannedReference; cells: number } => {
-  if (name) return { planned: { ref, found, name }, cells: 1 };
-  if (found.extent !== undefined) return { planned: { ref, found, name }, cells: found.extent };
-  const read = upToBound(found, limits);
-  return { planned: { ref, found, name, read }, cells: read.length === 0 ? 0 : read[read.length - 1]!.index + 1 };
-};
-
-/** The sheet's points for the series references of a chart, or `undefined` when the chart keeps its cache: any reference of the chart carries a
+/** The sheet's points for the series references of a chart; `undefined` when the chart keeps its cache: any reference of the chart carries a
  *  point (the file wrote values), it holds literal data, it has more series than the bound (its cache then withholds it in `tableOf` exactly
- *  as before the sheet was read), there is no series reference to read, one reference is outside what the resolver reads (another sheet, an
- *  address outside the grammar, a multi-level category: a chart half from the sheet and half from nothing would draw a lie), or the references
- *  can yield more cells than the bounds allow. That last decision is made by ARITHMETIC on the parsed addresses, before any cell is read: one
- *  reference past the point bound (its extent, the length of the cache Excel would write, over MAX_CHART_POINTS), or all the references of the
- *  chart together over MAX_CHART_CELLS, a series name counting one cell (only its first point is read). Points held for one chart: at most
- *  MAX_CHART_CELLS, decided before the first cell is read.
- *  Chosen limit, written: a cache-less chart whose references span more than these bounds is not drawn from its sheet; it shows what its file
- *  wrote (its titles, an empty table), where the cache path would withhold a filled cache of the same size. */
-const sheetPointsOf = (root: XNode, resolver: ChartResolver, limits: ReaderLimits | undefined): SheetPoints | undefined => {
-  if (REFERENCE_TAGS.some((tag) => findDescendants(root, tag).some((ref) => findDescendants(ref, "c:pt").length > 0))) return undefined;
+ *  as before the sheet was read), there is no series reference to read, or one reference is outside what the resolver reads (another sheet, an
+ *  address outside the grammar, a multi-level category: a chart half from the sheet and half from nothing would draw a lie).
+ *  `"withheld"`: the references can yield more cells than the bounds allow, and the chart is withheld whole, like a cache of that size
+ *  (décision B; the caller says so in its notice). That decision is made by ARITHMETIC on the parsed addresses, before any cell is read: one
+ *  reference past the point bound (its extent, our dense length up to its last point, over MAX_CHART_POINTS), or all the references of the
+ *  chart together over MAX_CHART_CELLS: an address counted once however many series name it (it is read once), a series name one cell each
+ *  (only its first point is read). Points held for one chart: at most MAX_CHART_CELLS, decided before the first cell is read. */
+const sheetPointsOf = (
+  root: XNode,
+  resolver: ChartResolver,
+  limits: ReaderLimits | undefined,
+): SheetPoints | "withheld" | undefined => {
+  if (REFERENCE_TAGS.some((tag) => findDescendants(root, tag).some((ref) => findDescendants(ref, "c:pt").length > 0)))
+    return undefined;
   // Literal data (`c:numLit`, `c:strLit`) is values the file wrote, which this reader does not read: the chart keeps its cache whole.
   if (LITERAL_TAGS.some((tag) => findDescendants(root, tag).length > 0)) return undefined;
   const series = findDescendants(root, "c:ser");
   if (series.length > boundsOf(limits).series) return undefined;
   const plan = planOf(series, resolver, limits);
-  return plan === undefined ? undefined : pointsOfPlan(plan, limits);
+  return plan === undefined || plan === "withheld" ? plan : pointsOfPlan(plan, limits);
 };
 
 /** Every series reference parsed, and the cells they can yield counted against the bounds, before any cell is read (`sheetPointsOf`).
- *  `undefined`: a multi-level category, a refused address, or a bound passed. */
-const planOf = (series: readonly XNode[], resolver: ChartResolver, limits: ReaderLimits | undefined): PlannedReference[] | undefined => {
+ *  `undefined`: a multi-level category or a refused address (the chart keeps its cache); `"withheld"`: a bound passed. */
+const planOf = (
+  series: readonly XNode[],
+  resolver: ChartResolver,
+  limits: ReaderLimits | undefined,
+): PlannedReference[] | "withheld" | undefined => {
   const bounds = boundsOf(limits);
   // A parse memo by address text: an address repeated by several series (Google repeats its categories) is parsed and read once.
   const answers = new Map<string, ChartPoints | undefined>();
+  // The addresses already counted as ranges: read once (`pointsOfPlan`), so counted once. A series name is its own one-point copy: it counts
+  // one cell every time.
+  const counted = new Set<string>();
   const plan: PlannedReference[] = [];
   let cells = 0;
   for (const { ref, name } of series.flatMap(seriesReferences)) {
@@ -206,10 +240,13 @@ const planOf = (series: readonly XNode[], resolver: ChartResolver, limits: Reade
     if (!answers.has(address)) answers.set(address, resolver(address));
     const found = answers.get(address);
     if (found === undefined) return undefined;
-    const planned = plannedOf(ref, found, name, limits);
-    cells += planned.cells;
-    if ((!name && planned.cells > bounds.points) || cells > bounds.cells) return undefined;
-    plan.push(planned.planned);
+    if (name) cells += 1;
+    else if (!counted.has(address)) {
+      counted.add(address);
+      cells += found.extent;
+    }
+    if ((!name && found.extent > bounds.points) || cells > bounds.cells) return "withheld";
+    plan.push({ ref, found, name });
   }
   return plan;
 };
@@ -218,10 +255,10 @@ const planOf = (series: readonly XNode[], resolver: ChartResolver, limits: Reade
 const pointsOfPlan = (plan: readonly PlannedReference[], limits: ReaderLimits | undefined): SheetPoints | undefined => {
   const readOnce = new Map<ChartPoints, readonly ChartCellPoint[]>();
   const resolved = new Map<XNode, readonly ChartCellPoint[]>();
-  for (const { ref, found, name, read } of plan) {
+  for (const { ref, found, name } of plan) {
     if (name) resolved.set(ref, firstPoint(found));
     else {
-      if (!readOnce.has(found)) readOnce.set(found, read ?? upToBound(found, limits));
+      if (!readOnce.has(found)) readOnce.set(found, upToBound(found, limits));
       resolved.set(ref, readOnce.get(found)!);
     }
   }
@@ -236,27 +273,52 @@ const firstPoint = (found: Iterable<ChartCellPoint>): ChartCellPoint[] => {
 
 /** The reference nodes a series reads (name, categories, values, X, Y, sizes), each with whether it is the series' name. */
 const seriesReferences = (ser: XNode): { ref: XNode; name: boolean }[] =>
-  SERIES_DATA_TAGS.flatMap((dataTag) => REFERENCE_TAGS.flatMap((referenceTag): { ref: XNode; name: boolean }[] => {
-    const ref = findChild(findChild(ser, dataTag) ?? {}, referenceTag);
-    return ref === undefined ? [] : [{ ref, name: dataTag === "c:tx" }];
-  }));
+  SERIES_DATA_TAGS.flatMap((dataTag) =>
+    REFERENCE_TAGS.flatMap((referenceTag): { ref: XNode; name: boolean }[] => {
+      const ref = findChild(findChild(ser, dataTag) ?? {}, referenceTag);
+      return ref === undefined ? [] : [{ ref, name: dataTag === "c:tx" }];
+    }),
+  );
 
 /** The cells of a text reference (categories, names, string X values): the cache's, or the grid's own text. */
-const textCells = (ref: XNode, cacheTag: "c:strCache" | "c:numCache", sheet: SheetPoints | undefined, limits: ReaderLimits | undefined): string[] | undefined => {
+const textCells = (
+  ref: XNode,
+  cacheTag: "c:strCache" | "c:numCache",
+  sheet: SheetPoints | undefined,
+  limits: ReaderLimits | undefined,
+): string[] | undefined => {
   const read = sheet?.get(ref);
-  return read === undefined ? points(findChild(ref, cacheTag), limits) : denseFrom(read.map((point) => ({ idx: point.index, value: point.text })), undefined, limits);
+  return read === undefined
+    ? points(findChild(ref, cacheTag), limits)
+    : denseFrom(
+        read.map((point) => ({ idx: point.index, value: point.text })),
+        undefined,
+        limits,
+      );
 };
 
 /** Whether the references under `node` carry a point, in the cache or on the sheet. */
 const carriesPoints = (node: XNode | undefined, sheet: SheetPoints | undefined): boolean =>
-  sheet === undefined ? findDescendants(node ?? {}, "c:pt").length > 0 : (["c:strRef", "c:numRef"] as const).some((tag) => (sheet.get(findChild(node ?? {}, tag) ?? {}) ?? []).length > 0);
+  sheet === undefined
+    ? findDescendants(node ?? {}, "c:pt").length > 0
+    : (["c:strRef", "c:numRef"] as const).some((tag) => (sheet.get(findChild(node ?? {}, tag) ?? {}) ?? []).length > 0);
 
 /** The numbers a sheet gives a number reference, as the chart displays them: `labelCode` (the data labels' code, when they do not follow the
  *  source) else the cell's own code. A cell that is not a number gives no point.
  *  TRIED, THEN DROPPED (16/11/2026): one code for the whole reference, the first numeric cell's, so that a series mixing
  *  formats is drawn on one scale. No real workbook without a cache mixes its formats, so the rule guarded nothing we have. */
-const sheetNumbers = (read: readonly ChartCellPoint[], labelCode: string | undefined, limits: ReaderLimits | undefined): string[] | undefined =>
-  denseFrom(read.filter((point) => point.stored !== undefined).map((point) => ({ idx: point.index, value: displayed(point.stored!, labelCode ?? point.formatCode) })), undefined, limits);
+const sheetNumbers = (
+  read: readonly ChartCellPoint[],
+  labelCode: string | undefined,
+  limits: ReaderLimits | undefined,
+): string[] | undefined =>
+  denseFrom(
+    read
+      .filter((point) => point.stored !== undefined)
+      .map((point) => ({ idx: point.index, value: displayed(point.stored!, labelCode ?? point.formatCode) })),
+    undefined,
+    limits,
+  );
 
 /** The categories of a series, as LEVELS, the leaf level first
  *  (`c:multiLvlStrRef`, ECMA-376 Part 1 §21.2.2.115: each `c:lvl` is one
@@ -265,7 +327,11 @@ const sheetNumbers = (read: readonly ChartCellPoint[], labelCode: string | undef
  *  `c:strRef`/`c:numRef` is one level. Every level is kept: an outer label
  *  is the document's own word, and dropping it was a lost word.
  *  `undefined` propagates a cache past the bound (décision B). */
-const referencedLevels = (parent: XNode | undefined, limits: ReaderLimits | undefined, sheet: SheetPoints | undefined): string[][] | undefined => {
+const referencedLevels = (
+  parent: XNode | undefined,
+  limits: ReaderLimits | undefined,
+  sheet: SheetPoints | undefined,
+): string[][] | undefined => {
   const multi = findChild(parent ?? {}, "c:multiLvlStrRef");
   if (multi) {
     const cache = findChild(multi, "c:multiLvlStrCache");
@@ -296,7 +362,11 @@ const referencedLevels = (parent: XNode | undefined, limits: ReaderLimits | unde
  *  name (an EMPTY header stands in — A4 of docs/CONCEPTION-CARTE-ET-REMARQUES.md,
  *  29/09/2026: no invented « Series N », the series existed and had
  *  no name) — the table shows one cell of it, nothing is amputated. */
-const seriesName = (ser: XNode, limits: ReaderLimits | undefined, sheet: SheetPoints | undefined): string | undefined => {
+const seriesName = (
+  ser: XNode,
+  limits: ReaderLimits | undefined,
+  sheet: SheetPoints | undefined,
+): string | undefined => {
   const tx = findChild(ser, "c:tx") ?? {};
   const ref = findChild(tx, "c:strRef");
   // A name typed in the chart (`c:tx/c:v`, no cell behind it) is the series' name as well.
@@ -304,7 +374,13 @@ const seriesName = (ser: XNode, limits: ReaderLimits | undefined, sheet: SheetPo
   return textCells(ref, "c:strCache", sheet, limits)?.[0];
 };
 
-interface TableColumn { name: string | undefined; values: string[]; /** The numbers the values stand for, one per value (`null`: not a number). Series of categories only. */ nums?: (number | null)[] }
+interface TableColumn {
+  name: string | undefined;
+  values: string[];
+  /** The numbers the values stand for, one per value (`null`: not a number). Series of categories only. */ nums?: (
+    number | null
+  )[];
+}
 
 const GROUPED_NUMBER = /^-?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/;
 const PLAIN_NUMBER = /^-?\d+(?:\.\d+)?$/;
@@ -348,7 +424,9 @@ const barType = (group: XNode, grouping: string | undefined): ChartDrawingType |
  *  `standard`, `c:pieChart` / `c:pie3DChart` (not `c:ofPieChart`: a pie of pie is not a pie), `c:doughnutChart`. 3D groups are drawn flat (a stated limit). Several groups (a combined chart), or any other group (scatter,
  *  bubble, area, radar, stock, surface): `undefined`, the table stands alone. */
 const drawingTypeOf = (root: XNode): ChartDrawingType | undefined => {
-  const groups = kidsOf(findChild(findChild(root, "c:chart") ?? {}, "c:plotArea") ?? {}).filter((k) => /^c:\w+Chart$/.test(qualifiedNameOf(k) ?? ""));
+  const groups = kidsOf(findChild(findChild(root, "c:chart") ?? {}, "c:plotArea") ?? {}).filter((k) =>
+    /^c:\w+Chart$/.test(qualifiedNameOf(k) ?? ""),
+  );
   if (groups.length !== 1) return undefined;
   const group = groups[0]!;
   const tag = qualifiedNameOf(group) ?? "";
@@ -359,10 +437,13 @@ const drawingTypeOf = (root: XNode): ChartDrawingType | undefined => {
   return tag === "c:doughnutChart" ? "donut" : undefined;
 };
 
-
 /** The values of a bar-, column- or line-shaped series as the chart displays them: from its cache, or from the sheet. `undefined`: a point at or
  *  past the bound. */
-const valueCells = (ser: XNode, limits: ReaderLimits | undefined, sheet: SheetPoints | undefined): string[] | undefined => {
+const valueCells = (
+  ser: XNode,
+  limits: ReaderLimits | undefined,
+  sheet: SheetPoints | undefined,
+): string[] | undefined => {
   const numRef = findChild(findChild(ser, "c:val") ?? {}, "c:numRef");
   const read = numRef === undefined ? undefined : sheet?.get(numRef);
   if (read !== undefined) return sheetNumbers(read, labelFormatCode(ser), limits);
@@ -374,11 +455,18 @@ const valueCells = (ser: XNode, limits: ReaderLimits | undefined, sheet: SheetPo
 };
 
 /** A scatter or bubble series: it writes `c:xVal`, `c:yVal` or `c:bubbleSize` where the others write `c:cat` and `c:val`. */
-const isXySeries = (ser: XNode): boolean => ["c:xVal", "c:yVal", "c:bubbleSize"].some((tag) => findChild(ser, tag) !== undefined);
+const isXySeries = (ser: XNode): boolean =>
+  ["c:xVal", "c:yVal", "c:bubbleSize"].some((tag) => findChild(ser, tag) !== undefined);
 
 /** The values of one `c:xVal`, `c:yVal` or `c:bubbleSize`: a number reference shown with `codeOf` (the format of its cache, ECMA-376 Part 1 §21.2.2.71),
  *  or a string reference as written. Literal data (`c:numLit`, `c:strLit`) is not read (written limit, as for `c:val`). `undefined`: a cache past the bound. */
-const xyValues = (parent: XNode | undefined, codeOf: (numCache: XNode | undefined) => string | undefined, limits: ReaderLimits | undefined, sheet: SheetPoints | undefined, labelCode: string | undefined): string[] | undefined => {
+const xyValues = (
+  parent: XNode | undefined,
+  codeOf: (numCache: XNode | undefined) => string | undefined,
+  limits: ReaderLimits | undefined,
+  sheet: SheetPoints | undefined,
+  labelCode: string | undefined,
+): string[] | undefined => {
   const str = findChild(parent ?? {}, "c:strRef");
   if (str) return textCells(str, "c:strCache", sheet, limits);
   const numRef = findChild(parent ?? {}, "c:numRef");
@@ -400,7 +488,12 @@ const isBlank = (values: readonly string[]): boolean => values.every((v) => v ==
 
 /** The drawing of a chart whose rows are the indices `kept` of its columns: one category column, series of categories only (no scatter column),
  *  and ONE series for a pie or a donut. `undefined`: the table stands alone. */
-const drawingOf = (type: ChartDrawingType | undefined, labelColumnCount: number, columns: readonly TableColumn[], kept: readonly number[]): ChartDrawing | undefined => {
+const drawingOf = (
+  type: ChartDrawingType | undefined,
+  labelColumnCount: number,
+  columns: readonly TableColumn[],
+  kept: readonly number[],
+): ChartDrawing | undefined => {
   if (type === undefined || labelColumnCount !== 1 || columns.length === 0) return undefined;
   if ((type === "pie" || type === "donut") && columns.length !== 1) return undefined;
   const numbers = columns.map((c) => c.nums);
@@ -408,9 +501,57 @@ const drawingOf = (type: ChartDrawingType | undefined, labelColumnCount: number,
   return { type, values: numbers.map((n) => kept.map((i) => n![i] ?? null)) };
 };
 
+/** Whether the category axis runs from its last category to its first: the `c:orientation` of the `c:scaling` of the plot area's first
+ *  `c:catAx` or `c:dateAx` says `maxMin` (ECMA-376 Part 1 §21.2.2.130, §21.2.3.30; absent: `minMax`). Google Sheets writes it on a horizontal
+ *  bar chart, so that the first row is the top bar. A value axis is not looked at: its direction moves no category. */
+const categoryAxisReversed = (root: XNode): boolean => {
+  const plotArea = findChild(findChild(root, "c:chart") ?? {}, "c:plotArea") ?? {};
+  const axis = findChild(plotArea, "c:catAx") ?? findChild(plotArea, "c:dateAx");
+  return attributeOf(findChild(findChild(axis ?? {}, "c:scaling") ?? {}, "c:orientation") ?? {}, "val") === "maxMin";
+};
+
+/** The drawing with the direction of its category axis. A pie and a donut have no axis: never reversed. */
+const withCategoryDirection = (drawing: ChartDrawing | undefined, root: XNode): ChartDrawing | undefined => {
+  if (drawing === undefined || drawing.type === "pie" || drawing.type === "donut" || !categoryAxisReversed(root))
+    return drawing;
+  return { ...drawing, categoriesReversed: true };
+};
+
+/** The indices at which any label or value column holds a non-empty cell. */
+const occupiedIndices = (labelColumns: readonly string[][], columns: readonly TableColumn[]): Set<number> => {
+  const occupied = new Set<number>();
+  for (const column of [...labelColumns, ...columns.map((c) => c.values)]) {
+    for (let i = 0; i < column.length; i++) if (column[i] !== "") occupied.add(i);
+  }
+  return occupied;
+};
+
+/** The table rows at the occupied indices, in index order, and the index each kept row came from. */
+const occupiedRows = (
+  occupied: ReadonlySet<number>,
+  labelColumns: readonly string[][],
+  columns: readonly TableColumn[],
+): { rows: string[][]; keptIndices: number[] } => {
+  const rows: string[][] = [];
+  const keptIndices: number[] = [];
+  // Rows come from the SORTED occupied indices only, never 0..rowCount.
+  for (const i of [...occupied].sort((a, b) => a - b)) {
+    const row = [...labelColumns.map((l) => l[i] ?? ""), ...columns.map((c) => c.values[i] ?? "")];
+    if (row.some((cell) => cell !== "")) {
+      rows.push(row);
+      keptIndices.push(i);
+    }
+  }
+  return { rows, keptIndices };
+};
+
 /** `"withheld"`: the chart HAS series but a bound keeps it out whole (décision B); `undefined`: it has none.
  *  `labelFromX`: the left column holds the X values of a scatter (no series writes categories), so the title of the X axis heads it. */
-const tableOf = (root: XNode, limits: ReaderLimits | undefined, sheet: SheetPoints | undefined): { data: TableData; labelColumns: number; labelFromX: boolean; drawing?: ChartDrawing } | "withheld" | undefined => {
+const tableOf = (
+  root: XNode,
+  limits: ReaderLimits | undefined,
+  sheet: SheetPoints | undefined,
+): { data: TableData; labelColumns: number; labelFromX: boolean; drawing?: ChartDrawing } | "withheld" | undefined => {
   const series = findDescendants(root, "c:ser");
   if (series.length === 0) return undefined;
   // Category levels, the leaf level first (a plain chart has one).
@@ -433,7 +574,13 @@ const tableOf = (root: XNode, limits: ReaderLimits | undefined, sheet: SheetPoin
     const added: TableColumn[] = [];
     if (isXySeries(ser)) {
       const xs = xyValues(findChild(ser, "c:xVal"), cacheFormatCode, limits, sheet, undefined);
-      const ys = xyValues(findChild(ser, "c:yVal"), (cache) => displayFormatCode(ser, cache), limits, sheet, labelFormatCode(ser));
+      const ys = xyValues(
+        findChild(ser, "c:yVal"),
+        (cache) => displayFormatCode(ser, cache),
+        limits,
+        sheet,
+        labelFormatCode(ser),
+      );
       const sizes = xyValues(findChild(ser, "c:bubbleSize"), cacheFormatCode, limits, sheet, undefined);
       if (xs === undefined || ys === undefined || sizes === undefined) return "withheld";
       if (!isBlank(xs)) {
@@ -479,22 +626,13 @@ const tableOf = (root: XNode, limits: ReaderLimits | undefined, sheet: SheetPoin
   const labelColumns = [...levels].reverse();
   // Withheld before any row is built: the bound is on what the table WOULD
   // hold — OCCUPIED rows × columns, so a sparse cache is not penalised.
-  const occupied = new Set<number>();
-  for (const column of [...labelColumns, ...columns.map((c) => c.values)]) {
-    for (let i = 0; i < column.length; i++) if (column[i] !== "") occupied.add(i);
-  }
+  const occupied = occupiedIndices(labelColumns, columns);
   if (occupied.size * (labelColumns.length + columns.length) > bounds.cells) return "withheld";
-  const rows: string[][] = [];
-  const keptIndices: number[] = [];
-  // Rows come from the SORTED occupied indices only, never 0..rowCount.
-  for (const i of [...occupied].sort((a, b) => a - b)) {
-    const row = [...labelColumns.map((l) => l[i] ?? ""), ...columns.map((c) => c.values[i] ?? "")];
-    if (row.some((cell) => cell !== "")) {
-      rows.push(row);
-      keptIndices.push(i);
-    }
-  }
-  const drawing = drawingOf(drawingTypeOf(root), labelColumns.length, columns, keptIndices);
+  const { rows, keptIndices } = occupiedRows(occupied, labelColumns, columns);
+  const drawing = withCategoryDirection(
+    drawingOf(drawingTypeOf(root), labelColumns.length, columns, keptIndices),
+    root,
+  );
   return {
     data: { headers: [...labelColumns.map(() => ""), ...columns.map((c) => c.name ?? "")], rows },
     labelColumns: labelColumns.length,
@@ -512,7 +650,10 @@ const richLines = (title: XNode): string[] => {
       if (qualifiedNameOf(piece) === "a:br") {
         lines.push(line);
         line = "";
-      } else line += findDescendants(piece, "a:t").map((t) => textContentOf(t)).join("");
+      } else
+        line += findDescendants(piece, "a:t")
+          .map((t) => textContentOf(t))
+          .join("");
     }
     lines.push(line);
   }
@@ -523,14 +664,21 @@ const richLines = (title: XNode): string[] => {
  *  for a title linked to a cell (`c:tx/c:strRef`, Excel's), the first point of its `c:strCache` (ECMA-376 Part 1 §21.2.2.178, §21.2.2.176). */
 const titleText = (title: XNode | undefined, limits: ReaderLimits | undefined): string | undefined => {
   if (title === undefined) return undefined;
-  const rich = richLines(title).map((l) => l.trim()).filter((l) => l !== "").join(" ");
-  const linked = rich === "" ? points(findChild(findChild(findChild(title, "c:tx") ?? {}, "c:strRef") ?? {}, "c:strCache"), limits)?.[0] : undefined;
+  const rich = richLines(title)
+    .map((l) => l.trim())
+    .filter((l) => l !== "")
+    .join(" ");
+  const linked =
+    rich === ""
+      ? points(findChild(findChild(findChild(title, "c:tx") ?? {}, "c:strRef") ?? {}, "c:strCache"), limits)?.[0]
+      : undefined;
   const text = rich !== "" ? rich : (linked ?? "").trim();
   return text === "" ? undefined : text;
 };
 
 /** The chart's OWN title: the `c:title` child of `c:chart` (an axis title is never taken for it). */
-const titleOf = (root: XNode, limits: ReaderLimits | undefined): string | undefined => titleText(findChild(findChild(root, "c:chart") ?? {}, "c:title"), limits);
+const titleOf = (root: XNode, limits: ReaderLimits | undefined): string | undefined =>
+  titleText(findChild(findChild(root, "c:chart") ?? {}, "c:title"), limits);
 
 /** An axis the chart deletes (`c:delete`, an optional CT_Boolean: no `val` means true) shows no title. */
 const axisIsDeleted = (axis: XNode): boolean => {
@@ -559,12 +707,16 @@ const axisRole = (tag: string | undefined, position: string | undefined, byPosit
 /** `x`/`y` are the roles of the chart's DATA, not screen directions: `x` is the category axis even when horizontal bars lay it vertically. */
 const axisTitlesOf = (root: XNode, limits: ReaderLimits | undefined): AxisTitle[] => {
   const areas = findDescendants(root, "c:plotArea");
-  const axes = areas.flatMap((area) => kidsOf(area).filter((k) => ["c:catAx", "c:dateAx", "c:serAx", "c:valAx"].includes(qualifiedNameOf(k) ?? "")));
+  const axes = areas.flatMap((area) =>
+    kidsOf(area).filter((k) => ["c:catAx", "c:dateAx", "c:serAx", "c:valAx"].includes(qualifiedNameOf(k) ?? "")),
+  );
   // A value axis is classed by its position (`c:axPos`: bottom or top is x, left or right is y) when the chart has no category or date axis
   // (a scatter or bubble alone) AND when it has a scatter or bubble group, whose value axes may be horizontal beside a category axis (a
   // combined chart). Otherwise (bars, lines) a value axis is y whatever its position: horizontal bars lay their value axis at the bottom.
   const categorical = axes.some((k) => qualifiedNameOf(k) === "c:catAx" || qualifiedNameOf(k) === "c:dateAx");
-  const xy = areas.some((area) => kidsOf(area).some((k) => qualifiedNameOf(k) === "c:scatterChart" || qualifiedNameOf(k) === "c:bubbleChart"));
+  const xy = areas.some((area) =>
+    kidsOf(area).some((k) => qualifiedNameOf(k) === "c:scatterChart" || qualifiedNameOf(k) === "c:bubbleChart"),
+  );
   const byPosition = !categorical || xy;
   const out: AxisTitle[] = [];
   for (const k of axes) {
@@ -572,21 +724,33 @@ const axisTitlesOf = (root: XNode, limits: ReaderLimits | undefined): AxisTitle[
     const text = titleText(findChild(k, "c:title"), limits);
     if (text === undefined) continue;
     const tag = qualifiedNameOf(k);
-    out.push({ axis: axisRole(tag, attributeOf(findChild(k, "c:axPos") ?? {}, "val"), byPosition), text, corner: tag === "c:catAx" || tag === "c:dateAx", valued: tag === "c:valAx" });
+    out.push({
+      axis: axisRole(tag, attributeOf(findChild(k, "c:axPos") ?? {}, "val"), byPosition),
+      text,
+      corner: tag === "c:catAx" || tag === "c:dateAx",
+      valued: tag === "c:valAx",
+    });
   }
   return out;
 };
 
 /** The table and the title fields of a chart read. The first category-axis title heads the table's top-left cell when the categories take
  *  ONE column, and the first horizontal value-axis title when that column holds a scatter's X values; every other axis title is a line under the table. */
-const withTitles = (root: XNode, table: { data: TableData; labelColumns: number; labelFromX: boolean; drawing?: ChartDrawing }, limits: ReaderLimits | undefined): { data: TableData; titles: Pick<PptxChart, "title" | "axisTitles"> } => {
+const withTitles = (
+  root: XNode,
+  table: { data: TableData; labelColumns: number; labelFromX: boolean; drawing?: ChartDrawing },
+  limits: ReaderLimits | undefined,
+): { data: TableData; titles: Pick<PptxChart, "title" | "axisTitles"> } => {
   const title = titleOf(root, limits);
   const all = axisTitlesOf(root, limits);
   const heading = table.labelFromX ? all.find((t) => t.valued && t.axis === "x") : all.find((t) => t.corner);
   const headed = heading !== undefined && table.labelColumns === 1 && table.data.headers !== undefined;
   const data = headed ? { ...table.data, headers: [heading.text, ...table.data.headers!.slice(1)] } : table.data;
   const lines = all.filter((t) => !headed || t !== heading).map(({ axis, text }) => ({ axis, text }));
-  return { data, titles: { ...(title === undefined ? {} : { title }), ...(lines.length === 0 ? {} : { axisTitles: lines }) } };
+  return {
+    data,
+    titles: { ...(title === undefined ? {} : { title }), ...(lines.length === 0 ? {} : { axisTitles: lines }) },
+  };
 };
 
 /** The chart at `part`, `undefined` when it has no series (nothing to say), `"withheld"` when the part is MISSING (07/10/2026: said like a damaged
@@ -599,7 +763,9 @@ export const readChartOutcome = async (
 ): Promise<PptxChart | "withheld" | undefined> => {
   const root = await pkg.readXml(part);
   if (!root) return "withheld";
-  const table = tableOf(root, options.limits, options.resolver === undefined ? undefined : sheetPointsOf(root, options.resolver, options.limits));
+  const sheet = options.resolver === undefined ? undefined : sheetPointsOf(root, options.resolver, options.limits);
+  if (sheet === "withheld") return "withheld";
+  const table = tableOf(root, options.limits, sheet);
   if (table === undefined || table === "withheld") return table;
   const { data, titles } = withTitles(root, table, options.limits);
   // A caller that publishes no picture (docx, xlsx) never reads its bytes.
@@ -645,6 +811,13 @@ export const chartToIr = (
   const image = read.image && options.collectImage ? options.collectImage(read.image) : undefined;
   return {
     withheld: false,
-    block: { kind: "chart", data: read.data, ...(read.drawing === undefined ? {} : { drawing: read.drawing }), ...(read.title === undefined ? {} : { title: read.title }), ...(read.axisTitles === undefined ? {} : { axisTitles: read.axisTitles }), ...(image === undefined ? {} : { image }) },
+    block: {
+      kind: "chart",
+      data: read.data,
+      ...(read.drawing === undefined ? {} : { drawing: read.drawing }),
+      ...(read.title === undefined ? {} : { title: read.title }),
+      ...(read.axisTitles === undefined ? {} : { axisTitles: read.axisTitles }),
+      ...(image === undefined ? {} : { image }),
+    },
   };
 };

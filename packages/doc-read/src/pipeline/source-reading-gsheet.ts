@@ -49,7 +49,16 @@
 
 import { NO_CAP, type ReaderLimits } from "doc-ir/lib/reader-limits";
 import type { GoogleSheetMeta } from "../extractor/google-sheet";
-import { emptyUnitStructure, excludedUnitsOf, guardedSource, unitOf, type ConservationSourceReadFailure, type ConservationUnit, type DeclaredFormatConservationSource, type UnitStructure } from "./conservation-source";
+import {
+  emptyUnitStructure,
+  excludedUnitsOf,
+  guardedSource,
+  unitOf,
+  type ConservationSourceReadFailure,
+  type ConservationUnit,
+  type DeclaredFormatConservationSource,
+  type UnitStructure,
+} from "./conservation-source";
 import { absorbedCells, declaredHeaderRowsOf, sheetStructure } from "./source-structure-sheet";
 import { coveredByMerges } from "./source-reading-table";
 
@@ -130,13 +139,20 @@ const absorbedOf = (
     shownCols: grid.shownColumns,
     covered: grid.covered,
     texts: grid.uncovered.filter((t) => t.text.trim() !== "").map((t) => ({ row: t.r, col: t.c })),
-    headerRows: declaredHeaderRowsOf(sortedRows, hiddenRows, { tableSpans: [], ...(frozen >= 1 ? { frozenRow: frozen - 1 } : {}) }),
+    headerRows: declaredHeaderRowsOf(sortedRows, hiddenRows, {
+      tableSpans: [],
+      ...(frozen >= 1 ? { frozenRow: frozen - 1 } : {}),
+    }),
   });
 };
 /** The reading of ONE grid sheet: its kept cells, the merges, and the structure the control compares — the page rule of
  *  27/10/2026 (a row whose only text is in its first cell publishes as ONE cell) mirrored here on its own, so the control
  *  keeps its two independent readings. */
-const readGridSheet = (sheet: GoogleSheetMeta["sheets"][number], values: readonly string[][], limits: ReaderLimits | undefined): { text: string; withheld: boolean; structure: UnitStructure } => {
+const readGridSheet = (
+  sheet: GoogleSheetMeta["sheets"][number],
+  values: readonly string[][],
+  limits: ReaderLimits | undefined,
+): { text: string; withheld: boolean; structure: UnitStructure } => {
   const { keptRows, keptCols, candidates } = keptCellsOf(sheet, values);
   const withheld = keptRows.size > (limits?.sheetRows ?? NO_CAP) || keptCols.size > (limits?.sheetCols ?? NO_CAP);
   // Rule of 09/10/2026: nothing invisible in the source is published NOR expected by the control
@@ -147,15 +163,15 @@ const readGridSheet = (sheet: GoogleSheetMeta["sheets"][number], values: readonl
   const covered: ReadonlyMap<string, { rowNum: number }> = withheld
     ? new Map<string, { rowNum: number }>()
     : coveredByMerges(
-      (sheet.merges ?? []).map((m) => ({
-      r1: m.startRowIndex ?? 0,
-      c1: m.startColumnIndex ?? 0,
-      r2: m.endRowIndex - 1,
-      c2: m.endColumnIndex - 1,
-      })),
-      keptRows,
-      keptCols,
-    );
+        (sheet.merges ?? []).map((m) => ({
+          r1: m.startRowIndex ?? 0,
+          c1: m.startColumnIndex ?? 0,
+          r2: m.endRowIndex - 1,
+          c2: m.endColumnIndex - 1,
+        })),
+        keptRows,
+        keptCols,
+      );
   const uncovered = candidates.filter((t) => !covered.has(`${t.r},${t.c}`));
   const texts = uncovered.map((t) => t.text);
   // The page keeps the columns where an uncovered cell shows a text (as the workbook's); the merge covers cells of those columns only.
@@ -166,11 +182,17 @@ const readGridSheet = (sheet: GoogleSheetMeta["sheets"][number], values: readonl
   // gaps, found by review the same evening). The header is the last frozen row (`gridProperties.frozenRowCount` - 1, in rows from 0), as a published row:
   // the last KEPT row at or above it, abstaining when a hidden row lies between (`declaredHeaderRowsOf`).
   const absorbed = withheld ? 0 : absorbedOf(sheet, { keptRows, keptCols, shownColumns, covered, uncovered });
-  const structure = withheld ? emptyUnitStructure() : sheetStructure({ rows: keptRows.size, shownColumns: shownColumns.size, covered: coveredInShown, absorbed });
+  const structure = withheld
+    ? emptyUnitStructure()
+    : sheetStructure({ rows: keptRows.size, shownColumns: shownColumns.size, covered: coveredInShown, absorbed });
   return { text: withheld ? "" : texts.join(" "), withheld, structure };
 };
 
-const readGsheetSource = (meta: GoogleSheetMeta, valuesByTitle: ReadonlyMap<string, string[][]>, limits: ReaderLimits | undefined): GsheetSourceReading => {
+const readGsheetSource = (
+  meta: GoogleSheetMeta,
+  valuesByTitle: ReadonlyMap<string, string[][]>,
+  limits: ReaderLimits | undefined,
+): GsheetSourceReading => {
   // Same guard `extractGoogleSheet` applies to the same malformed shape
   // (`core/errors.ts`'s "un échec est toujours un échec nommé" — here, a
   // named read failure via the caller's try/catch, never a raw TypeError).
@@ -182,21 +204,53 @@ const readGsheetSource = (meta: GoogleSheetMeta, valuesByTitle: ReadonlyMap<stri
   for (const sheet of ordered) {
     const name = sheet.properties.title;
     if (sheet.properties.hidden === true) {
-      sheets.push({ name, text: "", hidden: true, overCap: false, object: false, withheld: false, structure: emptyUnitStructure() });
+      sheets.push({
+        name,
+        text: "",
+        hidden: true,
+        overCap: false,
+        object: false,
+        withheld: false,
+        structure: emptyUnitStructure(),
+      });
       continue;
     }
     if (visibleSoFar >= (limits?.workbookTabs ?? NO_CAP)) {
-      sheets.push({ name, text: "", hidden: false, overCap: true, object: false, withheld: false, structure: emptyUnitStructure() });
+      sheets.push({
+        name,
+        text: "",
+        hidden: false,
+        overCap: true,
+        object: false,
+        withheld: false,
+        structure: emptyUnitStructure(),
+      });
       visibleSoFar++;
       continue;
     }
     visibleSoFar++;
     if (sheet.properties.sheetType !== undefined && sheet.properties.sheetType !== "GRID") {
-      sheets.push({ name, text: "", hidden: false, overCap: false, object: true, withheld: false, structure: emptyUnitStructure() });
+      sheets.push({
+        name,
+        text: "",
+        hidden: false,
+        overCap: false,
+        object: true,
+        withheld: false,
+        structure: emptyUnitStructure(),
+      });
       continue;
     }
     const grid = readGridSheet(sheet, valuesByTitle.get(name) ?? [], limits);
-    sheets.push({ name, text: grid.text, hidden: false, overCap: false, object: false, withheld: grid.withheld, structure: grid.structure });
+    sheets.push({
+      name,
+      text: grid.text,
+      hidden: false,
+      overCap: false,
+      object: false,
+      withheld: grid.withheld,
+      structure: grid.structure,
+    });
   }
   return { sheets };
 };
@@ -216,7 +270,15 @@ export function readGoogleSheetConservationSource(
   return guardedSource(() => {
     const { sheets } = readGsheetSource(meta, valuesByTitle, limits);
     const units: ConservationUnit[] = sheets.map((sheet) => unitOf(sheet.name, sheet.text));
-    const excludedUnits = excludedUnitsOf(sheets, (sheet) => sheet.hidden || sheet.overCap || sheet.object || sheet.withheld);
-    return { units, deliberateRemovals: [], excludedUnits, structure: { units: sheets.map((sheet) => sheet.structure), format: "gsheet" } };
+    const excludedUnits = excludedUnitsOf(
+      sheets,
+      (sheet) => sheet.hidden || sheet.overCap || sheet.object || sheet.withheld,
+    );
+    return {
+      units,
+      deliberateRemovals: [],
+      excludedUnits,
+      structure: { units: sheets.map((sheet) => sheet.structure), format: "gsheet" },
+    };
   });
 }

@@ -66,7 +66,12 @@ function walkStructureTree(doc: PdfObjectsDocument): ReadonlyMap<string, Declare
   const seenRefs = new Set<string>();
 
   // A child with no `/Pg` inherits its parent's: the page of a content is that of its nearest `/Pg`.
-  const visit = (node: PdfValue | undefined, inheritedPage: string | undefined, inNote: boolean, depth: number): void => {
+  const visit = (
+    node: PdfValue | undefined,
+    inheritedPage: string | undefined,
+    inNote: boolean,
+    depth: number,
+  ): void => {
     if (depth > 64) return;
     if (node?.kind === "ref") {
       const key = refKey(node);

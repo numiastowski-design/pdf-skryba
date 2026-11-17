@@ -105,7 +105,10 @@ const longestRun = <T extends PositionedItem>(
     else current.push(group);
   }
   close();
-  const best = runs.reduce<{ lines: T[][]; straddling: number }>((kept, run) => (run.straddling > kept.straddling ? run : kept), { lines: [], straddling: 0 });
+  const best = runs.reduce<{ lines: T[][]; straddling: number }>(
+    (kept, run) => (run.straddling > kept.straddling ? run : kept),
+    { lines: [], straddling: 0 },
+  );
   const start = best.lines.findIndex((g) => isBanded.has(g) || !firstBandOnly(g));
   return { lines: start < 0 ? [] : best.lines.slice(start), straddling: best.straddling };
 };
@@ -151,9 +154,21 @@ export const MAX_BAND_ZONES_PER_PAGE = 64;
 export const MIN_WORDS_PER_ZONE_FRAGMENT = 1.5;
 
 const wordsPerFragment = (fragments: readonly { text: string }[]): number =>
-  fragments.reduce((sum, f) => sum + f.text.trim().split(/\s+/).filter((w) => w.length > 0).length, 0) / Math.max(1, fragments.length);
+  fragments.reduce(
+    (sum, f) =>
+      sum +
+      f.text
+        .trim()
+        .split(/\s+/)
+        .filter((w) => w.length > 0).length,
+    0,
+  ) / Math.max(1, fragments.length);
 
-const standsAloneAsZone = <T extends PositionedItem>(zoneLines: readonly T[][], straddling: number, cuts: readonly number[]): boolean => {
+const standsAloneAsZone = <T extends PositionedItem>(
+  zoneLines: readonly T[][],
+  straddling: number,
+  cuts: readonly number[],
+): boolean => {
   if (straddling < MIN_SUBZONE_LINES) return false;
   const ink = zoneLines.flat().filter((it) => it.text.trim() !== "");
   return cuts.every((cut) => {
@@ -190,7 +205,8 @@ export const bandedSplit = <T extends PositionedItem>(
   const real = (group: readonly T[]): T[] => group.filter((it) => it.text.trim().length > 0);
   const leftOf = (it: T): boolean => it.x + it.width / 2 < cut;
   const spansCut = (group: readonly T[]): boolean => real(group).some((it) => it.x < cut && it.x + it.width > cut);
-  const straddles = (group: readonly T[]): boolean => !spansCut(group) && real(group).some(leftOf) && real(group).some((it) => !leftOf(it));
+  const straddles = (group: readonly T[]): boolean =>
+    !spansCut(group) && real(group).some(leftOf) && real(group).some((it) => !leftOf(it));
 
   // UNE COUPE PEUT ÊTRE BORNÉE À LA BANDE HAUTE (11/09/2026). Sur un bulletin,
   // l'en-tête est en deux blocs côte à côte AU-DESSUS d'un tableau pleine
@@ -234,7 +250,10 @@ export const bandedSplit = <T extends PositionedItem>(
   // la suite en cours. On retient la plus fournie. C'est le « plusieurs zones »
   // que le commentaire d'origine écartait faute de document pour l'exiger — il y
   // en a un maintenant.
-  const run = bound === undefined ? longestRun(groups, banded, spansCut, (g) => real(g).every(leftOf)) : { lines: eligible, straddling: banded.length };
+  const run =
+    bound === undefined
+      ? longestRun(groups, banded, spansCut, (g) => real(g).every(leftOf))
+      : { lines: eligible, straddling: banded.length };
   const zoneLines = run.lines;
   if (zoneLines.length === 0 || (standsAlone && !standsAloneAsZone(zoneLines, run.straddling, [cut]))) return undefined;
   const top = maxOf(zoneLines, (g) => g[0]!.y);
@@ -382,13 +401,17 @@ export const bandedSplitN = <T extends PositionedItem>(
   const real = (group: readonly T[]): T[] => group.filter((it) => it.text.trim().length > 0);
   /** La bande d'un fragment : le nombre de coupes qui passent à gauche de son MILIEU, comme partout ailleurs. */
   const bandOf = (it: T): number => cuts.filter((cut) => it.x + it.width / 2 >= cut).length;
-  const crosses = (group: readonly T[]): boolean => real(group).some((it) => cuts.some((cut) => it.x < cut && it.x + it.width > cut));
+  const crosses = (group: readonly T[]): boolean =>
+    real(group).some((it) => cuts.some((cut) => it.x < cut && it.x + it.width > cut));
   const straddles = (group: readonly T[]): boolean => !crosses(group) && new Set(real(group).map(bandOf)).size > 1;
 
   const eligible = bound === undefined ? groups : groups.filter((g) => g[0]!.y > bound);
   const banded = eligible.filter(straddles);
   if (banded.length === 0) return undefined;
-  const run = bound === undefined ? longestRun(groups, banded, crosses, (g) => real(g).every((it) => bandOf(it) === 0)) : { lines: eligible, straddling: banded.length };
+  const run =
+    bound === undefined
+      ? longestRun(groups, banded, crosses, (g) => real(g).every((it) => bandOf(it) === 0))
+      : { lines: eligible, straddling: banded.length };
   const zoneLines = run.lines;
   if (zoneLines.length === 0 || (standsAlone && !standsAloneAsZone(zoneLines, run.straddling, cuts))) return undefined;
   const top = maxOf(zoneLines, (g) => g[0]!.y);
@@ -407,7 +430,9 @@ export const bandedSplitN = <T extends PositionedItem>(
     const last = items.length - 1 - [...items].reverse().findIndex(isInk);
     return items.slice(first, last + 1);
   };
-  const bands = Array.from({ length: cuts.length + 1 }, (_, band) => inside.map((g) => partOf(g, band)).filter((part) => part.length > 0));
+  const bands = Array.from({ length: cuts.length + 1 }, (_, band) =>
+    inside.map((g) => partOf(g, band)).filter((part) => part.length > 0),
+  );
   return {
     above: groups.filter((g) => g[0]!.y > top),
     bands: bands.filter((band) => band.length > 0),
@@ -436,7 +461,8 @@ export const readingBands = <T extends PositionedItem>(
   /** Vrai quand l'appel vient d'une bande déjà séparée : ce qui en sort est une colonne, même si aucune des coupes
    *  restantes ne mord dessus. Faux au premier appel, sur la page entière. */
   inBand = false,
-): ReadSegment<T>[] => readBands(pageItems, cuts, { bound, inBand, standsAlone: false, zonesLeft: { count: MAX_BAND_ZONES_PER_PAGE } });
+): ReadSegment<T>[] =>
+  readBands(pageItems, cuts, { bound, inBand, standsAlone: false, zonesLeft: { count: MAX_BAND_ZONES_PER_PAGE } });
 
 /** Whether one inked fragment of the page spans the cut: the condition that bounds a zone (`bandedSplit`). */
 const crossedByAnyLine = <T extends PositionedItem>(pageItems: readonly T[], cut: number): boolean =>
@@ -475,7 +501,8 @@ const readBands = <T extends PositionedItem>(
   // Une coupe que rien ne traverse n'a pas de zone à chercher : elle vaut sur toute la hauteur, et chaque côté se
   // lit ensuite sur les coupes qui restent — le chemin à une coupe ci-dessous. Statistique seulement : une coupe
   // bornée à une cellule peinte (`bound`) a déjà sa bande.
-  const clean = bound === undefined && cuts.length > 1 ? cuts.find((cut) => !crossedByAnyLine(pageItems, cut)) : undefined;
+  const clean =
+    bound === undefined && cuts.length > 1 ? cuts.find((cut) => !crossedByAnyLine(pageItems, cut)) : undefined;
   if (cuts.length > 1 && clean === undefined) {
     const whole = bandedSplitN(pageItems, cuts, bound, standsAlone);
     if (whole !== undefined) {
@@ -487,14 +514,17 @@ const readBands = <T extends PositionedItem>(
     }
   }
   const [first, ...rest] = clean === undefined ? cuts : [clean, ...cuts.filter((cut) => cut !== clean)];
-  const split = first === undefined ? undefined : bandedSplit(pageItems, first, bound, { standsAlone, innerCuts: rest });
+  const split =
+    first === undefined ? undefined : bandedSplit(pageItems, first, bound, { standsAlone, innerCuts: rest });
   if (split === undefined) {
     if (rest.length > 0) return readBands(pageItems, rest, options);
     return [{ lines: groupItemsIntoLines(pageItems), column: inBand }];
   }
   // Une bande déjà séparée se relit sur les coupes RESTANTES, jamais sur celle qui vient de la produire.
   const deeper = (band: T[][]): ReadSegment<T>[] =>
-    rest.length === 0 || band.length === 0 ? [{ lines: band, column: true }] : readBands(band.flat(), rest, { ...options, inBand: true });
+    rest.length === 0 || band.length === 0
+      ? [{ lines: band, column: true }]
+      : readBands(band.flat(), rest, { ...options, inBand: true });
   // 🔴 CE QUI EST AU-DESSUS D'UNE SOUS-COUPE N'EST UNE COLONNE DE PERSONNE (04/11/2026, vu sur la page
   // publiée, corrigé deux fois).
   //
@@ -507,10 +537,7 @@ const readBands = <T extends PositionedItem>(
   // EXCHANGE proceedings to determine whether such". It therefore comes out FULL WIDTH, and whatever composes
   // the page does what it wants with it: a `colspan` row put it across, in its place (the `table` variant of
   // `pdf-image-anchors.ts`, removed on 06/11/2026); `rows` leaves it full width.
-  return [
-    ...remainder(split.above),
-    ...deeper(split.left),
-    ...deeper(split.right),
-    ...remainder(split.below),
-  ].filter((segment) => segment.lines.length > 0);
+  return [...remainder(split.above), ...deeper(split.left), ...deeper(split.right), ...remainder(split.below)].filter(
+    (segment) => segment.lines.length > 0,
+  );
 };

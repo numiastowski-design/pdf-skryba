@@ -155,7 +155,16 @@ export interface PptxTextShape extends ShapeBase {
    *  `textBox`: the text rectangle (`dsp:txXfrm`, else the frame), laid out horizontally and then turned by `textTurn` (`dsp:txXfrm rot`
    *  plus the `vert` of `a:bodyPr`, 0 when none) about its own centre, then by `turn` about the frame's centre. `vf`: a hexagon's `vf`
    *  guide; `adj1`, `adj2`: a chord's start and end angles. `textSwap`: the lines are laid in `textBox` with its sides swapped about its centre (`a:bodyPr vert` of 90 or 270). Such a shape never has `rot`: the turn is `turn`, drawn as `rotate`. */
-  smartArt?: { frame: Box; turn: number; textBox: Box; textTurn: number; textSwap?: true; vf?: number; adj1?: number; adj2?: number };
+  smartArt?: {
+    frame: Box;
+    turn: number;
+    textBox: Box;
+    textTurn: number;
+    textSwap?: true;
+    vf?: number;
+    adj1?: number;
+    adj2?: number;
+  };
 }
 
 /** A `p:cxnSp`: a line drawn between two shapes. Never has text. */
@@ -325,7 +334,12 @@ const fillOf = (element: XNode, spPr: XNode | undefined, context: ColorContext |
 /** How the runs of a text shape read their colour: through `context`, and
  *  a run writing no fill takes the colour it inherits
  *  (`pptx-reader/text-color.ts`). */
-const runColors = (element: XNode, body: XNode, context: ColorContext | undefined, sources: TextStyleSources): RunColors => ({
+const runColors = (
+  element: XNode,
+  body: XNode,
+  context: ColorContext | undefined,
+  sources: TextStyleSources,
+): RunColors => ({
   ...(context === undefined ? {} : { context }),
   inherited: inheritedTextColor(element, body, sources, context),
   inheritedBullet: inheritedBullet(element, body, sources),
@@ -341,7 +355,10 @@ const insetOf = (bodyPr: XNode, name: string): number | undefined => {
 /** What `a:bodyPr` says of where and how the text sits. */
 export const bodyOf = (
   body: XNode,
-): Pick<PptxTextShape, "anchor" | "turnedText" | "fontScale" | "lineSpaceReduction" | "noWrap" | "insets" | "growsWithText"> => {
+): Pick<
+  PptxTextShape,
+  "anchor" | "turnedText" | "fontScale" | "lineSpaceReduction" | "noWrap" | "insets" | "growsWithText"
+> => {
   const bodyPr = findChild(body, "a:bodyPr") ?? {};
   const anchor = attributeOf(bodyPr, "anchor");
   const vert = attributeOf(bodyPr, "vert");
@@ -378,7 +395,9 @@ const xfrmOf = (element: XNode, tag: string): XNode | undefined =>
 
 /** The frame of a shape-tree element, whichever kind: a group writes its `a:xfrm` in `p:grpSpPr`. */
 const frameOfElement = (element: XNode, tag: string): Frame | undefined =>
-  tag === "p:grpSp" ? frameOf(findChild(findChild(element, "p:grpSpPr") ?? {}, "a:xfrm")) : frameOf(xfrmOf(element, tag));
+  tag === "p:grpSp"
+    ? frameOf(findChild(findChild(element, "p:grpSpPr") ?? {}, "a:xfrm"))
+    : frameOf(xfrmOf(element, tag));
 
 /** Whether a top-level element lies WHOLLY outside the slide, so that it is not shown in a slideshow, print or export
  *  (rule « Rien d'invisible », 09/10/2026; the same rule as Word's `docx-reader/objects.ts#isOffPage`).
@@ -457,7 +476,12 @@ interface Scope {
 }
 
 /** A `p:sp`: a text shape; a bodiless block arrow, an empty one; any other bodiless shape, nothing. */
-const readTextShape = (env: ReadEnv, element: XNode, base: ShapeBase, transform: Transform): PptxTextShape | undefined => {
+const readTextShape = (
+  env: ReadEnv,
+  element: XNode,
+  base: ShapeBase,
+  transform: Transform,
+): PptxTextShape | undefined => {
   const { rels, context, sources } = env;
   const body = findChild(element, "p:txBody");
   // A `p:sp` with NO text body used to be dropped whole; since 7b of
@@ -483,7 +507,10 @@ const readTextShape = (env: ReadEnv, element: XNode, base: ShapeBase, transform:
   }
   const placeholder = placeholderOf(element);
   // Built once per shape: its inherited colours are the same for every paragraph.
-  const colors = { ...runColors(element, body, context, sources), ...(env.slideNumber === undefined ? {} : { slideNumber: env.slideNumber }) };
+  const colors = {
+    ...runColors(element, body, context, sources),
+    ...(env.slideNumber === undefined ? {} : { slideNumber: env.slideNumber }),
+  };
   const spPr = findChild(element, "p:spPr");
   const geometry = presetOf(spPr);
   const adj = guidesOf(spPr)["adj"];
@@ -510,7 +537,12 @@ const readTextShape = (env: ReadEnv, element: XNode, base: ShapeBase, transform:
 };
 
 /** A `p:cxnSp`: the shapes it links by id, its arrow heads, its line. */
-const readConnector = (element: XNode, base: ShapeBase, frame: Frame | undefined, transform: Transform): PptxConnectorShape => {
+const readConnector = (
+  element: XNode,
+  base: ShapeBase,
+  frame: Frame | undefined,
+  transform: Transform,
+): PptxConnectorShape => {
   const nv = findChild(findChild(element, "p:nvCxnSpPr") ?? {}, "p:cNvCxnSpPr") ?? {};
   const from = attributeOf(findChild(nv, "a:stCxn") ?? {}, "id");
   const to = attributeOf(findChild(nv, "a:endCxn") ?? {}, "id");
@@ -525,7 +557,13 @@ const readConnector = (element: XNode, base: ShapeBase, frame: Frame | undefined
 };
 
 /** A `p:pic`: its image (or why it is not published) and where the slide places it. */
-const readPicShape = (env: ReadEnv, element: XNode, base: ShapeBase, frame: Frame | undefined, { levels, transform }: Scope): PptxPictureShape => {
+const readPicShape = (
+  env: ReadEnv,
+  element: XNode,
+  base: ShapeBase,
+  frame: Frame | undefined,
+  { levels, transform }: Scope,
+): PptxPictureShape => {
   // The width on the slide: the declared one times the length the
   // groups give a unit along the picture's own x axis.
   const declared = pictureWidthPt(element);
@@ -541,7 +579,13 @@ const readPicShape = (env: ReadEnv, element: XNode, base: ShapeBase, frame: Fram
 };
 
 /** The shape a kept, visible element of the tree reads as; nothing for a kind this reader does not read. */
-const readLeaf = (env: ReadEnv, element: XNode, tag: string, spTreeIndex: number, scope: Scope): PptxShape | undefined => {
+const readLeaf = (
+  env: ReadEnv,
+  element: XNode,
+  tag: string,
+  spTreeIndex: number,
+  scope: Scope,
+): PptxShape | undefined => {
   const { group, transform } = scope;
   const frame = frameOf(xfrmOf(element, tag));
   const id = idOf(element);
@@ -555,7 +599,11 @@ const readLeaf = (env: ReadEnv, element: XNode, tag: string, spTreeIndex: number
   if (tag === "p:graphicFrame") {
     const read = readFrame(element, spTreeIndex, env.rels, env.slideNumber);
     const moved = transform.a === 1 && transform.d === 1 && transform.b === 0 && transform.c === 0;
-    return { ...read, ...base, ...(read.kind === "graphic" && read.graphic === "smartart" && !moved ? { inScaledGroup: true as const } : {}) };
+    return {
+      ...read,
+      ...base,
+      ...(read.kind === "graphic" && read.graphic === "smartart" && !moved ? { inScaledGroup: true as const } : {}),
+    };
   }
   if (tag === "p:pic") return readPicShape(env, element, base, frame, scope);
   return undefined;
@@ -573,7 +621,8 @@ const walkAlternate = (env: ReadEnv, state: WalkState, element: XNode, { levels,
   // carries no text — the same object, drawn as images. The variants
   // count ONCE toward `elementCount`: the Fallback's ranks replace the
   // empty Choice's (the larger count stands when the Fallback is empty too).
-  const fallback = branch && state.shapes.length === before ? imageOnlyFallback(element, branch, POWERPOINT_TEXT_TAGS) : undefined;
+  const fallback =
+    branch && state.shapes.length === before ? imageOnlyFallback(element, branch, POWERPOINT_TEXT_TAGS) : undefined;
   if (!fallback) return;
   const choiceRank = state.rank;
   state.rank = startRank;
@@ -581,7 +630,8 @@ const walkAlternate = (env: ReadEnv, state: WalkState, element: XNode, { levels,
   walkElements(env, state, childNodesOf(fallback), levels, group);
   // Only 1×1 pixels (the documented junk, PLATFORM-STATUS §53): not content.
   const added = state.shapes.slice(before);
-  const onlyPixels = added.length > 0 && added.every((s) => s.kind === "picture" && "image" in s && isOnePixel(s.image.bytes));
+  const onlyPixels =
+    added.length > 0 && added.every((s) => s.kind === "picture" && "image" in s && isOnePixel(s.image.bytes));
   if (onlyPixels) state.shapes.length = before;
   if (state.shapes.length === before) state.rank = Math.max(choiceRank, state.rank);
 };
@@ -606,7 +656,13 @@ const walkShapeElement = (env: ReadEnv, state: WalkState, element: XNode, tag: s
   if (levels.length === 0 && isOffSlide(frameOfElement(element, tag), env.slideSize)) return;
   if (tag === "p:grpSp") {
     const level = groupLevel(findChild(element, "p:grpSpPr"));
-    walkElements(env, state, childNodesOf(element), level === undefined ? levels : [...levels, level], group ?? spTreeIndex);
+    walkElements(
+      env,
+      state,
+      childNodesOf(element),
+      level === undefined ? levels : [...levels, level],
+      group ?? spTreeIndex,
+    );
     return;
   }
   const shape = readLeaf(env, element, tag, spTreeIndex, scope);
@@ -614,7 +670,13 @@ const walkShapeElement = (env: ReadEnv, state: WalkState, element: XNode, tag: s
 };
 
 /** `levels`: the enclosing groups, outermost first. */
-const walkElements = (env: ReadEnv, state: WalkState, elements: readonly XNode[], levels: readonly GroupLevel[], group: number | undefined): void => {
+const walkElements = (
+  env: ReadEnv,
+  state: WalkState,
+  elements: readonly XNode[],
+  levels: readonly GroupLevel[],
+  group: number | undefined,
+): void => {
   const scope: Scope = { levels, group, transform: throughGroups(levels) };
   for (const element of elements) {
     const tag = qualifiedNameOf(element);
@@ -649,6 +711,12 @@ export const readShapes = (
   limits?: ReaderLimits,
 ): { shapes: PptxShape[]; elementCount: number; hiddenShapes: number } => {
   const state: WalkState = { shapes: [], rank: 0, hiddenShapes: 0 };
-  walkElements({ rels, media, context, sources, slideSize, slideNumber, limits }, state, childNodesOf(tree), [], undefined);
+  walkElements(
+    { rels, media, context, sources, slideSize, slideNumber, limits },
+    state,
+    childNodesOf(tree),
+    [],
+    undefined,
+  );
   return { shapes: state.shapes, elementCount: state.rank, hiddenShapes: state.hiddenShapes };
 };

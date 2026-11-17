@@ -3,7 +3,6 @@
  *  Also hosts the page reading shared with the declared formats (`TAG`, `INLINE_TAGS`, `dropScaffolding`, `readPage`, `decodePageEntities`).
  *  Called by: `pipeline/publish-conservation.ts`, `pipeline/glued-word-repair.ts`, `pipeline/lost-text-repair.ts` and `pipeline/cut-paragraph-repair.ts` for where a page word sits in the XHTML, `pipeline/adf-conservation.ts` for the page letters, and `pipeline/declared-format-conservation.ts` for the shared page reading. */
 
-
 /**
  * WHY TWO READINGS (design validated by 21/09/2026).
  *
@@ -45,11 +44,7 @@ type ConservationDecision = "ok" | "lost" | "glued" | "abstain";
 
 /** Every rule a verdict can name — a closed list, so the output vocabulary stays enumerable. */
 export type ConservationRule =
-  | "all-words-found"
-  | "respaced-words"
-  | "letters-cover-unmatched-words"
-  | "letters-missing"
-  | "readings-disagree";
+  "all-words-found" | "respaced-words" | "letters-cover-unmatched-words" | "letters-missing" | "readings-disagree";
 
 /** Where a page word sits: the index of its text block in the page (macros
  *  not counted), and its index among that block's words. */
@@ -237,7 +232,14 @@ const sourceWords = <R extends ConservationRun>(
       const raw = m[0];
       const key = conservationKey(raw);
       if (key.length > 0) {
-        words.push({ raw, key, page: index + 1, gap, firstSize: sizeAt(m.index), lastSize: sizeAt(m.index + raw.length - 1) });
+        words.push({
+          raw,
+          key,
+          page: index + 1,
+          gap,
+          firstSize: sizeAt(m.index),
+          lastSize: sizeAt(m.index + raw.length - 1),
+        });
         gap = [];
       } else gap.push(raw);
     }
@@ -326,7 +328,6 @@ export const pageWordsOfPublished = (page: PublishedPage): { body: PageWord[]; e
   }
   return { body, extras: [...(page.extras ?? [])] };
 };
-
 
 // ───────────────────────────── word reading ─────────────────────────────
 
@@ -488,7 +489,14 @@ export function textConservation<R extends ConservationRun>(
   });
 
   const taken = { many: new Set<number>(), one: new Set<number>() };
-  const glued = spelledRuns(srcLeft, (i) => src[i]!.key, (a, b) => b === a + 1, pageLeft, (j) => body[j]!.key, taken);
+  const glued = spelledRuns(
+    srcLeft,
+    (i) => src[i]!.key,
+    (a, b) => b === a + 1,
+    pageLeft,
+    (j) => body[j]!.key,
+    taken,
+  );
   const takenSplit = { many: new Set<number>(), one: new Set<number>(taken.many) };
   const split = spelledRuns(
     pageLeft.filter((j) => !taken.one.has(j)),
@@ -516,7 +524,12 @@ export function textConservation<R extends ConservationRun>(
   for (const [run, i] of split) {
     explained.add(i);
     gluedWords += 1;
-    respacings.push({ kind: "split", page: src[i]!.page, pageWords: run.map((j) => body[j]!.at), sourceWords: [src[i]!.raw] });
+    respacings.push({
+      kind: "split",
+      page: src[i]!.page,
+      pageWords: run.map((j) => body[j]!.at),
+      sourceWords: [src[i]!.raw],
+    });
   }
 
   // LETTER READING — every leftover source word, in source order, against the
@@ -542,7 +555,7 @@ export function textConservation<R extends ConservationRun>(
     return j === -1 ? "unanchored" : body[j]!.at;
   };
   const lostPassages: LostPassage[] = [];
-  for (let k = 0; k < lost.length; ) {
+  for (let k = 0; k < lost.length;) {
     let end = k;
     while (end + 1 < lost.length && lost[end + 1] === lost[end]! + 1) end++;
     const run = lost.slice(k, end + 1);

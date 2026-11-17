@@ -29,14 +29,20 @@ import { decodePng } from "doc-ir/extractor/png-decode";
  *  instead of refusing the deck (arbitrage of 28/09/2026). */
 export type PptxMedia = ReadonlyMap<string, { bytes: Uint8Array; contentType: string } | "damaged">;
 
+/** A media part whose bytes were read: what `PptxMedia` holds when not "damaged". */
+interface MediaPart {
+  readonly bytes: Uint8Array;
+  readonly contentType: string;
+}
+
 interface PptxImage {
   /** The file to publish: the part's bytes untouched, or its visible part
    *  re-encoded when the picture is cropped. */
-  bytes: Uint8Array;
-  contentType: string;
+  readonly bytes: Uint8Array;
+  readonly contentType: string;
   /** The published file's own width in pixels, when its header says (PNG,
    *  JPEG, GIF): the page never draws it wider. */
-  pixelWidth?: number;
+  readonly pixelWidth?: number;
 }
 
 /** Why a picture is not published. The marker's wording is composed when the
@@ -78,18 +84,18 @@ const JPEG_QUALITY = 90;
 const MEDIA_TAGS = new Set(["a:videoFile", "a:audioFile", "a:quickTimeFile", "a:wavAudioFile", "a:audioCd"]);
 
 interface Insets {
-  l: number;
-  t: number;
-  r: number;
-  b: number;
+  readonly l: number;
+  readonly t: number;
+  readonly r: number;
+  readonly b: number;
 }
 
 /** An ST_Percentage: an integer in thousandths of a percent, or (Strict) a
  *  number followed by "%". Absent is 0. `undefined` when unreadable. */
 const percentage = (raw: string | undefined): number | undefined => {
   if (raw === undefined) return 0;
-  const n = raw.endsWith("%") ? Number(raw.slice(0, -1)) * 1000 : Number(raw);
-  return raw.trim() !== "" && Number.isFinite(n) ? n : undefined;
+  const value = raw.endsWith("%") ? Number(raw.slice(0, -1)) * 1000 : Number(raw);
+  return raw.trim() !== "" && Number.isFinite(value) ? value : undefined;
 };
 
 /** The insets of `a:srcRect`, `null` when there is no crop (no element, or
@@ -97,7 +103,7 @@ const percentage = (raw: string | undefined): number | undefined => {
  *  when an inset is unreadable. */
 const insetsOf = (srcRect: XNode | undefined): Insets | null | undefined => {
   if (!srcRect) return null;
-  const [l, t, r, b] = ["l", "t", "r", "b"].map((k) => percentage(attributeOf(srcRect, k)));
+  const [l, t, r, b] = ["l", "t", "r", "b"].map((attributeName) => percentage(attributeOf(srcRect, attributeName)));
   if (l === undefined || t === undefined || r === undefined || b === undefined) return undefined;
   return l === 0 && t === 0 && r === 0 && b === 0 ? null : { l, t, r, b };
 };
@@ -114,28 +120,39 @@ const insetsOf = (srcRect: XNode | undefined): Insets | null | undefined => {
  *  10, Google exports, `t="-184570" b="184570" l="22220" r="-22220"`). A
  *  window only partly outside keeps the marker: no specimen shows what
  *  PowerPoint draws there. */
-const windowOutsideImage = (i: Insets): boolean =>
-  i.l + i.r < WHOLE && i.t + i.b < WHOLE && (i.l >= WHOLE || i.r >= WHOLE || i.t >= WHOLE || i.b >= WHOLE);
+const windowOutsideImage = (insets: Insets): boolean =>
+  insets.l + insets.r < WHOLE &&
+  insets.t + insets.b < WHOLE &&
+  (insets.l >= WHOLE || insets.r >= WHOLE || insets.t >= WHOLE || insets.b >= WHOLE);
 
 /** The pixel rectangle the insets leave visible, or `undefined` when an
  *  inset is negative (the frame reaches beyond the image) or nothing is left. */
-const visibleRect = (width: number, height: number, insets: Insets): { x: number; y: number; w: number; h: number } | undefined => {
+const visibleRect = (
+  imageWidth: number,
+  imageHeight: number,
+  insets: Insets,
+): { x: number; y: number; width: number; height: number } | undefined => {
   if (insets.l < 0 || insets.t < 0 || insets.r < 0 || insets.b < 0) return undefined;
-  const x = Math.round((width * insets.l) / WHOLE);
-  const y = Math.round((height * insets.t) / WHOLE);
-  const w = width - Math.round((width * insets.r) / WHOLE) - x;
-  const h = height - Math.round((height * insets.b) / WHOLE) - y;
-  return w > 0 && h > 0 ? { x, y, w, h } : undefined;
+  const x = Math.round((imageWidth * insets.l) / WHOLE);
+  const y = Math.round((imageHeight * insets.t) / WHOLE);
+  const width = imageWidth - Math.round((imageWidth * insets.r) / WHOLE) - x;
+  const height = imageHeight - Math.round((imageHeight * insets.b) / WHOLE) - y;
+  return width > 0 && height > 0 ? { x, y, width, height } : undefined;
 };
 
 /** The rows `rect` covers, `channels` bytes per pixel. */
-const cut = (pixels: Uint8Array, width: number, channels: number, rect: { x: number; y: number; w: number; h: number }): Uint8Array => {
-  const out = new Uint8Array(rect.w * rect.h * channels);
-  for (let row = 0; row < rect.h; row++) {
-    const from = ((rect.y + row) * width + rect.x) * channels;
-    out.set(pixels.subarray(from, from + rect.w * channels), row * rect.w * channels);
+const cut = (
+  pixels: Uint8Array,
+  imageWidth: number,
+  channels: number,
+  rect: { x: number; y: number; width: number; height: number },
+): Uint8Array => {
+  const visiblePixels = new Uint8Array(rect.width * rect.height * channels);
+  for (let row = 0; row < rect.height; row++) {
+    const sourceOffset = ((rect.y + row) * imageWidth + rect.x) * channels;
+    visiblePixels.set(pixels.subarray(sourceOffset, sourceOffset + rect.width * channels), row * rect.width * channels);
   }
-  return out;
+  return visiblePixels;
 };
 
 /** The visible part of a cropped PNG or JPEG, re-encoded in its own format;
@@ -147,16 +164,24 @@ const crop = (bytes: Uint8Array, insets: Insets): PptxImage | undefined => {
     const png = decodePng(bytes, MAX_DECODED_MP * 1_000_000);
     const rect = png && visibleRect(png.width, png.height, insets);
     if (!png || !rect) return undefined;
-    const out = encodePngDeflate(rect.w, rect.h, png.channels, cut(png.pixels, png.width, png.channels, rect));
-    return out && { bytes: out, contentType: "image/png", pixelWidth: rect.w };
+    const encoded = encodePngDeflate(
+      rect.width,
+      rect.height,
+      png.channels,
+      cut(png.pixels, png.width, png.channels, rect),
+    );
+    return encoded && { bytes: encoded, contentType: "image/png", pixelWidth: rect.width };
   }
   if (format === "jpeg") {
     const jpeg = decodeJpegGuarded(bytes);
     if (!jpeg) return undefined;
     const rect = visibleRect(jpeg.width, jpeg.height, insets);
     if (!rect) return undefined;
-    const out = encodeJpegRgba({ width: rect.w, height: rect.h, data: cut(jpeg.data, jpeg.width, 4, rect) }, JPEG_QUALITY);
-    return { bytes: out, contentType: "image/jpeg", pixelWidth: rect.w };
+    const encoded = encodeJpegRgba(
+      { width: rect.width, height: rect.height, data: cut(jpeg.data, jpeg.width, 4, rect) },
+      JPEG_QUALITY,
+    );
+    return { bytes: encoded, contentType: "image/jpeg", pixelWidth: rect.width };
   }
   return undefined;
 };
@@ -169,26 +194,55 @@ export const pictureWidthPt = (pic: XNode): number | undefined => {
   return ext && Number.isFinite(cx) && cx > 0 ? cx / EMU_PER_PT : undefined;
 };
 
-export const readPicture = (pic: XNode, rels: ReadonlyMap<string, Relationship>, media: PptxMedia): PptxPictureContent => {
+/** The `p:nvPr` of the picture names a video or a sound file. */
+const isVideoOrAudio = (pic: XNode): boolean => {
   const nvPr = findChild(findChild(pic, "p:nvPicPr") ?? {}, "p:nvPr");
-  if (nvPr && childNodesOf(nvPr).some((k) => MEDIA_TAGS.has(qualifiedNameOf(k) ?? ""))) return { notPublished: "video-or-audio" };
-  const blipFill = findChild(pic, "p:blipFill");
-  const blip = findChild(blipFill ?? {}, "a:blip");
-  const embed = attributeOf(blip ?? {}, "r:embed");
-  const rel = embed === undefined ? undefined : rels.get(embed);
-  if (rel?.external || (embed === undefined && attributeOf(blip ?? {}, "r:link") !== undefined)) return { notPublished: "external-link" };
-  const part = embed === undefined ? undefined : media.get(embed);
-  if (!part) return { notPublished: "missing-part" };
-  if (part === "damaged") return { notPublished: "damaged-part" };
+  return nvPr !== undefined && childNodesOf(nvPr).some((childNode) => MEDIA_TAGS.has(qualifiedNameOf(childNode) ?? ""));
+};
 
-  const insets = insetsOf(findChild(blipFill ?? {}, "a:srcRect"));
+/** The media part an `a:blip r:embed` names, or why the picture is not published: an external
+ *  `r:link`, no part, or a part whose bytes cannot be read. */
+const embeddedPartOf = (
+  blip: XNode | undefined,
+  relationships: ReadonlyMap<string, Relationship>,
+  media: PptxMedia,
+): MediaPart | "external-link" | "missing-part" | "damaged-part" => {
+  const embed = attributeOf(blip ?? {}, "r:embed");
+  const relationship = embed === undefined ? undefined : relationships.get(embed);
+  if (relationship?.external || (embed === undefined && attributeOf(blip ?? {}, "r:link") !== undefined))
+    return "external-link";
+  const part = embed === undefined ? undefined : media.get(embed);
+  if (!part) return "missing-part";
+  if (part === "damaged") return "damaged-part";
+  return part;
+};
+
+/** The part published as it is, bytes untouched. */
+const wholeImage = (part: MediaPart): PptxImage => {
+  const pixelWidth = imagePixelWidth(part.bytes);
+  return { bytes: part.bytes, contentType: part.contentType, ...(pixelWidth === undefined ? {} : { pixelWidth }) };
+};
+
+/** The image to publish for `a:srcRect` insets (`insetsOf`): whole when there is no crop, or cropped;
+ *  `undefined` when the crop cannot be applied. */
+const publishedImageOf = (part: MediaPart, insets: Insets | null | undefined): PptxImage | undefined => {
+  if (insets === undefined) return undefined;
+  if (insets === null) return wholeImage(part);
   // A JPEG that its EXIF turns (orientation other than 1) is published whole, not cropped:
   // re-encoding drops the EXIF orientation. Same policy as image-reduction.ts (audit 07/10).
-  const turned = insets !== undefined && insets !== null && isTurnedByExif(jpegHeader(part.bytes)?.orientation);
-  if (insets === null || turned || (insets !== undefined && windowOutsideImage(insets))) {
-    const pixelWidth = imagePixelWidth(part.bytes);
-    return { image: { bytes: part.bytes, contentType: part.contentType, ...(pixelWidth === undefined ? {} : { pixelWidth }) } };
-  }
-  const image = insets === undefined ? undefined : crop(part.bytes, insets);
+  if (isTurnedByExif(jpegHeader(part.bytes)?.orientation) || windowOutsideImage(insets)) return wholeImage(part);
+  return crop(part.bytes, insets);
+};
+
+export const readPicture = (
+  pic: XNode,
+  relationships: ReadonlyMap<string, Relationship>,
+  media: PptxMedia,
+): PptxPictureContent => {
+  if (isVideoOrAudio(pic)) return { notPublished: "video-or-audio" };
+  const blipFill = findChild(pic, "p:blipFill");
+  const part = embeddedPartOf(findChild(blipFill ?? {}, "a:blip"), relationships, media);
+  if (typeof part === "string") return { notPublished: part };
+  const image = publishedImageOf(part, insetsOf(findChild(blipFill ?? {}, "a:srcRect")));
   return image ? { image } : { notPublished: "cropped-unsupported" };
 };

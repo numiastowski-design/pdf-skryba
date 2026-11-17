@@ -122,9 +122,16 @@ const readStyleNumbering = (styles: N | undefined) => {
     const id = tagOf(style) === "w:style" ? attrOf(style, "w:styleId") : undefined;
     if (id === undefined) continue;
     const numPr = first(first(style, "w:pPr"), "w:numPr");
-    byId.set(id, { basedOn: valueOf(style, "w:basedOn"), numPr: numPr === undefined ? undefined : { numId: valueOf(numPr, "w:numId"), ilvl: valueOf(numPr, "w:ilvl") } });
+    byId.set(id, {
+      basedOn: valueOf(style, "w:basedOn"),
+      numPr: numPr === undefined ? undefined : { numId: valueOf(numPr, "w:numId"), ilvl: valueOf(numPr, "w:ilvl") },
+    });
     // A style with no `w:type` is a paragraph style (ST_StyleType default, section 17.7.4.17).
-    if (["1", "true", "on"].includes(attrOf(style, "w:default") ?? "") && (attrOf(style, "w:type") ?? "paragraph") === "paragraph") defaultParagraph ??= id;
+    if (
+      ["1", "true", "on"].includes(attrOf(style, "w:default") ?? "") &&
+      (attrOf(style, "w:type") ?? "paragraph") === "paragraph"
+    )
+      defaultParagraph ??= id;
   }
   // Depends on the style id alone: memoised.
   const memo = new Map<string | undefined, StyleNumPr | undefined>();
@@ -148,7 +155,11 @@ const readStyleNumbering = (styles: N | undefined) => {
 
 /** The levels an abstract definition writes (`w:lvl` with a level 0 to 8). */
 const levelsWritten = (abstract: N): Set<number> =>
-  new Set(kidsOf(abstract).flatMap((l) => (tagOf(l) === "w:lvl" ? [levelIndex(attrOf(l, "w:ilvl"))] : [])).filter((i): i is number => i !== undefined));
+  new Set(
+    kidsOf(abstract)
+      .flatMap((l) => (tagOf(l) === "w:lvl" ? [levelIndex(attrOf(l, "w:ilvl"))] : []))
+      .filter((i): i is number => i !== undefined),
+  );
 
 /** The levels a `w:num` redefines whole (a `w:lvlOverride` that carries a `w:lvl`; one with only a start value defines nothing). */
 const overriddenLevels = (num: N): number[] =>
@@ -159,7 +170,10 @@ const overriddenLevels = (num: N): number[] =>
 
 /** The levels each `w:num` of `numbering.xml` defines: its abstract definition's `w:lvl` (those of the numbering style a `w:numStyleLink` names when it has
  *  none of its own, a loop giving none) plus a `w:lvlOverride` that carries a whole `w:lvl`. A `numId` absent from the part defines no level. */
-const readDefinedLevels = (numbering: N | undefined, numIdOfStyle: (styleId: string) => string | undefined): ReadonlyMap<string, ReadonlySet<number>> => {
+const readDefinedLevels = (
+  numbering: N | undefined,
+  numIdOfStyle: (styleId: string) => string | undefined,
+): ReadonlyMap<string, ReadonlySet<number>> => {
   const abstracts = new Map<string, { levels: Set<number>; link: string | undefined }>();
   const abstractOfNum = new Map<string, string>();
   const children = numbering ? kidsOf(numbering) : [];

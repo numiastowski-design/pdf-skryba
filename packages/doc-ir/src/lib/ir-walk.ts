@@ -97,7 +97,13 @@ export function mapBlockChildren(block: IRBlock, fn: (blocks: IRBlock[]) => IRBl
     case "list":
       return { ...block, items: block.items.map(fn) };
     case "table":
-      return { ...block, rows: block.rows.map((row) => ({ ...row, cells: row.cells.map((cell) => ({ ...cell, blocks: fn(cell.blocks) })) })) };
+      return {
+        ...block,
+        rows: block.rows.map((row) => ({
+          ...row,
+          cells: row.cells.map((cell) => ({ ...cell, blocks: fn(cell.blocks) })),
+        })),
+      };
     case "footnote":
     case "section":
       return { ...block, blocks: fn(block.blocks) };

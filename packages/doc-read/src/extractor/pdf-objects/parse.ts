@@ -70,7 +70,9 @@ interface Step {
   readonly end: number;
 }
 
-type Frame = { readonly kind: "array"; readonly items: PdfValue[] } | { readonly kind: "dict"; readonly entries: Map<string, PdfValue>; key: string | undefined };
+type Frame =
+  | { readonly kind: "array"; readonly items: PdfValue[] }
+  | { readonly kind: "dict"; readonly entries: Map<string, PdfValue>; key: string | undefined };
 
 const refuse = (reason: ConstructorParameters<typeof PdfObjectsRefusal>[0]): never => {
   throw new PdfObjectsRefusal(reason);
@@ -83,7 +85,16 @@ const isWhite = (c: number): boolean => c === NUL || c === HT || c === LF || c =
 
 /** §7.2.2 delimiters. */
 const isDelimiter = (c: number): boolean =>
-  c === LPAREN || c === RPAREN || c === LT || c === GT || c === LBRACKET || c === RBRACKET || c === LBRACE || c === RBRACE || c === SOLIDUS || c === PERCENT;
+  c === LPAREN ||
+  c === RPAREN ||
+  c === LT ||
+  c === GT ||
+  c === LBRACKET ||
+  c === RBRACKET ||
+  c === LBRACE ||
+  c === RBRACE ||
+  c === SOLIDUS ||
+  c === PERCENT;
 
 const isRegular = (c: number): boolean => c !== EOF && !isWhite(c) && !isDelimiter(c);
 
@@ -332,7 +343,13 @@ function openFrame(stack: Frame[], frame: Frame, end: number): Step {
 }
 
 /** The next item where a dictionary expects a KEY: a name, or the closing `>>`. */
-function stepKey(bytes: Uint8Array, pos: number, c: number, top: Extract<Frame, { kind: "dict" }>, stack: Frame[]): Step {
+function stepKey(
+  bytes: Uint8Array,
+  pos: number,
+  c: number,
+  top: Extract<Frame, { kind: "dict" }>,
+  stack: Frame[],
+): Step {
   if (c === SOLIDUS) {
     const { name, end } = readName(bytes, pos);
     top.key = name;
@@ -348,7 +365,8 @@ function stepKey(bytes: Uint8Array, pos: number, c: number, top: Extract<Frame, 
 /** The next item where a VALUE is expected (in an array, a dictionary after its key, or at the top). */
 function stepValue(bytes: Uint8Array, pos: number, c: number, stack: Frame[], references: boolean): Step {
   if (c === LBRACKET) return openFrame(stack, { kind: "array", items: [] }, pos + 1);
-  if (c === LT && at(bytes, pos + 1) === LT) return openFrame(stack, { kind: "dict", entries: new Map(), key: undefined }, pos + 2);
+  if (c === LT && at(bytes, pos + 1) === LT)
+    return openFrame(stack, { kind: "dict", entries: new Map(), key: undefined }, pos + 2);
   if (c === RBRACKET) {
     const top = stack.at(-1);
     if (top?.kind !== "array") return refuse("syntax");
@@ -395,7 +413,9 @@ function parseValueUnchecked(bytes: Uint8Array, start: number, references: boole
     if (c === EOF) return refuse("truncated");
     const top = stack.at(-1);
     const step =
-      top?.kind === "dict" && top.key === undefined ? stepKey(bytes, pos, c, top, stack) : stepValue(bytes, pos, c, stack, references);
+      top?.kind === "dict" && top.key === undefined
+        ? stepKey(bytes, pos, c, top, stack)
+        : stepValue(bytes, pos, c, stack, references);
     pos = step.end;
     if (step.value !== undefined && !attach(stack, step.value)) return { value: step.value, end: pos, nodes };
   }
@@ -427,7 +447,8 @@ function readHeader(bytes: Uint8Array, offset: number): ObjectHeader {
   const numWord = readWord(bytes, offset);
   const genWord = readWord(bytes, numWord.end);
   const objWord = readWord(bytes, genWord.end);
-  if (!UNSIGNED_INTEGER.test(numWord.text) || !UNSIGNED_INTEGER.test(genWord.text) || objWord.text !== "obj") return refuse("syntax");
+  if (!UNSIGNED_INTEGER.test(numWord.text) || !UNSIGNED_INTEGER.test(genWord.text) || objWord.text !== "obj")
+    return refuse("syntax");
   const num = Number(numWord.text);
   const gen = Number(genWord.text);
   if (num < 1 || num > MAX_OBJECT_NUMBER || gen > MAX_GENERATION) return refuse("syntax");
@@ -443,7 +464,8 @@ function streamLength(dict: PdfDict, resolve: ResolveLength, available: number):
     length = resolve(declared);
     if (length === undefined) return refuse("length-unresolved");
   }
-  if (length === undefined || !Number.isInteger(length) || length < 0 || length > available) return refuse("stream-length");
+  if (length === undefined || !Number.isInteger(length) || length < 0 || length > available)
+    return refuse("stream-length");
   return length;
 }
 
@@ -506,7 +528,12 @@ export function parseIndirectObject(bytes: Uint8Array, offset: number, resolveLe
     objectNumber = header.num;
     return readObjectBody(bytes, header, guarded);
   } catch (error) {
-    if (error instanceof PdfObjectsRefusal && error.objectNumber === undefined && error !== fromCallback && objectNumber !== undefined) {
+    if (
+      error instanceof PdfObjectsRefusal &&
+      error.objectNumber === undefined &&
+      error !== fromCallback &&
+      objectNumber !== undefined
+    ) {
       throw new PdfObjectsRefusal(error.reason, objectNumber);
     }
     throw error;

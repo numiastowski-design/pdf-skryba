@@ -10,7 +10,8 @@ import { PACKAGE_MAX_BYTES, PART_MAX_BYTES } from "./ceilings";
 import { ENTRIES_OVERLAP_REASON } from "./zip/local-headers";
 import { openZip } from "./zip/zip-package";
 
-const unsafe = (reason: string): ReaderError => new ReaderError("FILE_UNSAFE", `the file is refused for safety: ${reason}`);
+const unsafe = (reason: string): ReaderError =>
+  new ReaderError("FILE_UNSAFE", `the file is refused for safety: ${reason}`);
 
 /** Throws `FILE_UNSAFE` when the zip's declared sizes pass a ceiling; returns otherwise (also for bytes that are no readable zip). */
 export function assertZipDeclaredSizesSafe(bytes: Uint8Array): void {

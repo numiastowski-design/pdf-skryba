@@ -14,7 +14,10 @@ export const SAME_LINE_TOLERANCE = SAME_LINE_PT;
 
 /** Groups items into visual lines: sorted by y descending then x, each group anchored on its first item. The groups come
  *  top to bottom, each sorted by x. A single strict sort then a pass, never a tolerant comparator (not transitive). */
-export const groupByBaseline = <T extends { x: number; y: number }>(items: readonly T[], tolerance: number = SAME_LINE_TOLERANCE): T[][] => {
+export const groupByBaseline = <T extends { x: number; y: number }>(
+  items: readonly T[],
+  tolerance: number = SAME_LINE_TOLERANCE,
+): T[][] => {
   const sorted = [...items].sort((a, b) => (a.y === b.y ? a.x - b.x : b.y - a.y));
   const groups: T[][] = [];
   for (const item of sorted) {
@@ -33,4 +36,7 @@ export const groupIntoReseatedLines = <T extends SuperscriptReading & { text: st
   sizeOf: (item: T) => number,
   trailingGapEm = 0,
 ): T[][] =>
-  reseatListMarkers(reseatSuperscripts(groupByBaseline(items.filter((it) => it.text.length > 0)), sizeOf, trailingGapEm), sizeOf).map((group) => [...group].sort((a, b) => a.x - b.x));
+  reseatListMarkers(
+    reseatSuperscripts(groupByBaseline(items.filter((it) => it.text.length > 0)), sizeOf, trailingGapEm),
+    sizeOf,
+  ).map((group) => [...group].sort((a, b) => a.x - b.x));

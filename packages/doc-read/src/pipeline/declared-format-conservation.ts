@@ -55,7 +55,8 @@ export function undrawnDiagramWords(blocks: readonly IRBlock[]): string[] {
   walkBlocks(blocks, (block) => {
     // A section the page PUBLISHES (a SmartArt outline, `levels`) loses nothing to a drawing that leaves a shape out:
     // its words are on the page as a list, drawn or not (29/10/2026). Only a section that stays off the page can.
-    if (block.kind === "diagramText") for (const section of block.sections) if (section.levels === undefined) words.push(...(section.undrawn ?? []));
+    if (block.kind === "diagramText")
+      for (const section of block.sections) if (section.levels === undefined) words.push(...(section.undrawn ?? []));
   });
   return words;
 }
@@ -113,7 +114,11 @@ const spend = (bag: Map<string, number>, word: string): boolean => {
  *  `smartart-not-drawn` (a SmartArt word its picture does not show, or every word of a SmartArt with no drawing), then excused when the
  *  diagram text holds it (a diagram is published as a drawing only, 22/10/2026: its drawn words are not lost). One occurrence per
  *  occurrence of that word in each list. */
-const causeOf = (token: { text: string; cause?: MissingWordCause }, undrawn: Map<string, number>, drawn: Map<string, number>): MissingWordCause | undefined => {
+const causeOf = (
+  token: { text: string; cause?: MissingWordCause },
+  undrawn: Map<string, number>,
+  drawn: Map<string, number>,
+): MissingWordCause | undefined => {
   const cause = token.cause ?? "text";
   if (cause !== "text") return cause;
   if (spend(undrawn, token.text)) return "smartart-not-drawn";
@@ -191,8 +196,9 @@ const groupByCause = (tokens: readonly MissingToken[]): MissingWordCauseGroup[] 
  *  number's page text is our own formatter's output, not the source's. */
 /** The numeric cells the page lost, as tokens. Their reading is the CALLER's: finding a sheet's cells in a render means
  *  knowing that render's markup (`pipeline/xlsx-page-cells.ts`, app code since 09/11/2026), and this check does not. */
-const missingNumericTokens = (missingNumericCells: readonly { ref: string; cause: MissingWordCause }[]): MissingToken[] =>
-  missingNumericCells.map(({ ref, cause }) => ({ text: ref, cause }));
+const missingNumericTokens = (
+  missingNumericCells: readonly { ref: string; cause: MissingWordCause }[],
+): MissingToken[] => missingNumericCells.map(({ ref, cause }) => ({ text: ref, cause }));
 
 /** The missing words themselves, grouped by cause, in first-seen order —
  *  read by the dev-only log line (`adapters/conservation-log.ts`,
@@ -211,7 +217,13 @@ export function missingWordGroups(
    *  adding it could not silently shift the two word lists above — it did, for one commit of 09/11/2026. */
   missingCells: readonly { ref: string; cause: MissingWordCause }[] = [],
 ): MissingWordCauseGroup[] {
-  const wordTokens = missingTokens(source, pageWords(page), source.deliberateRemovals, diagramWords, undrawnDiagramWords);
+  const wordTokens = missingTokens(
+    source,
+    pageWords(page),
+    source.deliberateRemovals,
+    diagramWords,
+    undrawnDiagramWords,
+  );
   return groupByCause([...wordTokens, ...missingNumericTokens(missingCells)]);
 }
 

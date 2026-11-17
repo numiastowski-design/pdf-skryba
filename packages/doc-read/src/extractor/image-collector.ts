@@ -35,7 +35,12 @@ export class ImageCollector {
     const type = reduced?.mimeType ?? mimeType;
     const sha256 = sha256Hex(identity === bytes ? published : identity);
     if (!this.bySha.has(sha256)) {
-      this.bySha.set(sha256, { sha256, bytes: published, mimeType: type, ...(selfDescribed ? { selfDescribed: true as const } : {}) });
+      this.bySha.set(sha256, {
+        sha256,
+        bytes: published,
+        mimeType: type,
+        ...(selfDescribed ? { selfDescribed: true as const } : {}),
+      });
     }
     return { sha256, mimeType: type, ...(reduced ? { pixelWidth: reduced.pixelWidth } : {}) };
   }
