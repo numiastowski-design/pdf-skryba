@@ -8,6 +8,42 @@ uploaded files into Confluence pages.
 
 Published on npm as [`pdf-skryba`](https://www.npmjs.com/package/pdf-skryba): `npm i pdf-skryba`.
 
+## Install
+
+```sh
+npm install pdf-skryba
+```
+
+ES modules only, for Node.js 24 or later; the types ship with the package. From CommonJS,
+`require("pdf-skryba")` loads the same ES module on these Node.js versions.
+
+## A complete example
+
+```ts
+// read.ts: node read.js report.pdf
+import { readFileSync } from "node:fs";
+import { extractPdf } from "pdf-skryba";
+import { ReaderError } from "pdf-skryba/light";
+
+const path = process.argv[2];
+if (path === undefined) throw new Error("usage: node read.js <file.pdf>");
+
+// No AI reading here: with `ocr: false`, a page without a text layer is counted, never sent.
+const vision = { analyzeDocument: () => Promise.reject(new Error("no AI reading configured")) };
+
+try {
+  const { doc, pageCount, notices } = await extractPdf(new Uint8Array(readFileSync(path)), vision, { ocr: false });
+  console.log(`pages: ${pageCount}`);
+  const [pages] = doc.blocks;
+  if (pages?.kind === "tabs") console.log(`blocks on page 1: ${pages.tabs[0]?.blocks.length ?? 0}`);
+  console.log(`notices: ${notices?.length ?? 0}`);
+} catch (error) {
+  if (!(error instanceof ReaderError)) throw error;
+  console.error(`refused: ${error.code}`);
+  process.exitCode = 1;
+}
+```
+
 ## Read a PDF
 
 ```js
@@ -109,11 +145,29 @@ Evidence Divergence in OOXML-to-LLM Ingestion"**, arXiv:2608.25880 —
 <https://arxiv.org/abs/2608.25880>. About the Office formats, not this one, and its lesson is why this
 reader exists: the extraction path, not the model, decides what a language model sees.
 
+## API
+
+Four entries, two of them the minified twins of the others.
+
+- `pdf-skryba` — the reader, `extractPdf`, called as `extractPdf(bytes, vision, options?)`; and
+  `detectLanguage`; with the types of its options and results (`ExtractOptions`, `PdfDocumentFacts`…).
+- `pdf-skryba/light` — loads no reader. The conservation check: `textConservation`, `lostWords`,
+  `placeLostPassages`, `gluedWordEdits`, `cutParagraphEdits`, `noWorse`, `joinNoWorse`, `wordKeysOf`,
+  `conservationKey`. Refusals and ceilings: `ReaderError`, `MAX_PAYLOAD_BYTES`. And the types of the
+  representation (`IRDoc`, `IRBlock`, `TableData`…).
+- `pdf-skryba/min` and `pdf-skryba/light/min` — the same code, minified.
+
+## Versioning
+
+The package follows [Semantic Versioning](https://semver.org): while it is `0.x`, a minor version
+may break the published surface, and a patch never does. Each release is described in
+`CHANGELOG.md`, shipped in the package.
+
 ## Licence
 
 AGPL-3.0-or-later: run a modified version as a network service and its source must be available to its
 users. Named `skryba` until 0.6.2. Since 0.7.0 the code comes readable (`dist/index.js`), with the same code minified beside
 it (`pdf-skryba/min`). This repository is that source — a snapshot of the packages the npm bundle is built from, taken
-from the development monorepo at version 0.7.0 (17 November 2026). The entry points are
+from the development monorepo at version 0.8.0 (17 November 2026). The entry points are
 `packages/doc-read/src/lib/pdf.ts` and `packages/doc-read/src/lib/pdf-light.ts`; the npm package ships
 the bundle built from them. Questions: <contact@miksumia.com>.

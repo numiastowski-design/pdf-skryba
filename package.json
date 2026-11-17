@@ -1,6 +1,6 @@
 {
   "name": "pdf-skryba",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "Reads a PDF into a structured representation, and checks that no word was lost on the way.",
   "keywords": [
     "pdf",
@@ -21,24 +21,24 @@
   },
   "type": "module",
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "exports": {
     ".": {
       "types": "./dist/types/packages/doc-read/src/lib/pdf.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.js"
     },
     "./light": {
       "types": "./dist/types/packages/doc-read/src/lib/pdf-light.d.ts",
-      "import": "./dist/light.js"
+      "default": "./dist/light.js"
     },
     "./min": {
       "types": "./dist/types/packages/doc-read/src/lib/pdf.d.ts",
-      "import": "./dist/index.min.js"
+      "default": "./dist/index.min.js"
     },
     "./light/min": {
       "types": "./dist/types/packages/doc-read/src/lib/pdf-light.d.ts",
-      "import": "./dist/light.min.js"
+      "default": "./dist/light.min.js"
     }
   },
   "publishConfig": {
@@ -47,6 +47,7 @@
   "files": [
     "dist",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "THIRD-PARTY.md"
   ],

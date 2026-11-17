@@ -98,6 +98,7 @@ const buildTypes = (pkg: LibraryPackage, outDir: string): void => {
   const result = spawnSync(process.execPath, [tsc, "--project", tsconfigOf(pkg), "--outDir", resolve(outDir, "types")], { encoding: "utf8" });
   if (result.status !== 0) throw new Error(`les déclarations n'ont pas été émises : ${result.stdout || result.stderr}`);
   inlineWorkspaceSpecifiers(resolve(outDir, "types"));
+  explicitRelativeSpecifiers(resolve(outDir, "types"));
 };
 
 /** 🔴 A PRIVATE PACKAGE CANNOT BE INSTALLED, SO ITS NAME MUST NOT SURVIVE IN THE PUBLISHED DECLARATIONS.
@@ -132,15 +133,40 @@ const escapeForRegExp = (text: string): string => text.replace(/[.*+?^${}()|[\]\
 const workspaceSpecifier = (packageNames: readonly string[]): RegExp =>
   new RegExp(String.raw`(from\s*|import\s*\(\s*)(["'])(${packageNames.map(escapeForRegExp).join("|")})\/([^"']+)\2`, "g");
 
+const declarationFiles = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+    entry.isDirectory() ? declarationFiles(join(dir, entry.name)) : entry.name.endsWith(".d.ts") ? [join(dir, entry.name)] : [],
+  );
+
+/** 🔴 A CONSUMER IN `node16`/`nodenext` RESOLUTION RESOLVES A DECLARATION'S IMPORTS THE WAY NODE RESOLVES ES MODULES:
+ *  no extension is guessed, no folder index is looked for. tsc copies our specifiers as written, in "Bundler" style
+ *  (`./docx`, `./docx-reader`), so for that consumer — TypeScript's recommended setting for Node — 25 declarations
+ *  of each published package resolved nothing and every type became `any` (measured on the installed 0.4.2 and 0.7.0
+ *  tarballs, 17/11/2026, confirmed by `@arethetypeswrong/cli`: InternalResolutionError). Each relative specifier is
+ *  rewritten to the JavaScript file it stands for (`./docx.js`, `./docx-reader/index.js`), which every resolution mode
+ *  maps to the `.d.ts` beside it. A specifier that matches neither file stops the build: it would resolve nowhere.
+ *  Runs after `inlineWorkspaceSpecifiers`, whose output is relative too. Same lesson on global regexes: one per file. */
+const relativeSpecifier = (): RegExp => /(from\s*|import\s*\(\s*|import\s+)(["'])(\.{1,2}\/[^"'\n]*)\2/g;
+
+const explicitRelativeSpecifiers = (typesDir: string): void => {
+  for (const file of declarationFiles(typesDir)) {
+    const text = readFileSync(file, "utf8");
+    const rewritten = text.replace(relativeSpecifier(), (whole, lead: string, quote: string, specifier: string) => {
+      if (specifier.endsWith(".js")) return whole;
+      const target = join(dirname(file), specifier);
+      if (existsSync(`${target}.d.ts`)) return `${lead}${quote}${specifier}.js${quote}`;
+      if (existsSync(join(target, "index.d.ts"))) return `${lead}${quote}${specifier}/index.js${quote}`;
+      throw new Error(`build-library: ${relative(typesDir, file)} imports ${specifier}, which no emitted declaration matches`);
+    });
+    if (rewritten !== text) writeFileSync(file, rewritten);
+  }
+};
+
 const inlineWorkspaceSpecifiers = (typesDir: string): void => {
-  const walk = (dir: string): string[] =>
-    readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
-      entry.isDirectory() ? walk(join(dir, entry.name)) : entry.name.endsWith(".d.ts") ? [join(dir, entry.name)] : [],
-    );
   const directoryOfName = privateWorkspacePackages();
   const packageNames = [...directoryOfName.keys()].sort();
   if (packageNames.length === 0) throw new Error("build-library: no private workspace package was found under packages/");
-  for (const file of walk(typesDir)) {
+  for (const file of declarationFiles(typesDir)) {
     const text = readFileSync(file, "utf8");
     const rewritten = text.replace(workspaceSpecifier(packageNames), (_whole, lead: string, quote: string, pkgName: string, sub: string) => {
       const target = join(typesDir, "packages", directoryOfName.get(pkgName) ?? pkgName, "src", `${sub}`);
