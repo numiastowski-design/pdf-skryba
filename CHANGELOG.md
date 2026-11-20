@@ -12,6 +12,20 @@ with the message « Renamed to pdf-skryba ». Before 0.1.0 the same reader was p
 
 ## [Unreleased]
 
+### Changed
+
+- Licence: MIT (was AGPL-3.0-or-later up to 0.8.0). The versions already published keep their
+  licence. `THIRD-PARTY.md` now carries every third-party notice the bundle owes: the hyphenation
+  patterns, the Adobe glyph list and font metrics, the DeviceCMYK conversion, and the text of the
+  Apache License 2.0.
+- The type declarations of the package's own modules moved inside the archive, from
+  `dist/types/packages/doc-read/src/…` to `dist/types/packages/reader/src/…`. The `exports` map
+  follows, so the four entries resolve as before; only a deep import of a declaration file sees it.
+- The declarations of the layout modules and of the byte gate that only this reader uses moved too,
+  from `dist/types/packages/doc-ir/src/…` and `dist/types/packages/doc-gate/src/…` to
+  `dist/types/packages/reader/src/…`. What stays under `dist/types/packages/doc-ir/` is what both
+  readers share. The four entries resolve as before.
+
 ## [0.8.0] - 2026-11-17
 
 ### Added

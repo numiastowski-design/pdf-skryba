@@ -1,0 +1,21 @@
+# Sources of the test documents in this folder
+
+Written from `fixtures/PUBLIC.tsv` by `tools/public-fixtures.ts`; edit the list, not this file.
+The open licences below do not cover logos nor personal data a document may carry.
+
+| File | Origin | Licence | Attribution to print | Source | Checked | Changes |
+|---|---|---|---|---|---|---|
+| 01-osfi-guide-portail-Word.pdf | derived | OGL-Canada | Office of the Superintendent of Financial Institutions. Contains information licensed under the Open Government Licence – Canada. | fixtures/docx-reel/01-osfi-guide-portail.docx | 2026-11-19 | exported to PDF by Microsoft Word, no other change |
+| 01-osfi-guide-portail.docx | third party | OGL-Canada | Office of the Superintendent of Financial Institutions. Contains information licensed under the Open Government Licence – Canada. | https://open.canada.ca/data/dataset/b27ec3ef-7338-4e76-a6fd-128339a92df5 | 2026-11-19 | none |
+| 02-jvmalin-guide-api-Word.pdf | derived | ODbL | Contient des informations de JVMalin / Région Centre-Val de Loire, mises à disposition sous licence ODbL | fixtures/docx-reel/02-jvmalin-guide-api.docx | 2026-11-19 | exported to PDF by Microsoft Word, no other change |
+| 02-jvmalin-guide-api.docx | third party | ODbL | Contient des informations de JVMalin / Région Centre-Val de Loire, mises à disposition sous licence ODbL | https://www.data.gouv.fr/datasets/remi-offre-theorique-mobilite-reseau-interurbain-regional | 2026-11-19 | none |
+| 06-homes-england-ims-registration-Word.pdf | derived | OGL v3.0 | Homes England. Contains public sector information licensed under the Open Government Licence v3.0. | fixtures/docx-reel/06-homes-england-ims-registration.docx | 2026-11-19 | exported to PDF by Microsoft Word, no other change |
+| 06-homes-england-ims-registration.docx | third party | OGL v3.0 | Homes England. Contains public sector information licensed under the Open Government Licence v3.0. | https://www.gov.uk/government/publications/register-to-use-the-investment-management-system-ims | 2026-11-19 | none |
+| 07-moj-data-sharing-guidance-Word.pdf | derived | OGL v3.0 | Ministry of Justice. Contains public sector information licensed under the Open Government Licence v3.0. | fixtures/docx-reel/07-moj-data-sharing-guidance.docx | 2026-11-19 | exported to PDF by Microsoft Word, no other change |
+| 07-moj-data-sharing-guidance.docx | third party | OGL v3.0 | Ministry of Justice. Contains public sector information licensed under the Open Government Licence v3.0. | https://www.gov.uk/government/publications/moj-data-first-application-form-for-secure-access-to-data | 2026-11-19 | none |
+| 08-ontario-diu-annual-report-Word.pdf | derived | OGL-Ontario | Government of Ontario. Contains information licensed under the Open Government Licence – Ontario. | fixtures/docx-reel/08-ontario-diu-annual-report.docx | 2026-11-19 | exported to PDF by Microsoft Word, no other change |
+| 08-ontario-diu-annual-report.docx | third party | OGL-Ontario | Government of Ontario. Contains information licensed under the Open Government Licence – Ontario. | https://data.ontario.ca/dataset/5fe0ec43-997c-437f-a085-e44d64cc6d21 | 2026-11-19 | none |
+| 10-lpc-invitation-to-tender-Word.pdf | derived | OGL v3.0 | Low Pay Commission. Contains public sector information licensed under the Open Government Licence v3.0. | fixtures/docx-reel/10-lpc-invitation-to-tender.docx | 2026-11-19 | exported to PDF by Microsoft Word, no other change |
+| 10-lpc-invitation-to-tender.docx | third party | OGL v3.0 | Low Pay Commission. Contains public sector information licensed under the Open Government Licence v3.0. | https://www.gov.uk/government/publications/low-pay-commission-call-for-research-summer-2026 | 2026-11-19 | none |
+| 11-dgemc-programme-terminale.docx | third party | Licence Ouverte 1.0 | Source : Ministères de l'éducation nationale, data.gouv.fr | https://www.data.gouv.fr/datasets/programmes-denseignement-de-terminale-generale-reforme-du-baccalaureat-2021 | 2026-11-19 | none |
+| 12-normene-maths-tle-pro.docx | third party | Licence Ouverte 1.0 | Source : Ministères de l'éducation nationale, data.gouv.fr | https://www.data.gouv.fr/datasets/programme-denseignement-des-classes-preparatoires-au-baccalaureat-professionnel | 2026-11-19 | none |

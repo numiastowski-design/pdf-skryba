@@ -1,0 +1,19 @@
+# Prettier applies to the code: `npm run format:check` runs it on `src` and `scripts`.
+
+# Built output, never written by hand.
+dist/
+
+# Test documents and expected outputs: data, kept byte for byte.
+fixtures/
+golden/
+*.fixture.json
+
+# Third-party code kept as published (see THIRD-PARTY.md), and data tables copied verbatim from their source: re-cut,
+# they no longer compare to it.
+src/extractor/codecs/vendor/
+src/extractor/codecs/ccitt-run-tables.ts
+
+# Tables written by a generator, kept as generated.
+src/extractor/pdf-fonts/cns-cmap-data.ts
+src/extractor/pdf-fonts/jis-cmap-data.ts
+src/extractor/pdf-fonts/glyph-data.ts

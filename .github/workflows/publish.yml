@@ -1,0 +1,100 @@
+# Publishes this package on npm. Started by hand, never by a push nor on a schedule.
+# NO SECRET: the publication goes by trust (OIDC, npm « Trusted publishing »). GitHub signs a short-lived token that
+# says « this workflow of this repository, this run »; npm checks it and accepts. `id-token: write` is the permission
+# that lets GitHub make that token; without it npm refuses and does not say why.
+# ONCE, ON npm: the package's page, Settings, Trusted Publisher, GitHub Actions, this repository, workflow
+# `publish.yml`. The file name must match exactly; renaming this file breaks the publication without a clear message.
+# THE FIRST VERSION OF A NEW NAME CANNOT LEAVE FROM HERE: a package that does not exist has no page to declare a
+# trusted publisher on.
+# A version already taken is refused BEFORE the bytes leave: npm forbids it anyway, but its error comes after the send.
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Do everything EXCEPT publish"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - name: An npm recent enough for trusted publishing
+        # Trusted publishing asks for npm 11.5.1 or later; the version Node brings depends on the runner's image.
+        run: |
+          npm install -g npm@latest
+          npm --version
+      - run: npm ci
+      - name: The whole check, before thinking of publishing
+        run: |
+          npm run lint
+          npm run format:check
+          npm run typecheck
+          npm test
+          npm run build
+          npm run lint:pack
+      - name: Is this version free, and does the changelog name it?
+        id: version
+        run: |
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$(node -p "require('./package.json').private === true")" = "true" ]; then
+            echo "::error::$name is marked private: it is not published."
+            exit 1
+          fi
+          # 404: the version does not exist yet, which is what is wanted. 200: it is taken, and npm never takes it back.
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://registry.npmjs.org/$name/$version")
+          if [ "$code" = "200" ]; then
+            echo "::error::$name@$version is already published. A version is never reused: raise it."
+            exit 1
+          fi
+          if ! grep -qF "$version" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no entry for $version."
+            exit 1
+          fi
+          echo "$name@$version is free (HTTP $code)."
+      - name: What would leave, file by file
+        run: npm pack --dry-run
+      - name: Publish
+        if: ${{ inputs.dry_run == false }}
+        # No token: npm reads the OIDC token GitHub makes. The provenance says which commit and which run built it.
+        run: npm publish --provenance --access public
+      - name: Say what was done
+        if: always()
+        env:
+          NAME: ${{ steps.version.outputs.name }}
+          VERSION: ${{ steps.version.outputs.version }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          {
+            if [ "$DRY" = "true" ]; then
+              echo "# Dry run — $NAME@$VERSION"
+              echo
+              echo "Nothing was published. The package was built from a fresh clone and its whole check passed."
+            else
+              echo "# Published — $NAME@$VERSION"
+              echo
+              echo "https://www.npmjs.com/package/$NAME/v/$VERSION"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

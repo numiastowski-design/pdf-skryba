@@ -6,8 +6,6 @@ The PDF reader of [Miksumia Publisher](https://miksumia.com), the Atlassian Mark
 [app](https://marketplace.atlassian.com/apps/2647582831/miksumia-publisher-for-confluence) that turns
 uploaded files into Confluence pages.
 
-Published on npm as [`pdf-skryba`](https://www.npmjs.com/package/pdf-skryba): `npm i pdf-skryba`.
-
 ## Install
 
 ```sh
@@ -23,10 +21,13 @@ ES modules only, for Node.js 24 or later; the types ship with the package. From 
 // read.ts: node read.js report.pdf
 import { readFileSync } from "node:fs";
 import { extractPdf } from "pdf-skryba";
-import { ReaderError } from "pdf-skryba/light";
+import type { ReaderError } from "pdf-skryba/light";
 
 const path = process.argv[2];
 if (path === undefined) throw new Error("usage: node read.js <file.pdf>");
+
+// A refusal is told by its name: that holds whichever entry, and whichever copy of the package, threw it.
+const isRefusal = (error: unknown): error is ReaderError => error instanceof Error && error.name === "ReaderError";
 
 // No AI reading here: with `ocr: false`, a page without a text layer is counted, never sent.
 const vision = { analyzeDocument: () => Promise.reject(new Error("no AI reading configured")) };
@@ -38,7 +39,7 @@ try {
   if (pages?.kind === "tabs") console.log(`blocks on page 1: ${pages.tabs[0]?.blocks.length ?? 0}`);
   console.log(`notices: ${notices?.length ?? 0}`);
 } catch (error) {
-  if (!(error instanceof ReaderError)) throw error;
+  if (!isRefusal(error)) throw error;
   console.error(`refused: ${error.code}`);
   process.exitCode = 1;
 }
@@ -90,13 +91,14 @@ await extractPdf(bytes, vision, {
 
 ## Refusals carry a code
 
-```js
-import { ReaderError } from "pdf-skryba/light";
+A refusal is an `Error` named `ReaderError`. Tell it by that name: it holds whichever entry, and
+whichever copy of the package, threw the error. `pdf-skryba/light` exports the type.
 
+```js
 try {
   await extractPdf(bytes, vision, { ocr: false });
 } catch (error) {
-  if (error instanceof ReaderError) {
+  if (error instanceof Error && error.name === "ReaderError") {
     error.code;       // "SCANNED_PDF_NEEDS_AI_OCR", "FILE_UNSAFE", "EXTRACT_FAILED"…
     error.pageCount;  // what it knew before refusing
   }
@@ -157,17 +159,31 @@ Four entries, two of them the minified twins of the others.
   representation (`IRDoc`, `IRBlock`, `TableData`…).
 - `pdf-skryba/min` and `pdf-skryba/light/min` — the same code, minified.
 
+## Publisher-only entries
+
+The sub-paths under `pdf-skryba/first-party` exist for the publisher's own application. They are
+**not a public API**: they may change or disappear in any version, and Semantic Versioning does not
+cover them. The source is open, so nothing stops you from importing them; if you do, pin an exact
+version.
+
 ## Versioning
 
 The package follows [Semantic Versioning](https://semver.org): while it is `0.x`, a minor version
 may break the published surface, and a patch never does. Each release is described in
 `CHANGELOG.md`, shipped in the package.
 
+## Contributing and security
+
+See `CONTRIBUTING.md` and `SECURITY.md` in the
+[repository](https://github.com/numiastowski-design/pdf-skryba). A contribution is received under
+the MIT licence of the repository. Author: Miksumia.
+
 ## Licence
 
-AGPL-3.0-or-later: run a modified version as a network service and its source must be available to its
-users. Named `skryba` until 0.6.2. Since 0.7.0 the code comes readable (`dist/index.js`), with the same code minified beside
-it (`pdf-skryba/min`). This repository is that source — a snapshot of the packages the npm bundle is built from, taken
-from the development monorepo at version 0.8.0 (17 November 2026). The entry points are
-`packages/doc-read/src/lib/pdf.ts` and `packages/doc-read/src/lib/pdf-light.ts`; the npm package ships
-the bundle built from them. Questions: <contact@miksumia.com>.
+MIT (`LICENSE`), from version 0.9.0. Versions up to 0.8.0 stay under AGPL-3.0-or-later. The bundle
+carries third-party material under its own notices (`THIRD-PARTY.md`). The test documents of the
+repository are not under the MIT licence: each keeps its own, written in `fixtures/**/SOURCES.md`.
+
+Named `skryba` until 0.6.2. Since 0.7.0 the code comes readable (`dist/index.js`), with the same code minified beside
+it (`pdf-skryba/min`). This package ships a bundle and its source map. The Corresponding Source is published at
+<https://github.com/numiastowski-design/pdf-skryba>, as one snapshot for each released version.

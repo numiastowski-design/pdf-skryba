@@ -1,0 +1,16 @@
+# Text is stored with LF, whatever the machine that commits.
+* text=auto eol=lf
+
+# Test documents are real files of their format: never text, never normalised.
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.zip binary
+
+# Expected outputs and captured test data: compared byte for byte.
+fixtures/** -text
+golden/** -text

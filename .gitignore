@@ -1,2 +1,8 @@
 node_modules/
 dist/
+coverage/
+*.log
+*.tgz
+.DS_Store
+# Written by the build for the time of one emission.
+tsconfig.doors.json

@@ -10,14 +10,14 @@
     "structure",
     "word-conservation"
   ],
-  "license": "AGPL-3.0-or-later",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/numiastowski-design/pdf-skryba.git"
   },
-  "homepage": "https://miksumia.com",
+  "homepage": "https://github.com/numiastowski-design/pdf-skryba#readme",
   "bugs": {
-    "email": "contact@miksumia.com"
+    "url": "https://github.com/numiastowski-design/pdf-skryba/issues"
   },
   "type": "module",
   "engines": {
@@ -25,33 +25,70 @@
   },
   "exports": {
     ".": {
-      "types": "./dist/types/packages/doc-read/src/lib/pdf.d.ts",
+      "types": "./dist/types/lib/pdf.d.ts",
       "default": "./dist/index.js"
     },
     "./light": {
-      "types": "./dist/types/packages/doc-read/src/lib/pdf-light.d.ts",
+      "types": "./dist/types/lib/pdf-light.d.ts",
       "default": "./dist/light.js"
     },
     "./min": {
-      "types": "./dist/types/packages/doc-read/src/lib/pdf.d.ts",
+      "types": "./dist/types/lib/pdf.d.ts",
       "default": "./dist/index.min.js"
     },
     "./light/min": {
-      "types": "./dist/types/packages/doc-read/src/lib/pdf-light.d.ts",
+      "types": "./dist/types/lib/pdf-light.d.ts",
       "default": "./dist/light.min.js"
+    },
+    "./first-party": {
+      "types": "./dist/types/lib/pdf-first-party.d.ts",
+      "default": "./dist/first-party.js"
+    },
+    "./first-party/reader": {
+      "types": "./dist/types/lib/pdf-first-party-reader.d.ts",
+      "default": "./dist/first-party/reader.js"
     }
+  },
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "test": "vitest run",
+    "lint": "eslint --max-warnings 0 src scripts",
+    "format:check": "prettier --check src scripts",
+    "typecheck": "tsc --noEmit",
+    "lint:pack": "publint run --strict && attw --pack . --profile esm-only",
+    "prepack": "npm run build"
   },
   "publishConfig": {
     "access": "public"
   },
   "files": [
     "dist",
+    "!dist/.inputs.json",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
     "THIRD-PARTY.md"
   ],
   "dependencies": {
-    "@cantoo/pdf-lib": "^2.11.1"
+    "@cantoo/pdf-lib": "^2.11.1",
+    "doc-ir": "^0.0.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "0.18.5",
+    "@types/node": "26.6.6",
+    "esbuild": "0.28.2",
+    "eslint": "10.15.0",
+    "eslint-plugin-sonarjs": "4.2.2",
+    "fast-check": "4.10.2",
+    "jpeg-js": "0.4.4",
+    "prettier": "3.10.1",
+    "publint": "0.3.25",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.73.0",
+    "vitest": "5.1.0"
+  },
+  "allowScripts": {
+    "esbuild": false
   }
 }
