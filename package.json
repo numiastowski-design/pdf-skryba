@@ -1,6 +1,6 @@
 {
   "name": "pdf-skryba",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Reads a PDF into a structured representation, and checks that no word was lost on the way.",
   "keywords": [
     "pdf",
@@ -71,7 +71,7 @@
   ],
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",
-    "doc-ir": "^0.0.0"
+    "doc-ir": "^0.1.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",

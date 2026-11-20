@@ -10,10 +10,13 @@ The package was named `skryba` from 0.1.0 to 0.6.2; `skryba` stays frozen at 0.6
 with the message « Renamed to pdf-skryba ». Before 0.1.0 the same reader was published as
 `@miksumia/reader`, which the registry no longer serves; those versions are not reconstructed here.
 
-## [Unreleased]
+## [0.9.0] - 2026-11-20
 
 ### Changed
 
+- `doc-ir` becomes a dependency taken from the npm registry (`^0.1.0`): the base both readers share
+  — the representation a read document comes back in, and the measure that says no word was lost —
+  now installs as its own package instead of shipping inside this one.
 - Licence: MIT (was AGPL-3.0-or-later up to 0.8.0). The versions already published keep their
   licence. `THIRD-PARTY.md` now carries every third-party notice the bundle owes: the hyphenation
   patterns, the Adobe glyph list and font metrics, the DeviceCMYK conversion, and the text of the
