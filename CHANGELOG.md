@@ -10,6 +10,16 @@ The package was named `skryba` from 0.1.0 to 0.6.2; `skryba` stays frozen at 0.6
 with the message « Renamed to pdf-skryba ». Before 0.1.0 the same reader was published as
 `@miksumia/reader`, which the registry no longer serves; those versions are not reconstructed here.
 
+## [0.9.1] - 2026-11-23
+
+### Fixed
+
+- Faster on long pages: the size test of a drop cap reads a column's smallest line once, instead of
+  scanning every line for each short run.
+- Less memory: the plan of each page is kept only when a caller asks for it (`onPagePlan`).
+- The search for figures set aside skips a page that holds no picture.
+- No change to what a document reads as: the published output is the same as 0.9.0.
+
 ## [0.9.0] - 2026-11-20
 
 ### Changed
