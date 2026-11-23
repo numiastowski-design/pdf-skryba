@@ -95,6 +95,8 @@ export const asideFigures = (
   anchors: readonly ImageAnchor[],
   toBlocks: (segment: PdfTextRun[][]) => IRBlock[],
 ): { figures: AsideFigure[]; taken: Set<PdfTextRun> } => {
+  // Most pages have no picture: their lines are not grouped for nothing (review of 14/11/2026).
+  if (anchors.length === 0) return { figures: [], taken: new Set() };
   const lines = visualLines(items);
   const taken = new Set<PdfTextRun>();
   const figures: AsideFigure[] = [];

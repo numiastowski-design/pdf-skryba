@@ -139,9 +139,18 @@ interface CapInColumn {
 
 /** Shape is not enough, size decides too: `isDropCap` only tests the shape (one or two letters), because
  *  `liftDropCaps` then rules out on position. Without the size condition the plan lists one-letter words of body
- *  text as drop caps. */
-const isCapOfColumn = (cap: PdfTextRun, line: readonly PdfTextRun[], inks: readonly (LineInk | undefined)[]): boolean =>
-  isDropCap(cap, line) && inks.some((ink) => ink !== undefined && ink.size * MIN_DROP_CAP_RATIO <= cap.fontSize);
+ *  text as drop caps. « Some line of the column is small enough beside it » is « the SMALLEST line is », so the
+ *  smallest ink size is taken once per column instead of every line being swept for each candidate (review of
+ *  14/11/2026: candidates × lines). */
+const isCapOfColumn = (cap: PdfTextRun, line: readonly PdfTextRun[], smallestInk: number): boolean =>
+  isDropCap(cap, line) && smallestInk * MIN_DROP_CAP_RATIO <= cap.fontSize;
+
+/** The smallest size among the inked lines of a column; infinite when none is inked (then nothing is a drop cap). */
+const smallestInkOf = (inks: readonly (LineInk | undefined)[]): number => {
+  let smallest = Number.POSITIVE_INFINITY;
+  for (const ink of inks) if (ink !== undefined && ink.size < smallest) smallest = ink.size;
+  return smallest;
+};
 
 /**
  * A drop cap already seated opens its own line: it heads its line with the body text. The overhang test cannot say
@@ -172,9 +181,10 @@ const capsOfColumn = (
   inks: readonly (LineInk | undefined)[],
 ): CapInColumn[] => {
   const found: CapInColumn[] = [];
+  const smallestInk = smallestInkOf(inks);
   for (const [lineIndex, line] of lines.entries()) {
     for (const cap of line) {
-      if (isCapOfColumn(cap, line, inks))
+      if (isCapOfColumn(cap, line, smallestInk))
         found.push({ cap, from: lineIndex, to: capTarget(cap, line, lineIndex, inks) });
     }
   }

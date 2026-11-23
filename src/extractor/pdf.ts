@@ -330,8 +330,9 @@ const pageLayoutReader = (
   pageIndex: number,
   pageItems: readonly PdfTextRun[],
   lostImageCounts: Map<number, () => ImageLoss>,
-  /** Where this page's plan is left for whoever asked for it (`onPagePlan`); a page no stage lays out leaves none. */
-  pagePlans: Map<number, PagePlan>,
+  /** Where this page's plan is left for whoever asked for it (`onPagePlan`); a page no stage lays out leaves none.
+   *  Absent when nobody asked: the plans are then not kept for the whole extraction (review of 14/11/2026). */
+  pagePlans: Map<number, PagePlan> | undefined,
 ): (() => PageLayout) => {
   const { source, cost, glyphsByPage, detected, scale, images } = doc;
   const { signals, cutByPage } = detected;
@@ -361,7 +362,7 @@ const pageLayoutReader = (
       top: c.yTop,
     }));
     const planner = pagePlanReader(cut);
-    pagePlans.set(pageIndex, planner.plan);
+    pagePlans?.set(pageIndex, planner.plan);
     laid = {
       ...markers,
       wordWidthAt: firstWordWidthReader(glyphsByPage[pageIndex]!),
@@ -392,25 +393,26 @@ interface LaidOutPages {
   tableBandsByPage: Map<number, { top: number; bottom: number }[]>;
   /** The pages carrying at least one one-column region published FLAT (26/10/2026 rule), in page order. */
   flattenedGridPages: number[];
-  /** 0-based page -> its page plan, for the pages a stage laid out. */
-  pagePlans: Map<number, PagePlan>;
+  /** 0-based page -> its page plan, for the pages a stage laid out; absent when no caller asked for the plans. */
+  pagePlans: Map<number, PagePlan> | undefined;
 }
 
 /**
  * THE PLAN LEAVES THIS MODULE ONLY WHEN SOMEONE ASKED FOR IT (13/11/2026). A plan holds the page's items, so
  * keeping every plan in the result would retain the whole document's runs after the extraction — a memory cost
  * production must not pay for a development tool. `tools/analyse.ts` passes the hook; the product never does.
+ * Since the review of 14/11/2026 the plans are not even collected during the extraction when nobody asked.
  */
 const reportPagePlans = (
-  plans: ReadonlyMap<number, PagePlan>,
+  plans: ReadonlyMap<number, PagePlan> | undefined,
   onPagePlan: ((pageIndex: number, plan: PagePlan) => void) | undefined,
 ): void => {
-  if (onPagePlan === undefined) return;
+  if (onPagePlan === undefined || plans === undefined) return;
   for (const [pageIndex, plan] of [...plans].sort((a, b) => a[0] - b[0])) onPagePlan(pageIndex, plan);
 };
 
 /** Each page down the stage list (`pdf-page-stages.ts`), in page order. */
-const layoutPages = (doc: DocumentRead): LaidOutPages => {
+const layoutPages = (doc: DocumentRead, keepPlans: boolean): LaidOutPages => {
   const { items, glyphsByPage, sourceRun, detected, bandsByPage, scale, source, declaredRankByPage } = doc;
   const pages: IRBlock[][] = [];
   const scannedPageIndices: number[] = [];
@@ -419,7 +421,7 @@ const layoutPages = (doc: DocumentRead): LaidOutPages => {
   const lostImageCounts = new Map<number, () => ImageLoss>();
   const tableBandsByPage = new Map<number, { top: number; bottom: number }[]>();
   const flattenedGridPages: number[] = [];
-  const pagePlans = new Map<number, PagePlan>();
+  const pagePlans = keepPlans ? new Map<number, PagePlan>() : undefined;
   for (const [pageIndex, rawItems] of items.entries()) {
     const pageItems = rawItems;
     const keptGlyphs = glyphsByPage[pageIndex]!;
@@ -666,7 +668,7 @@ export const extractPdf = async (
     framed: opts?.framed ?? DEFAULT_FRAMED_BLOCKS,
     bandLayout: opts?.bands ?? DEFAULT_BAND_LAYOUT,
   };
-  const laid = layoutPages(doc);
+  const laid = layoutPages(doc, opts?.onPagePlan !== undefined);
   reportPagePlans(laid.pagePlans, opts?.onPagePlan);
   return assembleResult(doc, laid, readItems, opts?.limits, pageLanguage);
 };

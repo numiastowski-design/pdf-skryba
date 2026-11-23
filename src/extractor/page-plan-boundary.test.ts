@@ -8,10 +8,8 @@
  * ⚠️ A GUARD HAS A PERIMETER, AND A PERIMETER THAT SHRINKS DOES NOT FAIL (paid on 13/11/2026 on the `fast-xml-parser`
  * guard, which swept 79 files out of 461 since the split into packages). Hence the two coverage checks before the list.
  *
- * SWEEPS ITS OWN PACKAGE ALONE (19/11/2026): in its public repository this package is the whole tree, and the base is
- * an installed dependency. The home repository holds the rest: the three packages swept together in
- * `tools/package-source-sweeps.test.ts`, the app's side — none of its production files calls the band reader — in
- * `src/page-plan-boundary.test.ts`.
+ * SWEEPS ITS OWN PACKAGE ALONE (19/11/2026): this package is the whole tree, and the base is an installed dependency.
+ * An application that installs the package reaches the band reader through the package's entries only.
  *
  * This file belongs to the `main` batch: it reads sources, it extracts nothing.
  */
@@ -30,16 +28,17 @@ const walk = (dir: string): string[] =>
     return statSync(path).isDirectory() ? walk(path) : /\.tsx?$/i.test(path) ? [path] : [];
   });
 
-/** An import of one of the three names FROM the band reader — a mention in a comment is not a call. */
+/** A VALUE taken from the band reader, in any form — a named or namespace import, a re-export, a dynamic import;
+ *  a type-only import loads nothing and a mention in a comment is not a call (review of 14/11/2026, R7: the named
+ *  import of the three readers was the only form seen). */
 const CALLS_THE_BAND_READER =
-  /import\s*\{[^}]*\b(?:readingBands|readingSegments|bandedSplit)\b[^}]*\}\s*from\s*["'][^"']*pdf-bands["']/;
+  /(?:\bimport(?!\s+type\b)\s[^;]*?\bfrom|\bexport\s[^;]*?\bfrom|\bimport\s*\()\s*["'][^"']*pdf-bands["']/;
 
 describe("la frontière du plan de page", () => {
   it("🔴 seuls le plan — et la prose des pages à tableau, nommée ici — demandent la géométrie d'une page", () => {
     const scanned = walk(OWN_SOURCES).filter((path) => !/\.test(\.support)?\.tsx?$/.test(path));
-    // Measured on 19/11/2026: 135 production files in this package. 167 when this test also swept the base (32), which
-    // `tools/package-source-sweeps.test.ts` sweeps since; 461 on 13/11 with the app's 209, which its own half sweeps.
-    // The floor says the sweep does not collapse.
+    // Measured on 19/11/2026: 135 production files in this package (167 when this test also swept the base). The floor
+    // says the sweep does not collapse.
     expect(scanned.length, "le balayage a rétréci : les sources du paquet ont changé de place").toBeGreaterThan(120);
 
     const callers = scanned
@@ -57,5 +56,14 @@ describe("la frontière du plan de page", () => {
       CALLS_THE_BAND_READER.test(`import { readingBands, readingSegments, type ReadSegment } from "./pdf-bands";`),
     ).toBe(true);
     expect(CALLS_THE_BAND_READER.test(" * voir `pdf-bands.ts#readingSegments`, qui se récurse dessus")).toBe(false);
+  });
+
+  it("🔴 the pattern also sees a namespace import, a re-export and a dynamic import, and lets a type-only import pass", () => {
+    // Review of 14/11/2026 (R7): a named import was the only form seen, so `import * as bands` then
+    // `bands.readingBands(...)`, or a module re-exporting the reader, went around the boundary unseen.
+    expect(CALLS_THE_BAND_READER.test(`import * as bands from "./pdf-bands";`)).toBe(true);
+    expect(CALLS_THE_BAND_READER.test(`export { readingBands } from "./pdf-bands";`)).toBe(true);
+    expect(CALLS_THE_BAND_READER.test(`const bands = await import("./pdf-bands");`)).toBe(true);
+    expect(CALLS_THE_BAND_READER.test(`import type { ReadSegment } from "./pdf-bands";`)).toBe(false);
   });
 });
