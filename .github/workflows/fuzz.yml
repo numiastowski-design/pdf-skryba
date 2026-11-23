@@ -1,0 +1,74 @@
+# The weekly fuzz: every property test of the package (`*.property.test.ts`) with many more random cases.
+# Each test file reads its run count from the environment through its fuzz support (`src/lib/*fuzz-runs.test.support.ts`):
+# FUZZ_RUNS_MULTIPLIER times its written count, FUZZ_TEST_TIMEOUT_MS per test. A file that names no run count of its own
+# runs at fast-check's default: a written limit, there is no global scaling here.
+# One job per file on GitHub's machines; a red job opens one `fuzz` issue, never a second while one is open. No secret.
+name: fuzz
+
+on:
+  schedule:
+    - cron: "17 2 * * 0"
+  workflow_dispatch:
+    inputs:
+      multiplier:
+        description: "How many times more cases than the written counts"
+        default: "100"
+
+permissions:
+  contents: read
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    outputs:
+      files: ${{ steps.list.outputs.files }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - id: list
+        run: echo "files=$(git ls-files '*.property.test.ts' | jq -R . | jq -sc .)" >> "$GITHUB_OUTPUT"
+
+  fuzz:
+    needs: list
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        file: ${{ fromJson(needs.list.outputs.files) }}
+    steps:
+      - uses: actions/checkout@v7
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: npm }
+      - run: npm ci
+      - name: Fuzz ${{ matrix.file }}
+        env:
+          FUZZ_RUNS_MULTIPLIER: ${{ github.event.inputs.multiplier || '100' }}
+          FUZZ_TEST_TIMEOUT_MS: "3600000"
+          FILE: ${{ matrix.file }}
+        run: |
+          case "$FUZZ_RUNS_MULTIPLIER" in
+            ''|*[!0-9]*) echo "multiplier must be an integer" >&2; exit 1 ;;
+          esac
+          npx vitest run "$FILE"
+
+  report:
+    needs: fuzz
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open one issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh label create fuzz --repo "$GITHUB_REPOSITORY" --color D93F0B --description "Counter-example of the weekly fuzz" 2>/dev/null || true
+          if [ "$(gh issue list --repo "$GITHUB_REPOSITORY" --label fuzz --state open --json number --jq length)" -gt 0 ]; then
+            echo "a fuzz issue is already open: no new one"; exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --label fuzz \
+            --title "fuzz: at least one property file failed ($(date -u +%F))" \
+            --body "The weekly fuzz has at least one red job: ${RUN_URL}. The failing job's log holds fast-check's seed and counter-example; replay it locally with the same FUZZ_RUNS_MULTIPLIER. A timeout under load is replayed first before it is held for a defect."
