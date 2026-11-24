@@ -10,6 +10,39 @@ The package was named `skryba` from 0.1.0 to 0.6.2; `skryba` stays frozen at 0.6
 with the message « Renamed to pdf-skryba ». Before 0.1.0 the same reader was published as
 `@miksumia/reader`, which the registry no longer serves; those versions are not reconstructed here.
 
+## [0.10.0] - 2026-11-24
+
+### Added
+
+- A `pdf-part-unread` notice (`doc-ir` 0.2.0) names the pages where an object could not be read
+  and the page was published without it: its kind was in the damaged bytes, so it may have been a
+  picture or a block of text. It is never counted as a lost picture.
+- `detectPdfTableGrids` on the first-party reader entry.
+- Fuzz property tests, lots 0 to 8, in the repository: the content-stream tokenizer, values, stream
+  filters, fonts, the cross-reference table, then the whole document damaged outside its text,
+  encrypted, and updated incrementally.
+
+### Changed
+
+- `doc-ir` moves to `^0.2.0`.
+- One damaged part that carries no text no longer refuses the whole document: the document
+  information, an outline item, an image, a link annotation. That part is left out and the read
+  goes on, with the same words.
+- A refusal for security still refuses the whole document, never only the part: a bound of the
+  reader that bit, such as the work budget. A stream that decodes past the reader's ceiling is now
+  refused with its own reason, `stream-too-large`, instead of `stream-decode`.
+- Comments and test titles are in English.
+
+### Fixed
+
+- The images of an encrypted file drawn with CCITT fax compression are decrypted before they are
+  decoded, like the other images. They were lost.
+- After an AI reading, a `table-withheld` notice is kept: only the two loss notices were composed
+  again, and the others were dropped.
+- The abbreviation `/LZW` of a stream filter is served like `LZWDecode`, and a chain ending in `/Fl`
+  or `/LZW` keeps its predictor.
+- Every control character is removed from the text of a glyph, not only a glyph made of them.
+
 ## [0.9.1] - 2026-11-23
 
 ### Fixed
