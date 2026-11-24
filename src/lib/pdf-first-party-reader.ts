@@ -27,5 +27,5 @@ export { openPdfObjects } from "../extractor/pdf-objects/document";
 export { PdfObjectsRefusal } from "../extractor/pdf-objects/refusal";
 export { pdfPageTabs } from "../extractor/pdf-page-tabs";
 export { readPdfSource } from "../extractor/pdf-source";
-export { walkPage } from "../extractor/pdf-table-detector";
+export { detectPdfTableGrids, walkPage } from "../extractor/pdf-table-detector";
 export { DEFAULT_HEADING_SIZE_RATIO } from "../layout/heading-sizes";
