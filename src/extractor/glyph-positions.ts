@@ -6,8 +6,9 @@
  *  (`layout/cell-text.ts`), which reads glyphs and never any other text, sees
  *  the same letters as the rest of the pipeline.
  *  Decides: that a glyph whose text is a CONTROL character is not published at
- *  all (`isInventedControl`, 31/10/2026: "we abstain" — a font naming a
- *  glyph `g03` used to publish U+0003); and that reading the glyphs
+ *  all (31/10/2026: "we abstain" — a font naming a glyph `g03` used to
+ *  publish U+0003), and that a control inside a glyph's text is removed
+ *  (`withoutControls`, 24/11/2026); and that reading the glyphs
  *  (`readGlyphs`) is SEPARATE from leaving the hidden ones out and merging
  *  overpaint (`filteredGlyphs`), `buildGlyphFragments` being the two in a row:
  *  a caller that decides its hide policy FROM the glyphs filters them instead of
@@ -900,16 +901,26 @@ const glyphUnicode = (unicode: string | undefined, inSymbolFont: boolean): strin
  *  LIMIT: the other half of the defect needs OUR font layer, which knows that a font has no
  *  `/ToUnicode` (24 glyphs of `25-Notice-Montre-InDesign` where pdf.js returned "x" for CID 0x78); pdf.js did not
  *  say so, so this path could not abstain. */
-const INVENTED_CONTROL = /^[\u0000-\u0008\u000a-\u001f\u007f-\u009f]+$/u;
-const isInventedControl = (text: string): boolean => INVENTED_CONTROL.test(text);
+const CONTROL_CHARACTERS = /[\u0000-\u0008\u000a-\u001f\u007f-\u009f]/gu;
 
-/** What a shown glyph places: its text, or — for a glyph of a font we could not read (`read: "not-ours"`, 17/11/2026) — a
- *  stand-in with no text, placed and marked like the others so the filter of the published text can judge it
- *  (`unreadFontKept`); `undefined` for a glyph that places nothing (no text, or an invented control character). */
+/** 🔴 THE CONTROLS ARE REMOVED FROM EVERY GLYPH'S TEXT, not only from a glyph made of them (decision of 24/11/2026).
+ *  The PDF fuzz (lot 4) found a `/ToUnicode` (ISO 32000-1 §9.10.3) that maps a code to « A » + U+0007. The glyph
+ *  was not all control, so the U+0007 was published: an invented character. The set is the one above: C0 but the
+ *  tab, DEL, C1.
+ *  The rule lives HERE because every reading of a glyph's text starts here. The published runs and the second
+ *  reading the conservation check compares them with (`pdf-reference-ours.ts`) both take `GlyphFragment.text`, so
+ *  the two readings agree. A rule in the font layer would miss the glyph names and the Symbol translation. */
+const withoutControls = (text: string): string => text.replace(CONTROL_CHARACTERS, "");
+
+/** What a shown glyph places: its text without controls, or — for a glyph of a font we could not read
+ *  (`read: "not-ours"`, 17/11/2026) — a stand-in with no text, placed and marked like the others so the filter of the
+ *  published text can judge it (`unreadFontKept`); `undefined` for a glyph that places nothing (no text, or only
+ *  invented control characters). */
 function placedTextOf(g: GlyphLike, inSymbolFont: boolean): { text: string; unreadFont?: true } | undefined {
   const unicode = glyphUnicode(g.unicode, inSymbolFont);
   if (unicode.length === 0) return g.read === "not-ours" ? { text: "", ...UNREAD_FONT_MARK } : undefined;
-  return isInventedControl(unicode) ? undefined : { text: glyphText(unicode) };
+  const kept = withoutControls(unicode);
+  return kept.length === 0 ? undefined : { text: glyphText(kept) };
 }
 
 /** How far the text rise moved the origin: the gap to where the same glyph would sit with a rise of zero. */

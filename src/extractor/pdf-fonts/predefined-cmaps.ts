@@ -147,7 +147,7 @@ function rangesOf(collection: string): CidRanges {
  *  The ranges are sorted and disjoint (Adobe's own file, checked at generation), so a binary search answers in
  *  O(log n); a code outside every range gives `undefined`.
  *  ⚠️ The `notdefrange` of the resource (`<0000>–<001F>` → CID 1) is NOT held: those are the C0 controls, which this
- *  product never publishes (`glyph-positions.ts#isInventedControl`), so they keep the `/DW` fallback. */
+ *  product never publishes (`glyph-positions.ts#withoutControls`), so they keep the `/DW` fallback. */
 export function cidTableOf(encoding: string): CidTable | undefined {
   const held = HELD_UCS2.exec(encoding);
   if (held === null) return undefined;

@@ -619,3 +619,28 @@ describe("buildGlyphFragments — a glyph whose Unicode is a base letter plus a 
     expect(frag!.text).toBe("é");
   });
 });
+
+describe("buildGlyphFragments — a control character a font declares never reaches the text (decision of 24/11/2026)", () => {
+  const textsOf = (unicodes: readonly string[]): string[] =>
+    buildGlyphFragments([
+      { op: "setTextMatrix", args: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } },
+      { op: "setFont", args: ["f1", 10] },
+      { op: "showText", args: [unicodes.map((unicode) => ({ unicode, width: 500, isSpace: false }))] },
+    ]).map((frag) => frag.text);
+
+  it("a /ToUnicode `<02> <00410007>` paints « A », without the U+0007 (ISO 32000-1 §9.10.3)", () => {
+    expect(textsOf(["A\u0007"])).toEqual(["A"]);
+  });
+
+  it("removes C0, DEL and C1 controls wherever they sit in the glyph's text", () => {
+    expect(textsOf(["\u0001B", "C\u007f", "D\u0085E", "F\r", "G\n"])).toEqual(["B", "C", "DE", "F", "G"]);
+  });
+
+  it("a glyph made only of controls still places nothing, as before", () => {
+    expect(textsOf(["\u0007", "\u0001\u0002", "\n", "\r", "\u0085"])).toEqual([]);
+  });
+
+  it("keeps the tab, alone or beside a letter, as before", () => {
+    expect(textsOf(["\t", "A\t"])).toEqual(["\t", "A\t"]);
+  });
+});

@@ -6,13 +6,15 @@
  * `bfchar`, `bfrange` with a string, `bfrange` with an array; and the real `/ToUnicode` CMaps of three fixtures,
  * damaged.
  * Properties: the table read equals the model; the text never holds a lone surrogate nor U+0000 (an invented
- * character); damaged bytes give a table or a refusal of ours, never a raw error.
+ * character); a glyph's text never holds a control but the tab; damaged bytes give a table or a refusal of ours, never a
+ * raw error.
  *
  * The seed is fixed (`PDF_FUZZ_SEED`): a red run replays as is. The run counts are the written ones, times the weekly
  * multiplier (`lib/pdf-fuzz-runs.test.support.ts`).
- * NOT covered: a CONTROL character. The font layer gives the one a CMap declares (`<01> <0007>` reads "\u0007"), and
- * only a glyph whose whole text is control characters is dropped later (`glyph-positions.ts#isInventedControl`):
- * reported on 24/11/2026, not decided here. Glyph names (`names.ts`) and widths are not fuzzed here.
+ * A CONTROL character: the font layer gives the one a CMap declares (`<01> <0007>` reads "\u0007"); the glyph layer
+ * removes it from the text (`glyph-positions.ts#withoutControls`, decision of 24/11/2026), and a property here holds
+ * that no control reaches a glyph's text.
+ * NOT covered: glyph names (`names.ts`) and widths.
  */
 
 import { readFileSync } from "node:fs";
@@ -26,6 +28,7 @@ import { openPdfObjects } from "../pdf-objects/document";
 import type { PdfDict, PdfStream, PdfValue } from "../pdf-objects/objects";
 import { PdfObjectsRefusal } from "../pdf-objects/refusal";
 import { Choices, drawsArb } from "../pdf-objects/pdf-syntax-writer.test.support";
+import { buildGlyphFragments } from "../glyph-positions";
 import { fontText, type FontReader } from "./font-text";
 import { textOfUnicodeCode, unicodeCodes } from "./predefined-cmaps";
 import { readToUnicode } from "./to-unicode";
@@ -74,6 +77,10 @@ function isPublishable(text: string): boolean {
   return true;
 }
 
+/** The controls a glyph's text must not hold: C0 but the tab, DEL, C1 (`glyph-positions.ts#withoutControls`). */
+const CONTROL = /[\u0000-\u0008\u000a-\u001f\u007f-\u009f]/u;
+const CONTROL_ALL = new RegExp(CONTROL.source, "gu");
+
 /** The text the reader must give for a destination: the characters it spells, or nothing when it would spell a U+0000
  *  or a lone surrogate (the reader's written filter, `to-unicode.ts#isWellFormed`). */
 function expectedText(units: readonly number[]): string {
@@ -101,9 +108,11 @@ function modelUnits(model: TableModel): Map<number, readonly number[]> {
 // The generator.
 
 /** A destination: mostly real characters (Latin, Greek, CJK, a ligature, an astral pair), sometimes a U+0000 or a lone
- *  half-pair that the reader must drop. */
+ *  half-pair that the reader must drop, sometimes a C0 control the glyph layer must remove (DEL and C1 sit in the first
+ *  range). */
 const unitArb: fc.Arbitrary<number[]> = fc.oneof(
   { weight: 6, arbitrary: fc.integer({ min: 0x20, max: 0x24f }).map((u) => [u]) },
+  { weight: 1, arbitrary: fc.integer({ min: 0x01, max: 0x1f }).map((u) => [u]) },
   { weight: 2, arbitrary: fc.integer({ min: 0x370, max: 0xd7ff }).map((u) => [u]) },
   { weight: 2, arbitrary: fc.integer({ min: 0xe000, max: 0xfffd }).map((u) => [u]) },
   {
@@ -292,6 +301,24 @@ describe("readToUnicode - generated tables written as a CMap (9.10.3)", () => {
           expect(text, `code ${code}`).toBe(expectedText(units));
           expect(isPublishable(text ?? ""), `code ${code}: an invented character`).toBe(true);
         }
+      }),
+      params(150),
+    );
+  });
+
+  it("a glyph's text never holds a control character but the tab (decision of 24/11/2026)", () => {
+    fc.assert(
+      fc.property(caseArb, ({ model, draws }) => {
+        const read = readToUnicode(writeCMap(model, new Choices(draws)));
+        const texts = [...read.text.values()];
+        const placed = buildGlyphFragments([
+          { op: "setTextMatrix", args: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } },
+          { op: "setFont", args: ["f1", 10] },
+          { op: "showText", args: [texts.map((unicode) => ({ unicode, width: 500, isSpace: false }))] },
+        ]);
+        for (const frag of placed) expect(frag.text).not.toMatch(CONTROL);
+        // A glyph places nothing only when its text was empty or all control.
+        expect(placed).toHaveLength(texts.filter((text) => text.replace(CONTROL_ALL, "") !== "").length);
       }),
       params(150),
     );
