@@ -5,8 +5,10 @@
  * stream, a link annotation), located by our reader AND by a naive scan of the bytes that shares no code with it
  * (`pdf-document-fuzz.test.support.ts`); damaged inside its own bytes, the file's length kept: bytes overwritten, a run
  * filled, its body replaced by `null`, its stream data overwritten.
- * Properties: a refusal of ours, or THE SAME WORDS as the intact file; and the published words are pieces of the read
- * words (the layout invents nothing).
+ * Properties: THE SAME WORDS as the intact file, never a refusal (decision of 24/11/2026: a part that carries no text
+ * fails alone, `pdf-objects/refusal.ts#partOrAbsent`); and the published words are pieces of the read words (the layout
+ * invents nothing). The damage keeps every cross-reference offset true, so it never reaches the structure: a refusal
+ * stays allowed only where it does (the `/Encrypt` dictionary of lot 7).
  *
  * The seed is fixed (`PDF_FUZZ_SEED`): a red run replays as is. The run counts are the written ones, times the weekly
  * multiplier (`lib/pdf-fuzz-runs.test.support.ts`): 60 base runs in all (question 5 of the design, 24/11/2026), most on
@@ -33,7 +35,7 @@ import {
   publishedWords,
   type Target,
 } from "./pdf-document-fuzz.test.support";
-import { expectRefusalOfOurs, OutcomeTally, PDF_FUZZ_SEED } from "./pdf-fuzz-outcome.test.support";
+import { PDF_FUZZ_SEED } from "./pdf-fuzz-outcome.test.support";
 import type { PdfExtractResult } from "./pdf-model";
 import { readPdfSource, type PdfSource } from "./pdf-source";
 import { fuzzRuns, fuzzTestTimeout } from "../lib/pdf-fuzz-runs.test.support";
@@ -122,31 +124,15 @@ const damageArb: fc.Arbitrary<Damage> = fc.oneof(
   }),
 );
 
-async function settle<T>(read: () => Promise<T>): Promise<{ value?: T; error?: unknown }> {
-  try {
-    return { value: await read() };
-  } catch (error) {
-    return { error };
-  }
-}
-
-/** One trial: the damaged file read by `readPdfSource`, then by `extractPdf`. */
-async function trial(seed: Seed, target: Target, damage: Damage): Promise<"read" | "refused"> {
+/** One trial: the damaged file read by `readPdfSource`, then by `extractPdf`; either refusing fails the trial. */
+async function trial(seed: Seed, target: Target, damage: Damage): Promise<void> {
   const bytes = damaged(seed.bytes, target, damage);
-  const source = await settle<PdfSource>(() => readPdfSource(bytes));
-  const extracted = await settle<PdfExtractResult>(() => extractPdf(bytes));
-  if (extracted.error !== undefined) {
-    expectRefusalOfOurs(extracted.error);
-    return "refused";
-  }
-  if (source.error !== undefined) expectRefusalOfOurs(source.error);
-  const result = extracted.value as PdfExtractResult;
-  expect(source.value, "extractPdf read a file readPdfSource refused").toBeDefined();
+  const source: PdfSource = await readPdfSource(bytes);
+  const result: PdfExtractResult = await extractPdf(bytes);
   const words = publishedWords(result.pages);
   expect(words, `the same words as the intact ${seed.name} (object ${target.num}, ${target.kind})`).toEqual(seed.words);
   expect([...result.textUnreadByPage], "a page lost its text").toEqual(seed.textUnread);
-  expect(inventedTokens(words, source.value as PdfSource), "published words the reading does not hold").toEqual([]);
-  return "read";
+  expect(inventedTokens(words, source), "published words the reading does not hold").toEqual([]);
 }
 
 const caseArb = (names: readonly string[]) =>
@@ -169,25 +155,21 @@ describe("readPdfSource and extractPdf - damage outside the objects that carry t
     }
   });
 
-  // The share of damaged files still read: starting values to calibrate, measured on 24/11/2026 with this seed at x1,
-  // x4 and x10. Small seeds: 35 of 50, 138 of 200, 329 of 500. Office documents: 6 of 10, 22 of 40, 59 of 100. Every
-  // refusal was `syntax`, `stream-end`, `truncated` or `token-too-long` AT the damaged object: one bad byte in an info
-  // dictionary, an outline item, an image or a link refuses the whole document (reported, not fixed here).
-  for (const [label, names, runs, share] of [
-    ["small seeds", SMALL, 50, 0.5],
-    ["office documents", OFFICE, 10, 0.4],
+  // Measured with this seed, damaged files still read. Before 24/11/2026, when one bad byte in such a part refused
+  // the whole document: small seeds 35 of 50 at x1, 329 of 500 at x10; office documents 6 of 10, 59 of 100. Since the
+  // decision of 24/11/2026: 50 of 50, 500 of 500; 10 of 10, 100 of 100.
+  for (const [label, names, runs] of [
+    ["small seeds", SMALL, 50],
+    ["office documents", OFFICE, 10],
   ] as const) {
-    it(`${label}: a refusal of ours, or the same words as the intact file, and no word the reading does not hold`, async () => {
-      const tally = new OutcomeTally();
+    it(`${label}: the same words as the intact file, never a refusal, and no word the reading does not hold`, async () => {
       await fc.assert(
         fc.asyncProperty(caseArb(names), async ({ name, pick, damage }) => {
           const seed = seeds.get(name) as Seed;
-          const target = seed.targets[pick % seed.targets.length] as Target;
-          tally.add(await trial(seed, target, damage));
+          await trial(seed, seed.targets[pick % seed.targets.length] as Target, damage);
         }),
         params(runs),
       );
-      expect(tally.readShare, `${label}: share of damaged files still read`).toBeGreaterThanOrEqual(share);
     });
   }
 });

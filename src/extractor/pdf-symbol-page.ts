@@ -9,6 +9,7 @@ import { ourFontNamesIn, SCOPE_SEPARATOR, type FormResolver } from "./pdf-font-b
 import { ourFontObject, type OurFontObject } from "./pdf-font-objects";
 import type { PdfObjectsDocument, PdfPageEntry } from "./pdf-objects/document";
 import type { PdfDict } from "./pdf-objects/objects";
+import { partOrAbsent } from "./pdf-objects/refusal";
 import type { ContentOp } from "./pdf-objects/content";
 import { pageContentOf, parsedFormOf } from "./pdf-page-content";
 
@@ -19,7 +20,9 @@ export function fontObjectsOfPage(doc: PdfObjectsDocument, page: PdfPageEntry): 
   const resolve: FormResolver = (name, scope) => {
     const parent = resourcesOf.get(scope);
     const xobjects = doc.dictOf(parent?.get("XObject"));
-    const target = doc.resolve(xobjects?.get(name));
+    // An XObject we cannot read is not walked: the operator reader counts it as an unread picture (`pdf-ops-ours.ts`,
+    // decision of 24/11/2026).
+    const target = partOrAbsent(() => doc.resolve(xobjects?.get(name)));
     if (target?.kind !== "stream") return undefined;
     if ((doc.resolve(target.dict.get("Subtype")) as { value?: string } | undefined)?.value !== "Form") return undefined;
     let ops: readonly ContentOp[];

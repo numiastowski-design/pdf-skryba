@@ -22,7 +22,7 @@ import { readContentOps, type ContentOp } from "./pdf-objects/content";
 import { pageContentOf, parsedFormOf } from "./pdf-page-content";
 import { openPdfObjects, type PdfObjectsDocument } from "./pdf-objects/document";
 import type { PdfDict, PdfValue } from "./pdf-objects/objects";
-import { PdfObjectsRefusal } from "./pdf-objects/refusal";
+import { partOrAbsent, PdfObjectsRefusal } from "./pdf-objects/refusal";
 import { fontDeclaredText, fontText, type FontTextMemo } from "./pdf-fonts/font-text";
 import type { TableBudget } from "./pdf-fonts/table-budget";
 import { unicodeCodeForm, unicodeCodes } from "./pdf-fonts/predefined-cmaps";
@@ -313,7 +313,9 @@ function walkForm(
   const { doc } = walking;
   const { resources, xobjects } = scope;
   const name = nameOf(operands[0]);
-  const target = name === undefined ? undefined : doc.resolve(xobjects?.get(name));
+  // An XObject we cannot read is not walked: the operator reader counts it as an unread picture (`pdf-ops-ours.ts`,
+  // decision of 24/11/2026).
+  const target = name === undefined ? undefined : partOrAbsent(() => doc.resolve(xobjects?.get(name)));
   if (target?.kind !== "stream" || nameOf(doc.resolve(target.dict.get("Subtype"))) !== "Form") return;
   // §8.10.1: the form carries its own resources, or the page's when it declares none.
   const own = doc.dictOf(target.dict.get("Resources")) ?? resources;

@@ -10,6 +10,7 @@
 import { decodePdfTextString } from "./pdf-text-string";
 import type { PdfObjectsDocument } from "./pdf-objects/document";
 import type { PdfDict, PdfValue } from "./pdf-objects/objects";
+import { partOrAbsent } from "./pdf-objects/refusal";
 
 /** One bookmark of the PDF's outline (/Outlines, ISO 32000-1 §12.3.3): its title and its depth (1 = top level). The
  *  title is client text: it stays in memory, only compared with the headings read (`pdf-false-headings.ts`). */
@@ -63,25 +64,28 @@ export function flattenOutline(tree: readonly OutlineNode[] | null | undefined):
  *  `undefined`: no bookmarks, hence no comparison — an ignorance, never a verdict. */
 export function outlineTreeOf(doc: PdfObjectsDocument): OutlineNode[] | undefined {
   const catalog = doc.dictOf(doc.trailer().get("Root"));
-  const root = doc.dictOf(catalog?.get("Outlines"));
+  // §12.3.3: the outline is a part that carries no text. A node we cannot read is absent, and the read goes on
+  // (decision of 24/11/2026): its `/Next` and `/First` are inside it, so its children and the siblings after it go too.
+  const root = partOrAbsent(() => doc.dictOf(catalog?.get("Outlines")));
   if (root === undefined) return undefined;
   // Is a node already seen? A bookmark does not repeat, and a /Next loop must not turn forever.
   const seen = new Set<PdfDict>();
   let count = 0;
   const readSiblings = (first: PdfValue | undefined): OutlineNode[] | undefined => {
     const out: OutlineNode[] = [];
-    let node = doc.dictOf(first);
+    let node = partOrAbsent(() => doc.dictOf(first));
     while (node !== undefined && !seen.has(node)) {
       seen.add(node);
       count += 1;
       // Beyond the bound, the tree will not be flattened: no point building it.
       if (count > OUTLINE_READ_MAX_ENTRIES) return undefined;
-      const titleValue = doc.resolve(node.get("Title"));
+      const current = node;
+      const titleValue = partOrAbsent(() => doc.resolve(current.get("Title")));
       const title = titleValue?.kind === "string" ? decodePdfTextString(titleValue.bytes) : undefined;
       const children = readSiblings(node.get("First"));
       if (children === undefined) return undefined;
       out.push({ title, items: children });
-      node = doc.dictOf(node.get("Next"));
+      node = partOrAbsent(() => doc.dictOf(current.get("Next")));
     }
     return out;
   };

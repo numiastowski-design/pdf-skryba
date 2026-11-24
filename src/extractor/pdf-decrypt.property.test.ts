@@ -214,7 +214,7 @@ describe("decryption - the real encrypted fixture, damaged", () => {
     expect(agreed.map((target) => target.kind).sort()).toEqual(["encrypt", "image", "image", "info"]);
   });
 
-  it("a damaged /Encrypt, info or image gives a refusal of ours, the password refusal, or the same words", async () => {
+  it("a damaged /Encrypt gives a refusal of ours, the password refusal, or the same words; a damaged info or image the same words", async () => {
     const bytes = fixture(ENCRYPTED);
     const encryptedIntact = readingOf(await extractPdf(bytes));
     const targets = agreedTargets(bytes).agreed;
@@ -224,6 +224,9 @@ describe("decryption - the real encrypted fixture, damaged", () => {
         const target = targets[pick % targets.length] as (typeof targets)[number];
         const { result, error } = await settle(damaged(bytes, target, damage));
         if (error !== undefined) {
+          // Only the `/Encrypt` dictionary may refuse: every text needs it. An info or an image fails alone (decision
+          // of 24/11/2026, `pdf-objects/refusal.ts#partOrAbsent`).
+          expect(target.kind, `a refusal at object ${target.num}`).toBe("encrypt");
           if (!passwordProtected(error)) expectRefusalOfOurs(error);
           tally.add("refused");
           return;
@@ -235,8 +238,9 @@ describe("decryption - the real encrypted fixture, damaged", () => {
       }),
       params(30),
     );
-    // Starting value to calibrate, measured on 24/11/2026 with this seed: 23 of 30 read, 196 of 300 at x10. The
-    // refusals: `syntax` or `token-too-long` at the damaged object, and twice the password refusal (a damaged `/O`).
+    // Starting value to calibrate, measured on 24/11/2026 with this seed: 23 of 30 read, 196 of 300 at x10, when an info
+    // or an image refused the document too. Since the decision of 24/11/2026: 25 of 30, 239 of 300; every refusal is at
+    // the `/Encrypt` dictionary (`stream-decode`, a damaged file, twice the password refusal at x10).
     expect(tally.readShare, "share of damaged files still read").toBeGreaterThanOrEqual(0.5);
   });
 });

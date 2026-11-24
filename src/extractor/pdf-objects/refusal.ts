@@ -3,7 +3,9 @@
  *  Decides: the message is composed here from the REASON ALONE; no input byte, name or string reaches a message
  *  or a field, and neither position reaches the message.
  *  NOT here: the places that refuse (every module of this folder), the user-facing wording (mapped by callers).
- *  Called by: `parse.ts`, `xref.ts`, `streams.ts`, `document.ts`, `content.ts`; modelled on `ZipEntryRefusal`
+ *  Called by: `parse.ts`, `xref.ts`, `streams.ts`, `document.ts`, `content.ts`; `partOrAbsent` by the readers of the
+ *  parts that carry no text (`extractor/pdf-source.ts`, `pdf-outline.ts`, `pdf-links-ours.ts`, `pdf-ops-ours.ts`,
+ *  `pdf-glyph-source.ts`, `pdf-symbol-page.ts`, `pdf-ccitt-images.ts`). Modelled on `ZipEntryRefusal`
  *  (`extractor/zip/zip-package.ts`). */
 
 import { ReaderError } from "doc-ir";
@@ -66,5 +68,19 @@ export class PdfObjectsRefusal extends ReaderError {
       objectNumber === undefined ? `pdf-objects: ${reason}` : `pdf-objects: ${reason} (object ${objectNumber})`,
     );
     this.name = "PdfObjectsRefusal";
+  }
+}
+
+/** A part of the document that carries no text — the `/Info` dictionary, an outline item, an image XObject, a link
+ *  annotation — read ALONE (decision of 24/11/2026): a refusal of ours while reading it gives `undefined`, so that
+ *  part is absent and the read goes on. Any other error still propagates: only our named refusals are absorbed.
+ *  NOT a repair: the cross-reference table and the page tree stay as strict as before, and an object that carries
+ *  text (page content, fonts, `/ToUnicode`) still refuses the document. */
+export function partOrAbsent<T>(read: () => T): T | undefined {
+  try {
+    return read();
+  } catch (error) {
+    if (error instanceof PdfObjectsRefusal) return undefined;
+    throw error;
   }
 }

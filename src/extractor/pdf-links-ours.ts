@@ -9,6 +9,7 @@
 
 import type { PdfObjectsDocument, PdfPageEntry } from "./pdf-objects/document";
 import type { PdfDict, PdfValue } from "./pdf-objects/objects";
+import { partOrAbsent } from "./pdf-objects/refusal";
 import type { PdfLinkAnnotation } from "./pdf-source";
 
 const nameOf = (value: PdfValue | undefined): string | undefined => (value?.kind === "name" ? value.value : undefined);
@@ -74,27 +75,35 @@ function isVisible(doc: PdfObjectsDocument, annot: PdfDict): boolean {
   return (bits & (FLAG_INVISIBLE | FLAG_HIDDEN | FLAG_NOVIEW)) === 0;
 }
 
-/** The links of a page, in the product's format: an absolute URI target and its rectangle. */
+/** One annotation as a link, or `undefined` when it is not a visible link to an absolute URI. */
+function linkOf(doc: PdfObjectsDocument, item: PdfValue): PdfLinkAnnotation | undefined {
+  const annot = doc.dictOf(item);
+  if (annot === undefined || nameOf(doc.resolve(annot.get("Subtype"))) !== "Link") return undefined;
+  if (!isVisible(doc, annot)) return undefined;
+  const action = doc.dictOf(annot.get("A"));
+  if (action === undefined || nameOf(doc.resolve(action.get("S"))) !== "URI") return undefined;
+  // `/NewWindow` is dropped, as the product drops it: a target that opens in another window is not a link.
+  if (doc.resolve(action.get("NewWindow")) !== undefined) return undefined;
+  const uriValue = doc.resolve(action.get("URI"));
+  if (uriValue?.kind !== "string") return undefined;
+  // A URI target is a SEQUENCE OF BYTES (§12.6.4.7), not a text string: we do NOT apply PDFDocEncoding decoding
+  // to it (which would turn 0xA0 into a euro). pdf.js took the bytes as they are, then re-read them as UTF-8 (and so do we).
+  const url = absoluteTargetOf(Buffer.from(uriValue.bytes).toString("latin1"));
+  const rect = rectOf(doc, annot);
+  if (url === undefined || rect === undefined) return undefined;
+  return { url, rect };
+}
+
+/** The links of a page, in the product's format: an absolute URI target and its rectangle.
+ *  §12.5.6.5: a link carries no text. An annotation we cannot read is absent, the others are kept, and the read goes
+ *  on (decision of 24/11/2026); an `/Annots` array we cannot read gives no link on the page. */
 export function linkAnnotationsOfPage(doc: PdfObjectsDocument, page: PdfPageEntry): PdfLinkAnnotation[] {
   const links: PdfLinkAnnotation[] = [];
-  const annots = doc.resolve(page.dict.get("Annots"));
+  const annots = partOrAbsent(() => doc.resolve(page.dict.get("Annots")));
   if (annots?.kind !== "array") return links;
   for (const item of annots.items) {
-    const annot = doc.dictOf(item);
-    if (annot === undefined || nameOf(doc.resolve(annot.get("Subtype"))) !== "Link") continue;
-    if (!isVisible(doc, annot)) continue;
-    const action = doc.dictOf(annot.get("A"));
-    if (action === undefined || nameOf(doc.resolve(action.get("S"))) !== "URI") continue;
-    // `/NewWindow` is dropped, as the product drops it: a target that opens in another window is not a link.
-    if (doc.resolve(action.get("NewWindow")) !== undefined) continue;
-    const uriValue = doc.resolve(action.get("URI"));
-    if (uriValue?.kind !== "string") continue;
-    // A URI target is a SEQUENCE OF BYTES (§12.6.4.7), not a text string: we do NOT apply PDFDocEncoding decoding
-    // to it (which would turn 0xA0 into a euro). pdf.js took the bytes as they are, then re-read them as UTF-8 (and so do we).
-    const url = absoluteTargetOf(Buffer.from(uriValue.bytes).toString("latin1"));
-    const rect = rectOf(doc, annot);
-    if (url === undefined || rect === undefined) continue;
-    links.push({ url, rect });
+    const link = partOrAbsent(() => linkOf(doc, item));
+    if (link !== undefined) links.push(link);
   }
   return links;
 }

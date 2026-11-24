@@ -16,7 +16,7 @@
 import type { PdfObjectsDocument, PdfPageEntry } from "./pdf-objects/document";
 import { MAX_CONTENT_OPS } from "./pdf-objects/bounds";
 import { readContentOps, type ContentOp } from "./pdf-objects/content";
-import { PdfObjectsRefusal } from "./pdf-objects/refusal";
+import { partOrAbsent, PdfObjectsRefusal } from "./pdf-objects/refusal";
 import { pageContentOf, parsedFormOf } from "./pdf-page-content";
 import { refKey, type PdfDict, type PdfStream, type PdfValue } from "./pdf-objects/objects";
 import { SCOPE_SEPARATOR } from "./pdf-font-bridge";
@@ -394,7 +394,16 @@ function groupOperand(doc: PdfObjectsDocument, entry: PdfValue): unknown {
 function doXObject(context: PageContext, frame: Frame, name: string | undefined, out: PdfOp[]): void {
   if (name === undefined) return;
   const xobjects = context.doc.dictOf(frame.resources?.get("XObject"));
-  const target = context.doc.resolve(xobjects?.get(name));
+  const declared = xobjects?.get(name);
+  // An XObject we cannot read fails alone (decision of 24/11/2026): its `/Subtype` is inside it, so it is painted as
+  // an IMAGE, which the image reader then counts as unread (`pdf-image-unread`). The bias is chosen: a damaged FORM
+  // (§8.10) is reported as a lost picture, never refuses the document; its words are lost, and the notice says where.
+  const read = partOrAbsent(() => ({ target: context.doc.resolve(declared) }));
+  if (read === undefined) {
+    out.push({ op: "paintImageXObject", args: [name, frame.resources] });
+    return;
+  }
+  const { target } = read;
   if (target?.kind !== "stream") return;
   const subtype = nameOf(context.doc.resolve(target.dict.get("Subtype")));
   if (subtype === "Image") {

@@ -14,7 +14,7 @@ import { ReaderError } from "doc-ir";
 import type { PdfTextUnreadReason, PictureRefusal } from "doc-ir";
 import { pictureRefusalOf } from "./pdf-image-refusal";
 import { stencilImageObjectOf } from "./pdf-stencil-images";
-import { PdfObjectsRefusal, type PdfObjectsRefusalReason } from "./pdf-objects/refusal";
+import { partOrAbsent, PdfObjectsRefusal, type PdfObjectsRefusalReason } from "./pdf-objects/refusal";
 import { count, type ExtractionCost } from "./extraction-cost";
 import type { FontWeight } from "./font-weight";
 import { readImageObject, readImageRef, type PdfImageData } from "./pdf-images";
@@ -652,36 +652,46 @@ function ourImagesOf(
       refusals.set(name, "ambiguous");
       continue;
     }
-    const scope = { resources: painted.resources };
-    const rawName = painted.stencil ? resourceNameOf(name) : name;
-    const decode = (): DecodedImageObject | undefined =>
-      ccittImageObjectOf(ctx.ourDoc, scope, name, IMAGE_KIND.GRAYSCALE_1BPP) ??
-      jpegImageObjectOf(ctx.ourDoc, scope, name, { rgb: IMAGE_KIND.RGB_24BPP, rgba: IMAGE_KIND.RGBA_32BPP }) ??
-      flateImageObjectOf(ctx.ourDoc, scope, name, { rgb: IMAGE_KIND.RGB_24BPP, rgba: IMAGE_KIND.RGBA_32BPP });
-    const stream = ctx.ourDoc.resolve(ctx.ourDoc.dictOf(painted.resources?.get("XObject"))?.get(rawName));
-    // A picture painted on three hundred pages is decoded and charged ONCE, in the document's cache. Keyed by the stream: the decoders read the
-    // stream alone (the resources of the scope only NAME it; none resolves a colour space through them), so every scope gets the same result.
-    if (stream?.kind !== "stream") {
-      refusals.set(name, "absent");
-      continue;
-    }
-    // 🔴 A STENCIL IS NOT CACHED, and the reason is the invariant just above: its pixels depend on the FILL COLOUR,
-    // which is not in the stream. Cached by its stream, the same stamp painted red then blue would come back red.
-    const image = painted.stencil
-      ? stencilImageObjectOf(ctx.ourDoc, scope, rawName, { rgba: IMAGE_KIND.RGBA_32BPP }, painted.colour)
-      : documentCacheOf(ctx.ourDoc).getOrCompute<DecodedImageObject | undefined>(
-          PICTURE,
-          stream,
-          // Never read `.data` here: on a JPEG it is a lazy accessor that decodes on first read, and the cache asks the
-          // size on every insertion. The size follows the kind, not an average: four bytes per pixel would charge a
-          // 1-bit CCITT page thirty-two times its size, past the cache ceiling, so it would never be kept.
-          (decodedImage) => (decodedImage === undefined ? 0 : cachedPictureBytes(decodedImage)),
-          decode,
-        );
-    if (image === undefined) refusals.set(name, pictureRefusalOf(ctx.ourDoc, stream.dict));
-    else decoded.set(name, image);
+    // §8.9.5: a picture carries no text. One we cannot read fails alone (decision of 24/11/2026): it is counted as
+    // unread, `shape` (a declaration we cannot read), and the page goes on.
+    const read = partOrAbsent(() => pictureOf(ctx, name, painted));
+    if (read === undefined) refusals.set(name, "shape");
+    else if ("image" in read) decoded.set(name, read.image);
+    else refusals.set(name, read.refusal);
   }
   return { decoded, refusals };
+}
+
+/** One painted picture: its pixels once decoded here, or why not (`pdf-image-refusal.ts`). */
+function pictureOf(
+  ctx: ReadContext,
+  name: string,
+  painted: { resources: PdfDict | undefined; stencil: boolean; colour: string | undefined },
+): { image: DecodedImageObject } | { refusal: PictureRefusal } {
+  const scope = { resources: painted.resources };
+  const rawName = painted.stencil ? resourceNameOf(name) : name;
+  const decode = (): DecodedImageObject | undefined =>
+    ccittImageObjectOf(ctx.ourDoc, scope, name, IMAGE_KIND.GRAYSCALE_1BPP) ??
+    jpegImageObjectOf(ctx.ourDoc, scope, name, { rgb: IMAGE_KIND.RGB_24BPP, rgba: IMAGE_KIND.RGBA_32BPP }) ??
+    flateImageObjectOf(ctx.ourDoc, scope, name, { rgb: IMAGE_KIND.RGB_24BPP, rgba: IMAGE_KIND.RGBA_32BPP });
+  const stream = ctx.ourDoc.resolve(ctx.ourDoc.dictOf(painted.resources?.get("XObject"))?.get(rawName));
+  // A picture painted on three hundred pages is decoded and charged ONCE, in the document's cache. Keyed by the stream: the decoders read the
+  // stream alone (the resources of the scope only NAME it; none resolves a colour space through them), so every scope gets the same result.
+  if (stream?.kind !== "stream") return { refusal: "absent" };
+  // 🔴 A STENCIL IS NOT CACHED, and the reason is the invariant just above: its pixels depend on the FILL COLOUR,
+  // which is not in the stream. Cached by its stream, the same stamp painted red then blue would come back red.
+  const image = painted.stencil
+    ? stencilImageObjectOf(ctx.ourDoc, scope, rawName, { rgba: IMAGE_KIND.RGBA_32BPP }, painted.colour)
+    : documentCacheOf(ctx.ourDoc).getOrCompute<DecodedImageObject | undefined>(
+        PICTURE,
+        stream,
+        // Never read `.data` here: on a JPEG it is a lazy accessor that decodes on first read, and the cache asks the
+        // size on every insertion. The size follows the kind, not an average: four bytes per pixel would charge a
+        // 1-bit CCITT page thirty-two times its size, past the cache ceiling, so it would never be kept.
+        (decodedImage) => (decodedImage === undefined ? 0 : cachedPictureBytes(decodedImage)),
+        decode,
+      );
+  return image === undefined ? { refusal: pictureRefusalOf(ctx.ourDoc, stream.dict) } : { image };
 }
 
 /** Scans the operators for what makes a page a hidden-text candidate: an invisible text mode (`candidate`), a WHITE fill
@@ -1005,7 +1015,9 @@ export async function readPdfSource(bytes: Uint8Array, options: ReadPdfSourceOpt
   // Before any page is read — see `onOpen`.
   onOpen?.(pageCount);
 
-  const info = documentInfoOf(ours.document, bytes);
+  // §14.3.3: the document information carries no text. A refusal of ours while reading it leaves `info` absent, and the
+  // read goes on (decision of 24/11/2026). The outline absorbs its own nodes (`pdf-outline.ts`).
+  const info = partOrAbsent(() => documentInfoOf(ours.document, bytes));
   const outline = outlineOfDocument(ours.document);
   let layerConfig: LayerConfig | undefined;
   let layersRead = false;
@@ -1039,5 +1051,10 @@ export async function readPdfSource(bytes: Uint8Array, options: ReadPdfSourceOpt
     text.glyphs = [];
     return page;
   });
-  return { pages, document: ours.document, info, ...(outline !== undefined ? { outline } : {}) };
+  return {
+    pages,
+    document: ours.document,
+    ...(info !== undefined ? { info } : {}),
+    ...(outline !== undefined ? { outline } : {}),
+  };
 }

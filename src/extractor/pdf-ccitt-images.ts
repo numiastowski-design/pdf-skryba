@@ -9,8 +9,8 @@
 import { decodeCcittFax } from "./codecs/ccitt-fax";
 import { singleFilterOf, type PdfObjectsDocument } from "./pdf-objects/document";
 import { objectRefOf, pictureSizeOk, type PictureScope } from "./pdf-image-pixels";
-import type { PdfStream, PdfValue } from "./pdf-objects/objects";
-import { PdfObjectsRefusal } from "./pdf-objects/refusal";
+import type { PdfValue } from "./pdf-objects/objects";
+import { partOrAbsent } from "./pdf-objects/refusal";
 
 /** The object the image reader reads: `kind` is the value of the former pdf.js `ImageKind.GRAYSCALE_1BPP`, kept as the image reader's code. */
 export interface DecodedImageObject {
@@ -45,19 +45,6 @@ function ccittStreamOf(doc: PdfObjectsDocument, declared: PdfValue | undefined) 
   if (boolOf(doc.resolve(dict.get("ImageMask")))) return undefined;
   if (singleFilterOf(doc, dict) !== "CCITTFaxDecode") return undefined;
   return stream;
-}
-
-/** The stream's bytes, decrypted when the file is encrypted (§7.6.2), NOT decoded: a CCITT stream is pixels, and
- *  `streamBytes` refuses to decode it (`streams.ts`). The same reading as the other image paths (`rawStreamBytes`):
- *  until 24/11/2026 this path read the file's bytes, so an encrypted CCITT picture was lost. A refusal of ours (a holder
- *  we cannot name) leaves the image unread here; any other error propagates (decision of 24/11/2026). */
-function rawBytesOf(doc: PdfObjectsDocument, stream: PdfStream): Uint8Array | undefined {
-  try {
-    return doc.rawStreamBytes(stream);
-  } catch (error) {
-    if (error instanceof PdfObjectsRefusal) return undefined;
-    throw error;
-  }
 }
 
 /** The image's rows repacked to `width` pixels, whatever the decoder's own layout, with `/Decode [1 0]` applied. */
@@ -98,7 +85,10 @@ export function ccittImageObjectOf(
   const parms = doc.dictOf(doc.resolve(dict.get("DecodeParms")));
   const parm = (key: string): PdfValue | undefined => doc.resolve(parms?.get(key));
 
-  const raw = rawBytesOf(doc, stream);
+  // Decrypted when the file is encrypted (§7.6.2), NOT decoded: a CCITT stream is pixels, and `streamBytes` refuses to
+  // decode it (`streams.ts`). Until 24/11/2026 this path read the file's bytes, so an encrypted CCITT picture was lost.
+  // A refusal of ours (a holder we cannot name) leaves the image unread here (decision of 24/11/2026).
+  const raw = partOrAbsent(() => doc.rawStreamBytes(stream));
   if (raw === undefined) return undefined;
   // §7.4.6 Table 11: a missing K is 0 (Group 3, one-dimensional).
   const image = decodeCcittFax(raw, {
