@@ -16,7 +16,9 @@ import type { PdfStream, PdfValue } from "./objects";
 import { parseValue } from "./parse";
 import { PdfObjectsRefusal } from "./refusal";
 import { MAX_DECODED_STREAM_BYTES, MAX_FILTER_CHAIN, MAX_OBJECT_STREAM_MEMBERS } from "./bounds";
+import { lzwEncode } from "./stream-encoders.test.support";
 import { decodeStream, readObjectStream, type DecodeStream } from "./streams";
+import { Choices } from "./pdf-syntax-writer.test.support";
 import { readXref } from "./xref";
 
 const enc = (s: string): Uint8Array => Uint8Array.from(Buffer.from(s, "latin1"));
@@ -147,6 +149,13 @@ describe("decodeStream: FlateDecode (7.4.4)", () => {
     const encoded = String.fromCharCode(0x80, 0x0b, 0x60, 0x44, 0x18, 0x19, 0x0a, 0x02);
     const { bytes, stream } = streamObject("/Filter /LZWDecode", encoded);
     expect([...decodeStream(bytes, stream)]).toEqual([45, 45, 45, 65, 45, 45, 65, 66]);
+  });
+
+  it("undoes LZW under its abbreviation `/LZW` (§8.9.7 Table 94; decision of 24/11/2026)", () => {
+    const text = "abababababcabcabcabcd";
+    const encoded = latin1(lzwEncode(enc(text), 1, new Choices([7, 3, 11])));
+    const { bytes, stream } = streamObject("/Filter /LZW", encoded);
+    expect(latin1(decodeStream(bytes, stream))).toBe(text);
   });
 
   it("applies a CHAIN of filters in order (7.4: the first one named is the first applied)", () => {

@@ -201,14 +201,14 @@ export function pngPredict(data: Uint8Array, columns: number, colors: number, ch
 // Chains of filters.
 
 /** The filters of §7.4 the reader decodes, under their names and the abbreviations of §8.9.7 Table 94 that
- *  `streams.ts` says it serves. `LZW` is left out: the reader refuses it (`filter-unsupported`), reported on 24/11/2026
- *  and not fixed here (the abbreviations are an inline-image matter; a stream object names its filter in full). */
+ *  `streams.ts` serves (`LZW` since 24/11/2026). */
 export const STREAM_FILTERS = [
   "ASCIIHexDecode",
   "AHx",
   "ASCII85Decode",
   "A85",
   "LZWDecode",
+  "LZW",
   "FlateDecode",
   "Fl",
   "RunLengthDecode",
@@ -223,7 +223,7 @@ export interface FilterStep {
   readonly earlyChange?: 0 | 1;
 }
 
-const isLzw = (filter: StreamFilter): boolean => filter === "LZWDecode";
+const isLzw = (filter: StreamFilter): boolean => filter === "LZWDecode" || filter === "LZW";
 export const takesParms = (filter: StreamFilter): boolean =>
   isLzw(filter) || filter === "FlateDecode" || filter === "Fl";
 
@@ -238,6 +238,7 @@ function encodeStep(data: Uint8Array, step: FilterStep, choices: Choices): Uint8
     case "A85":
       return ascii85Encode(shaped, choices);
     case "LZWDecode":
+    case "LZW":
       return lzwEncode(shaped, step.earlyChange ?? 1, choices);
     case "FlateDecode":
     case "Fl":

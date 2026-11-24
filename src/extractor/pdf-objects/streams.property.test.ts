@@ -100,7 +100,7 @@ const stepArb = (last: boolean): fc.Arbitrary<FilterStep> =>
       // A predictor shapes the filter's OUTPUT into rows: only the last filter's output is the data itself, which the
       // case trims to whole rows.
       ...(predictor !== undefined && last && takesParms(filter) ? { predictor } : {}),
-      ...(earlyChange !== undefined && filter === "LZWDecode" ? { earlyChange } : {}),
+      ...(earlyChange !== undefined && (filter === "LZWDecode" || filter === "LZW") ? { earlyChange } : {}),
     }));
 
 const stepsArb: fc.Arbitrary<FilterStep[]> = fc

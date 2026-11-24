@@ -343,7 +343,7 @@ function unpredict(data: Uint8Array, parms: PdfDict | undefined): Uint8Array {
   return unfiltered;
 }
 
-/** §7.4: the filters whose output is PIXELS, with their abbreviations of Table 6 (`CCF`, `DCT`). None of them is ever
+/** §7.4: the filters whose output is PIXELS, with their abbreviations of §8.9.7 Table 94 (`CCF`, `DCT`). None of them is ever
  *  applied here — the image decoders read those bytes themselves — but a chain may END with one, and then the filters
  *  BEFORE it are ours to undo (`decodeToImageFilter`). */
 export const IMAGE_FILTERS: ReadonlySet<string> = new Set([
@@ -355,14 +355,16 @@ export const IMAGE_FILTERS: ReadonlySet<string> = new Set([
   "CCF",
 ]);
 
-/** One filter of §7.4, with its own parameters. The abbreviations of Table 6 (`Fl`, `LZW`, `AHx`, `A85`, `RL`)
- *  belong to inline images; serving them here costs nothing. An IMAGE filter (`DCTDecode`, `JPXDecode`,
+/** One filter of §7.4, with its own parameters. The abbreviations of §8.9.7 Table 94 (`Fl`, `LZW`, `AHx`, `A85`,
+ *  `RL`) belong to inline images; serving them here costs nothing. `LZW` was missing until 24/11/2026: the fuzz found
+ *  it refused, and the decision of that day serves it like its full name. An IMAGE filter (`DCTDecode`, `JPXDecode`,
  *  `JBIG2Decode`, `CCITTFaxDecode`) is deliberately ABSENT from this table: those bytes are pixels, and the image
  *  path keeps them raw on purpose (`extractor/pdf-embedded-images.ts`). */
 const FILTERS: Readonly<Record<string, (data: Uint8Array, parms: PdfDict | undefined) => Uint8Array>> = {
   [FLATE]: (data, parms) => unpredict(inflate(data), parms),
   Fl: (data, parms) => unpredict(inflate(data), parms),
   [LZW]: (data, parms) => unpredict(lzwDecode(data, earlyChangeOf(parms)), parms),
+  LZW: (data, parms) => unpredict(lzwDecode(data, earlyChangeOf(parms)), parms),
   ASCIIHexDecode: (data) => asciiHexDecode(data),
   AHx: (data) => asciiHexDecode(data),
   ASCII85Decode: (data) => ascii85Decode(data),
