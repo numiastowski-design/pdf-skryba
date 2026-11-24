@@ -40,7 +40,7 @@ import type { VisionPort } from "doc-ir";
 // published PDF package.
 import type { PdfConservationSource } from "../pipeline/pdf-conservation-source";
 import type { RawImage } from "doc-ir/internal";
-import { extractPdf, pdfImageUnreadNotices, pdfTextUnreadNotices } from "./pdf";
+import { extractPdf, pdfImageUnreadNotices, pdfPartUnreadNotices, pdfTextUnreadNotices } from "./pdf";
 import { openPdfObjects } from "./pdf-objects/document";
 import { assertObjectStreamsBounded } from "./pdf-objstm-guard";
 import { objectStreamSource } from "./pdf-objstm-source";
@@ -206,20 +206,28 @@ const conservationSourceOf = (
   letters: textSource.reference,
 });
 
-/** The notices and the pictures kept once the AI's text replaced the pages of `replaced`: the two loss notices are composed again
+/** The three loss notices, composed again after an AI reading. */
+const LOSS_NOTICES: ReadonlySet<DocumentNotice["kind"]> = new Set([
+  "pdf-image-unread",
+  "pdf-text-unread",
+  "pdf-part-unread",
+]);
+
+/** The notices and the pictures kept once the AI's text replaced the pages of `replaced`: the three loss notices are composed again
  *  without those pages; every other notice passes through (a withheld table: only a page kept as digital holds a detected table). */
 const keptAfterAiReading = (
   replaced: ReadonlySet<number>,
-  extraction: Pick<PdfExtraction, "imageLossByPage" | "textUnreadByPage"> & {
+  extraction: Pick<PdfExtraction, "imageLossByPage" | "textUnreadByPage" | "unreadObjectsByPage"> & {
     [Field in "images" | "pagesOfImage" | "notices"]: PdfExtraction[Field] | undefined;
   },
 ): { keptNotices: DocumentNotice[] | undefined; keptImages: PdfExtraction["images"] } => {
-  const { images, pagesOfImage, imageLossByPage, textUnreadByPage, notices } = extraction;
+  const { images, pagesOfImage, imageLossByPage, textUnreadByPage, unreadObjectsByPage, notices } = extraction;
   // A page whose text could not be read and that the AI read is no loss either (16/11/2026).
   const kept = [
-    ...(notices ?? []).filter((notice) => notice.kind !== "pdf-image-unread" && notice.kind !== "pdf-text-unread"),
+    ...(notices ?? []).filter((notice) => !LOSS_NOTICES.has(notice.kind)),
     ...(pdfImageUnreadNotices(imageLossByPage, replaced) ?? []),
     ...(pdfTextUnreadNotices(textUnreadByPage, replaced) ?? []),
+    ...(pdfPartUnreadNotices(unreadObjectsByPage, replaced) ?? []),
   ];
   const keptNotices = kept.length > 0 ? kept : undefined;
   const keptImages = images?.filter((image) => {
@@ -252,8 +260,6 @@ export const extractPdfWithVision = async (
   /** The notices of `extractPdf`, passed through — after an AI reading, its `pdf-image-unread` and `pdf-text-unread`
    *  notices composed again without the pages the AI's text replaced; absent when there is none. */
   notices?: DocumentNotice[];
-  /** `extractPdf`'s unread XObjects by page, the pages the AI's text replaced left out; absent when none. */
-  unreadObjectsByPage?: ReadonlyMap<number, number>;
   /** The document's page count, known on opening (the row says « 12 pages »). */
   pageCount: number;
   /** How many pages are scanned, read or not: the pages with NO text at all, or every page of a scan carrying an invisible
@@ -305,23 +311,18 @@ export const extractPdfWithVision = async (
   // The one shape of the answer; the three exits differ only by the blocks, the pictures and notices kept, and the scan count.
   const result = (
     blocks: IRDoc,
-    kept: { images: typeof images; notices: typeof notices; replaced?: ReadonlySet<number> },
+    kept: { images: typeof images; notices: typeof notices },
     extra: { scannedPages?: number } = {},
-  ) => {
-    // A page the AI's text replaced lost nothing of its own (as the loss notices, `keptAfterAiReading`).
-    const unread = new Map([...unreadObjectsByPage].filter(([pageIndex]) => kept.replaced?.has(pageIndex) !== true));
-    return {
-      doc: blocks,
-      ...(kept.images ? { images: kept.images } : {}),
-      ...(tableDetections ? { tableDetections } : {}),
-      ...(kept.notices ? { notices: kept.notices } : {}),
-      ...(unread.size > 0 ? { unreadObjectsByPage: unread as ReadonlyMap<number, number> } : {}),
-      pageCount,
-      ...extra,
-      docFacts,
-      conservationSource,
-    };
-  };
+  ) => ({
+    doc: blocks,
+    ...(kept.images ? { images: kept.images } : {}),
+    ...(tableDetections ? { tableDetections } : {}),
+    ...(kept.notices ? { notices: kept.notices } : {}),
+    pageCount,
+    ...extra,
+    docFacts,
+    conservationSource,
+  });
   if (toRead.length === 0) return result(pdfPageTabs(pages, language, opts?.labels), { images, notices });
   const scanned = scannedPages > 0 ? { scannedPages } : {};
 
@@ -355,6 +356,7 @@ export const extractPdfWithVision = async (
     pagesOfImage,
     imageLossByPage,
     textUnreadByPage,
+    unreadObjectsByPage,
     notices,
   });
   return result(
@@ -362,7 +364,6 @@ export const extractPdfWithVision = async (
     {
       images: keptImages && keptImages.length > 0 ? keptImages : undefined,
       notices: keptNotices,
-      replaced: new Set(ocrByPage.keys()),
     },
     scanned,
   );

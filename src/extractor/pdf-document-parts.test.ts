@@ -8,12 +8,14 @@
 
 import { readFileSync } from "node:fs";
 import { deflateSync } from "node:zlib";
+
+import { MAX_NOTICE_PAGE_RANGES } from "doc-ir/internal";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
-import { extractPdf } from "./pdf";
+import { extractPdf, pdfPartUnreadNotices } from "./pdf";
 import { agreedTargets, publishedWords, type TargetKind } from "./pdf-document-fuzz.test.support";
 import { MAX_NESTING_DEPTH } from "./pdf-objects/bounds";
 import { openPdfObjects } from "./pdf-objects/document";
@@ -71,8 +73,10 @@ describe("a part that carries no text fails alone (decision of 24/11/2026)", () 
     expect(before.images ?? []).toHaveLength(1);
     expect(after.images ?? []).toEqual([]);
     expect(after.notices ?? []).not.toContainEqual(expect.objectContaining({ kind: "pdf-image-unread" }));
-    expect([...(after.unreadObjectsByPage ?? [])]).toEqual([[0, 1]]);
-    expect([...(before.unreadObjectsByPage ?? [])]).toEqual([]);
+    expect([...after.unreadObjectsByPage]).toEqual([[0, 1]]);
+    expect([...before.unreadObjectsByPage]).toEqual([]);
+    expect(after.notices).toContainEqual({ kind: "pdf-part-unread", count: 1, pages: [{ from: 1, to: 1 }], more: 0 });
+    expect(before.notices ?? []).not.toContainEqual(expect.objectContaining({ kind: "pdf-part-unread" }));
   });
 
   it("a link annotation: the same words, that link absent and the others kept", async () => {
@@ -165,5 +169,43 @@ describe("a refusal for security is never absorbed by a part (decision of 25/10/
       pageWithPicture({ dict: `${RGB} /Width 2 /Height 2 ${deep}`, data: new Uint8Array(1) }),
     );
     expect(refusal?.reason).toBe("nesting-too-deep");
+  });
+});
+
+describe("pdfPartUnreadNotices: the folding, a pure unit", () => {
+  it("counts the objects, folds the pages into ranges counted from 1, and leaves out the pages the AI replaced", () => {
+    const unread = new Map([
+      [0, 2],
+      [1, 1],
+      [4, 3],
+    ]);
+    expect(pdfPartUnreadNotices(unread, new Set())).toEqual([
+      {
+        kind: "pdf-part-unread",
+        count: 6,
+        pages: [
+          { from: 1, to: 2 },
+          { from: 5, to: 5 },
+        ],
+        more: 0,
+      },
+    ]);
+    expect(pdfPartUnreadNotices(unread, new Set([4]))).toEqual([
+      { kind: "pdf-part-unread", count: 3, pages: [{ from: 1, to: 2 }], more: 0 },
+    ]);
+  });
+
+  it("gives no notice when no object is unread", () => {
+    expect(pdfPartUnreadNotices(new Map(), new Set())).toBeUndefined();
+    expect(pdfPartUnreadNotices(new Map([[3, 1]]), new Set([3]))).toBeUndefined();
+  });
+
+  it("keeps at most MAX_NOTICE_PAGE_RANGES ranges and counts the pages left out", () => {
+    const unread = new Map(Array.from({ length: 2_000 }, (_, i) => [i * 2, 1] as [number, number]));
+    const [notice] = pdfPartUnreadNotices(unread, new Set()) ?? [];
+    const { pages, more, count } = notice as { pages: readonly unknown[]; more: number; count: number };
+    expect(count).toBe(2_000);
+    expect(pages).toHaveLength(MAX_NOTICE_PAGE_RANGES);
+    expect(more).toBe(2_000 - MAX_NOTICE_PAGE_RANGES);
   });
 });

@@ -143,6 +143,22 @@ export function pdfTextUnreadNotices(
   return notices.length > 0 ? notices : undefined;
 }
 
+/** ONE `pdf-part-unread` notice for the XObjects that could not be read (decision of 24/11/2026), or none: `count` the
+ *  objects, `pages` their pages folded into ranges counted from 1, at most `MAX_NOTICE_PAGE_RANGES`, as
+ *  `pdfTextUnreadNotices`. `replaced`: the pages the AI's text replaced lost nothing of their own. */
+export function pdfPartUnreadNotices(
+  unreadByPage: ReadonlyMap<number, number>,
+  replaced: ReadonlySet<number>,
+): DocumentNotice[] | undefined {
+  const kept = [...unreadByPage].filter(([pageIndex, count]) => count > 0 && !replaced.has(pageIndex));
+  if (kept.length === 0) return undefined;
+  const pages = kept.map(([pageIndex]) => pageIndex).sort((left, right) => left - right);
+  const ranges = pageRangesOf(pages).slice(0, MAX_NOTICE_PAGE_RANGES);
+  const shown = ranges.reduce((sum, range) => sum + range.to - range.from + 1, 0);
+  const count = kept.reduce((sum, [, objects]) => sum + objects, 0);
+  return [{ kind: "pdf-part-unread", count, pages: ranges, more: pages.length - shown }];
+}
+
 /** The runs of every page after the two enrichments that need glyphs, and the way back to the reader's own runs. */
 interface EnrichedRuns {
   items: PdfTextRun[][];
@@ -577,6 +593,7 @@ const assembleResult = (
   const notices = [
     ...(imageNotices ?? []),
     ...(textUnreadNotices ?? []),
+    ...(pdfPartUnreadNotices(unreadObjectsByPage, new Set()) ?? []),
     ...unpublishedPartNotices({ chartsWithheld: 0, imagesMissing: 0, tablesWithheld }),
   ];
   return {

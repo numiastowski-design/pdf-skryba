@@ -71,7 +71,7 @@
   ],
   "dependencies": {
     "@cantoo/pdf-lib": "^2.11.1",
-    "doc-ir": "^0.1.0"
+    "doc-ir": "^0.2.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",

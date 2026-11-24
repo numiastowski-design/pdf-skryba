@@ -161,7 +161,8 @@ export interface PdfExtractResult {
    *  page, nor the notices, nor anything `tools/pdf-output-hash.ts` hashes. */
   flattenedGridPages: readonly number[];
   /** At most one `pdf-image-unread` notice (a placed image could not be obtained), one `pdf-text-unread` notice per reason
-   *  (a page's text could not be read), one `table-withheld`; absent when there is none. */
+   *  (a page's text could not be read), one `pdf-part-unread` (an XObject could not be read), one `table-withheld`;
+   *  absent when there is none. */
   notices?: DocumentNotice[];
   /** Per page, the placed images no reader could obtain, by cause: `extractPdfWithVision` leaves out the pages the
    *  AI's text replaced and composes the notice again (`pdfImageUnreadNotices`). */
@@ -172,8 +173,8 @@ export interface PdfExtractResult {
   textUnreadByPage: ReadonlyMap<number, PdfTextUnreadReason>;
   /** 0-based page -> how many of its XObjects could not be read (decision of 24/11/2026). Their `/Subtype` is in the
    *  damaged bytes, so each may have been a picture or a form carrying text: the page is published without them, and
-   *  they are never counted as lost pictures. No `DocumentNotice` carries them yet (`doc-ir` has no kind for it).
-   *  Empty when none. */
+   *  they are never counted as lost pictures: the `pdf-part-unread` notice says them. `extractPdfWithVision` leaves out
+   *  the pages the AI's text replaced and composes the notice again (`pdfPartUnreadNotices`). Empty when none. */
   unreadObjectsByPage: ReadonlyMap<number, number>;
   /** What the file says about itself, reduced (`pdf-facts.ts`): tool from our table, versions, tagging, page count. */
   docFacts: PdfDocumentFacts;
