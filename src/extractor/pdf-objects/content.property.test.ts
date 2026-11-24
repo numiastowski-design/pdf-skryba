@@ -176,7 +176,8 @@ function damaged(data: Uint8Array, damage: Damage): Uint8Array {
     out.set(data.subarray(at + damage.length), at);
     return out;
   }
-  const out = data.slice();
+  // A copy, never a view: `streamBytes` may hand a Buffer, whose `slice` shares the seed's bytes across trials.
+  const out = Uint8Array.from(data);
   damage.bytes.forEach((byte, index) => {
     if (at + index < out.length) out[at + index] = byte;
   });
