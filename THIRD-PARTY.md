@@ -72,7 +72,8 @@ into one string, and the glyph names of the PDF encodings read through it. The S
 
 `dist/index.js` carries the advance widths of the 14 standard fonts, by glyph name, and the built-in
 encodings of Helvetica, Symbol and ZapfDingbats, all read from Adobe's Core 14 AFM files. The AFM files
-themselves are not distributed. Their notice (SPDX `APAFML`):
+themselves are not in the package; the repository keeps them whole, as the generator's input
+(`tools/poc/data/afm/`), together with Adobe's `MustRead.html`. Their notice (SPDX `APAFML`):
 
 > Copyright (c) 1985, 1987, 1989, 1990, 1991, 1992, 1993, 1997 Adobe Systems Incorporated. All Rights
 > Reserved.
@@ -91,8 +92,10 @@ out.
 
 The glyph names of `WinAnsiEncoding` and `MacRomanEncoding` are derived from two mapping tables published
 by the Unicode Consortium: `CP1252.TXT` (cp1252 to Unicode, Microsoft) and `ROMAN.TXT` (Mac OS Roman to
-Unicode, © 1994-2002, 2005 Apple Computer, Inc.). Neither file is redistributed: each code was turned into
-a glyph name through the Adobe Glyph List.
+Unicode, © 1994-2002, 2005 Apple Computer, Inc.). Neither file is in the package: each code was turned into
+a glyph name through the Adobe Glyph List. The repository keeps both whole, as the generator's input
+(`tools/poc/data/`), with the Unicode License v3 that covers the data files the Consortium publishes
+(`tools/poc/data/LICENSE-UNICODE.txt`).
 
 ## Hyphenation patterns (hyph-utf8): American English and French
 
