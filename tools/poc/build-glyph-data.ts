@@ -167,7 +167,7 @@ function macRomanQuirks(): Record<number, string> {
   // gives that name U+2126, the OHM SIGN; Apple's table puts U+03A9, the Greek omega, there. We publish
   // the Greek omega.
   // ⚠️ MY FIRST REASON WAS WRONG, and the trial said so: I had written that a Confluence search
-  // for "Ω" would not find an ohm sign. TRIAL OF 31/10/2026 (MIKSUDOC page 104202241, `PLATFORM-STATUS`):
+  // for "Ω" would not find an ohm sign. TRIAL OF 31/10/2026, on a Confluence page:
   // Confluence KEEPS the two characters distinct in storage, and its SEARCH CONFLATES THEM — a word
   // written with the ohm sign is found by typing the Greek omega, and the reverse. Findability therefore settles nothing.
   // THE REASON THAT REMAINS, and it is enough: Unicode declares the ohm sign canonically equivalent to the Greek omega
