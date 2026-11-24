@@ -15,7 +15,7 @@
  * decoding it when that is not necessary (15/09/2026).
  *
  * WHY NOT DECODED PIXELS (that was pdf.js's case, removed from the product on 01/11/2026). A JPEG decoded then
- * re-encoded would lose the original that MIKSUDOC "Spécification fonctionnelle" §6.6 asks to be "identical". Here,
+ * re-encoded would lose the original that the functional specification (§6.6) asks to be "identical". Here,
  * a `DCTDecode` is copied byte for byte; `FlateDecode` pixels are
  * decompressed and wrapped in PNG. The image's POSITION and its object number (`ref`) come from our
  * reader (`pdf-source.ts`).

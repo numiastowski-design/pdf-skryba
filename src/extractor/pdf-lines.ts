@@ -294,7 +294,7 @@ const oneLetterShape = /^\p{L}\p{P}?$/u;
  * A DROP CAP IS PUBLISHED IN BOLD, AND NOTHING ELSE IS DONE TO IT (12/11/2026, evening). It keeps its size, its width and its place.
  *
  * WHY NOTHING MORE. Confluence serves no text size above Normal that is not a heading — its editor offers « Small
- * text » and nothing else (`docs/PLATFORM-STATUS.md` §92) — and the only other face it can give is the monospace of
+ * text » and nothing else (checked on the platform) — and the only other face it can give is the monospace of
  * `<code>`, which would read as code. Bold is what is left.
  *
  * WHAT WAS REVERTED THE SAME DAY. The morning's rule brought the glyph back to the body size and moved it flush

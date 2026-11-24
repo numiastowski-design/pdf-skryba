@@ -79,7 +79,7 @@ const MIN_ITEMS = 2;
 
 /*
  * WRITTEN LIMIT, NOT A DEFECT TO FIX (22/09/2026). The Jev re-read
- * (`docs/ESSAI-JEV-ETIQUETAGE.md` [purged 27/09/2026, git history], French and English documents) found 35
+ * (a labelling trial, French and English documents) found 35
  * items published as plain paragraphs, in 8 documents, in three shapes: marked
  * items that are NOT indented (20), several items fused into one block (8), and
  * word markers such as « Pas 1 : » (7). No text is lost; it stays searchable.
@@ -466,7 +466,7 @@ export type OrderedPiece = { kind: "paragraph"; index: number } | { kind: "list"
  * no gap, no duplicate) over at least `MIN_ITEMS` items. Otherwise every block
  * stays a paragraph, its written number in its text. Every tool read on
  * 22/09/2026 keeps the written number; none checks the sequence
- * (`docs/ETUDE-BIBLIOTHEQUES-PDF.md` [purged 27/09/2026, git history], lesson 21).
+ * (a study of the PDF libraries, lesson 21).
  *
  * Set aside (22/09/2026): letting in a NON-indented block aligned on the item's
  * text. It would put the « b) » and « c) » of 0000713 p8 back into item 5, but

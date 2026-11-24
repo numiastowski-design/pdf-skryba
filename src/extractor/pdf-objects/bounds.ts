@@ -6,8 +6,8 @@
  *  overflow, a huge allocation or a walk that never ends. Starting value to calibrate: each is far above what
  *  real files carry and far below what an attack needs (names: ISO 32000-1 Annex C Table C.1 gives 127 bytes;
  *  the others are our own choice, and each says what population it was measured on, most of them none yet).
- *  NOT here: the values' meaning (each reader), the refusal type (`refusal.ts`), the register fiches
- *  (`core/bounds.ts`, which names every one of them).
+ *  NOT here: the values' meaning (each reader), the refusal type (`refusal.ts`), the register that names
+ *  every one of them (in the application).
  *  Called by: `parse.ts`, `xref.ts`, `streams.ts`, `document.ts`, `content.ts`, and their tests.
  *
  *  🔴 WHICH ONES WERE SEEN BITING (repo rule: a guard that has not been seen biting is not a guard;
@@ -118,7 +118,7 @@ export const MAX_CONTENT_OPERANDS = 64;
 export const MAX_CONTENT_NODES = 2_000_000;
 
 /** Operators one content stream may hold.
- *  🔴 ARBITRARY THRESHOLD, settled by on 31/10/2026: a "clear refusal" rather than a memory risk. It
+ *  🔴 ARBITRARY THRESHOLD, settled on 31/10/2026: a "clear refusal" rather than a memory risk. It
  *  was three million, which allowed ~340 MB of retained heap (see `MAX_CONTENT_NODES`). One million is
  *  one hundred and forty-five times the densest page we have measured (6 907 operators, 03/10/2026), so no
  *  known real document is refused by this decrease; the accepted price is that a page carrying more than one

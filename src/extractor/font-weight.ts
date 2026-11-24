@@ -11,7 +11,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * THE DEFECT THIS MODULE FIXES (measured on 14/09/2026)
  * ═══════════════════════════════════════════════════════════════════════════
- * We read `page.commonObjs.get(fontName).bold`. In the worker source,
+ * We used to read `page.commonObjs.get(fontName).bold`. In the worker source,
  * `this.bold = /bold/i.test(fontName)` is inside
  * `Font.fallbackToSystemFont(properties)` — whose FIRST statement is
  * `this.missingFile = true` (`pdf.worker.mjs`, 6.2.108).

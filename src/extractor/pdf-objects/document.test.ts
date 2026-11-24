@@ -1,5 +1,5 @@
 /**
- * Slice A4 of the object reader (docs/POC-SANS-PDFJS.md): the DOCUMENT — objects resolved through the
+ * Slice A4 of the object reader (proof of concept of the reader without pdf.js): the DOCUMENT — objects resolved through the
  * cross-reference section, compressed objects read from their container, a stale table seen — and the PAGE TREE.
  * ISO 32000-1:2008 §7.3.10 (indirect objects), §7.5.7 (object streams), §7.7.2 (catalog), §7.7.3 (page tree and
  * its inheritable attributes, Table 29) — https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf
@@ -222,7 +222,7 @@ describe("pages: the tree and its inheritable attributes (7.7.3, Table 29)", () 
     expect(pages[1]?.view).toEqual([0, 0, 100, 200]);
   });
 
-  it("clips the CropBox to the MediaBox and normalises the corners, as pdf.js's `view` does", () => {
+  it("clips the CropBox to the MediaBox and normalises the corners, as pdf.js's `view` did", () => {
     const bytes = buildPdf([
       "<< /Type /Catalog /Pages 2 0 R >>",
       "<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 /MediaBox [0 0 612 792] >>",

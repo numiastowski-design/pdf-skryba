@@ -1,8 +1,8 @@
-/** POC `docs/POC-SANS-PDFJS.md`: THE FONT of an abstention, and what its `/ToUnicode` ALREADY says.
+/** Proof of concept of the reader without pdf.js: THE FONT of an abstention, and what its `/ToUnicode` ALREADY says.
  *  DEVELOPMENT tool, outside the bundle. Decides: nothing.
- *  The question it settles: when pdf.js names a PRINTABLE character where we abstain, does it
- *  take it from the embedded font program — knowledge we will never have, and we then lose
- *  real text — or does it simply reinterpret the CODE as a Unicode code point, which is an
+ *  The question it settled, while pdf.js was still in the product (removed on 01/11/2026): when pdf.js named a
+ *  PRINTABLE character where we abstain, did it take it from the embedded font program — knowledge we will never
+ *  have, and we then lose real text — or did it simply reinterpret the CODE as a Unicode code point, which is an
  *  invention? The discriminant is written down: if the font's `/ToUnicode` covers OTHER codes but not
  *  that one, and the character pdf.js returned EQUALS the code, it is the code reread as Unicode.
  *  Called by: `npx tsx tools/poc/abstained-font.ts <file.pdf>`. */

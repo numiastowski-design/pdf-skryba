@@ -39,17 +39,17 @@
  *    We used to copy it by hand (`PNG_KIND = {1, 2, 3}` in `png.ts`), which
  *    was less safe than reading the published constant. It is now INJECTED
  *    by the caller, as `OPS` is for `decodeOps`: this module stays
- *    loadable and testable without pdf.js, and `pdf-images.pdfjs.test.ts` (deleted, see git history) checks
- *    that the three names do exist in the real constant.
+ *    loadable and testable without pdf.js, and `pdf-images.pdfjs.test.ts` (deleted, see git history) checked
+ *    that the three names did exist in the real constant.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * `get` THROWS WHEN THE OBJECT IS NOT READY, AND THAT IS NOT AN ERROR
  * ═══════════════════════════════════════════════════════════════════════════
- * This is how that API signals "not available". The `try` that
+ * This was how that API signalled "not available". The `try` that
  * surrounds it is therefore never a way of ignoring an error. FALSE for a
  * large image or a reused image, measured on 15/09/2026 on fixture
- * 24: pdf.js delivers the first after the operator list and puts the
- * second in `commonObjs`. The boundary waits for them (`awaitImageObject`)
+ * 24: pdf.js delivered the first after the operator list and put the
+ * second in `commonObjs`. The boundary waited for them (`awaitImageObject`)
  * before building the page.
  */
 

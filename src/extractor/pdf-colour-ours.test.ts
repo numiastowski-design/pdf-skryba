@@ -4,23 +4,23 @@ import { describe, expect, it } from "vitest";
 
 import { cmykHex, greyHex, rgbHex } from "./pdf-colour-ours";
 
-describe("les couleurs de remplissage des espaces de périphérique", () => {
-  it("gris : une valeur de 0 à 1 devient les trois octets égaux", () => {
+describe("the fill colours of the device spaces", () => {
+  it("grey: a value from 0 to 1 becomes the three equal bytes", () => {
     expect(greyHex(0)).toBe("#000000");
     expect(greyHex(1)).toBe("#ffffff");
     expect(greyHex(0.5)).toBe("#808080");
   });
 
-  it("RVB : chaque composante devient un octet", () => {
+  it("RGB: each component becomes one byte", () => {
     expect(rgbHex(1, 0, 0)).toBe("#ff0000");
     expect(rgbHex(0, 0.5, 1)).toBe("#0080ff");
   });
 
-  it("CMJN : le noir plein suit le polynôme de pdf.js", () => {
+  it("CMYK: solid black follows the polynomial taken from pdf.js", () => {
     expect(cmykHex(0, 0, 0, 1)).toBe("#2c2e35");
   });
 
-  it("CMJN : l'absence d'encre est blanche", () => {
+  it("CMYK: no ink is white", () => {
     expect(cmykHex(0, 0, 0, 0)).toBe("#ffffff");
   });
 });

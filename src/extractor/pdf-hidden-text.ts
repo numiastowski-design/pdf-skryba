@@ -1,4 +1,4 @@
-/** "Rien d'invisible" (09/10/2026; Spécification fonctionnelle §4): nothing a PDF viewer does not show is
+/** "Nothing invisible" (09/10/2026; functional specification §4): nothing a PDF viewer does not show is
  *  published, nor expected by the text control. Decides: whether the mode 3 glyphs of a page are dropped
  *  (`dropsModeHidden`), and how many glyphs a page may show before the filter is skipped (`MAX_FILTERED_GLYPHS`,
  *  `countShownGlyphs`). The operators themselves are read by `glyph-positions.ts#readGlyphs`. NOT here: the crop box
@@ -17,7 +17,7 @@
 import type { GlyphFragment } from "./glyph-positions";
 
 /** A page with more glyphs than this is not filtered: the glyph keys and the origin index the pairing used to build
- *  cost about 620 bytes per glyph (440 MB for 710 000, past Forge's 512 MB). Value de départ à calibrer; the largest real page measured holds
+ *  cost about 620 bytes per glyph (440 MB for 710 000, past Forge's 512 MB). Starting value, to be calibrated; the largest real page measured holds
  *  8 990 characters (fixtures/pdf/46, page 10). Bias, chosen: the hidden text of a hostile page may be published;
  *  nothing visible is lost. */
 export const MAX_FILTERED_GLYPHS = 100_000;

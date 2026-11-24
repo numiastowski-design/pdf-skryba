@@ -3,7 +3,7 @@
  *  Decides: that `UniXXX-UCS2-[HV]` is read by IDENTITY, and that no other predefined CMap is read at all.
  *
  *  THE FACT THAT DECIDES, and its source. Checked on 31/10/2026 in Adobe's official repository
- *  (`adobe-type-tools/cmap-resources`, BSD-3-Clause, `docs/SOURCES-OFFICIELLES.md`): a `UniXXX-UCS2-[HV]` CMap
+ *  (`adobe-type-tools/cmap-resources`, BSD-3-Clause): a `UniXXX-UCS2-[HV]` CMap
  *  has the code space `0x0000–0xD7FF & 0xE000–0xFFFF` — the basic multilingual plane minus the surrogate
  *  block. The CODE there is thus the Unicode code point itself, on two fixed bytes, and its destination is
  *  a CID of the collection (Adobe-CNS1, Adobe-GB1, Adobe-Japan1, Adobe-Korea1).
@@ -43,7 +43,7 @@
  *  GLYPH that this code leads to (go to the CID, then come back through `Adobe-CNS1-UCS2`).
  *  🔴 AND THIS IS A TENSION WITH ONE OF OUR OWN PRINCIPLES, better named than left to be discovered: "we publish
  *  what the editor DISPLAYS, never what the file stores". Applied to the letter, it would side with
- *  pdf.js. We choose the declared code because reading the glyph would need the two Adobe tables, which
+ *  the reading pdf.js gave. We choose the declared code because reading the glyph would need the two Adobe tables, which
  *  we do not embed — and because the declared code is what an author typed, hence what a Confluence
  *  search will look for. The bias is chosen, visible and quantified: 14 glyphs out of 15 709, zero words touched.
  *  One page out of twenty was not paired, by ONE glyph (688 against 689): it went back whole to pdf.js,

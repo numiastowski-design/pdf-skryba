@@ -1,6 +1,6 @@
 /**
- * The tie rule of `pdf-links.ts` on hand-written runs and glyphs (no pdf.js). The real documents are in the app's
- * `google-app/src/pipeline/normalize-links.pdf-links.fixtures.test.ts`.
+ * The tie rule of `pdf-links.ts` on hand-written runs and glyphs (no pdf.js). The real documents are tested in the
+ * application that uses this library.
  */
 
 import { describe, expect, it } from "vitest";

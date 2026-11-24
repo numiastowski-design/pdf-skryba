@@ -1,5 +1,5 @@
 /**
- * Slice A1 of the object reader (docs/CONCEPTION-LECTEUR-OBJETS-PDF.md): lexer and objects, ISO 32000-1:2008
+ * Slice A1 of the object reader: lexer and objects, ISO 32000-1:2008
  * clauses 7.2-7.3 (https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf).
  * Tests only, written before any product code. The contract fixed here:
  *   parseValue(bytes, offset)  -> { value, end }                (end = offset just past the value)
@@ -293,7 +293,7 @@ describe("§7.3.6 arrays and §7.3.7 dictionaries", () => {
     expect(refusalOf(() => val("<< /A /B /C >>")).reason).toBe("syntax");
     expect(refusalOf(() => val("<< /A >>")).reason).toBe("syntax");
   });
-  it("§7.3.7: 'Multiple entries ... shall not have the same key' says nothing of a reader's behaviour; we keep the LAST one (as pdf.js does)", () => {
+  it("§7.3.7: 'Multiple entries ... shall not have the same key' says nothing of a reader's behaviour; we keep the LAST one (as pdf.js did)", () => {
     const d = val("<< /A 1 /A 2 >>");
     expect(d.kind === "dict" && d.entries.get("A")).toEqual(num(2));
     expect(d.kind === "dict" && d.entries.size).toBe(1);

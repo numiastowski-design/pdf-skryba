@@ -1,6 +1,6 @@
-/** POC `docs/POC-SANS-PDFJS.md`, diagnostic: the RAW TEXT of the `/ToUnicode` of a page's font.
+/** POC of the reader without pdf.js, diagnostic: the RAW TEXT of the `/ToUnicode` of a page's font.
  *  DEVELOPMENT tool, outside the bundle. Decides: nothing. It serves to read the CMap with one's own eyes rather than to
- *  suppose what it contains when our reading and pdf.js's diverge.
+ *  suppose what it contains when our reading and pdf.js's diverged.
  *  Called by: `npx tsx tools/poc/dump-tounicode.ts <file.pdf> <page> <font name> [bytes]`. */
 
 import { readFileSync } from "node:fs";

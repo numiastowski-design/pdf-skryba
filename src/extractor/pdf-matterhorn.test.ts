@@ -1,7 +1,7 @@
 /**
  * Fixtures 19 to 23 — Matterhorn conditions requiring HUMAN VERIFICATION,
  * transposed to our documents (15/09/2026). The full table of conditions
- * and their coverage lives in `docs/MATTERHORN-CIBLES.md` [purged 27/09/2026, git history].
+ * and their coverage was a working document, purged on 27/09/2026.
  *
  * EACH EXPECTATION PINS THE REAL BEHAVIOUR, NOT THE DESIRED BEHAVIOUR.
  * `19` and `20` pinned defects, fixed on 15/09/2026; `21` pins an
@@ -39,8 +39,8 @@ function pageText(blocks: IRBlock[]): string {
   return blocks.map(textOf).join("\n");
 }
 
-describe("19 — Matterhorn 01-002 : un titre numéroté au même point, qui n'est pas de l'habillage", () => {
-  it("CORRIGÉ LE 15/09/2026 : « Annexe 1 », « Annexe 2 », « Annexe 3 » restent des titres", async () => {
+describe("19 — Matterhorn 01-002: a numbered heading at the same point, which is not page furniture", () => {
+  it("FIXED ON 15/09/2026: « Annexe 1 », « Annexe 2 », « Annexe 3 » stay headings", async () => {
     // Before, the decoration neutralised ALL numbers: the three titles
     // became the same "Annexe #" and disappeared. Only what has the shape
     // of a page number is neutralised now; "Annexe" is not a
@@ -53,7 +53,7 @@ describe("19 — Matterhorn 01-002 : un titre numéroté au même point, qui n'e
     });
   });
 
-  it("TÉMOIN : le pied « Document interne » reste dans l'onglet de chacune des trois pages", async () => {
+  it("WITNESS: the footer « Document interne » stays in the tab of each of the three pages", async () => {
     // 16/10/2026: no furniture removal in the tab layout; the footer stays on each page.
     const { pages } = await extractPdf(bytesOf("19-Annexes-Titre-Repete"));
     for (const blocks of pages) expect(pageText(blocks)).toContain("Cette annexe");
@@ -61,8 +61,8 @@ describe("19 — Matterhorn 01-002 : un titre numéroté au même point, qui n'e
   });
 });
 
-describe("23 — Matterhorn 18-001 : de vrais numéros de page, seule variation admise d'un habillage", () => {
-  it("l'en-tête « Rapport d'activite 2026 - p. N » et le pied « Document confidentiel / N/3 » restent dans l'onglet de chaque page", async () => {
+describe("23 — Matterhorn 18-001: real page numbers, the only variation allowed in page furniture", () => {
+  it("the header « Rapport d'activite 2026 - p. N » and the footer « Document confidentiel / N/3 » stay in the tab of each page", async () => {
     // 16/10/2026: no furniture removal in the tab layout; each page keeps its own header and footer.
     const { pages } = await extractPdf(bytesOf("23-Pages-Numerotees"));
     expect(pages).toHaveLength(3);
@@ -74,7 +74,7 @@ describe("23 — Matterhorn 18-001 : de vrais numéros de page, seule variation 
     });
   });
 
-  it("TÉMOIN : le titre de section et la prose de chaque page restent", async () => {
+  it("WITNESS: the section heading and the prose of each page stay", async () => {
     const { pages } = await extractPdf(bytesOf("23-Pages-Numerotees"));
     const titres = pages.map((blocks) =>
       blocks
@@ -86,8 +86,8 @@ describe("23 — Matterhorn 18-001 : de vrais numéros de page, seule variation 
   });
 });
 
-describe("20 — Matterhorn 01-002 : un titre de section déjà lu au sommaire, en tête de page", () => {
-  it("CORRIGÉ LE 15/09/2026 : « Conditions de retour », titre en tête de la page 2, reste un titre", async () => {
+describe("20 — Matterhorn 01-002: a section heading already read in the table of contents, at the head of a page", () => {
+  it("FIXED ON 15/09/2026: « Conditions de retour », a heading at the head of page 2, stays a heading", async () => {
     // Before, `detectRepeatedHeadBlocks` dropped it: its text had been seen in the
     // table of contents. The rule now checks what "the same block redrawn at the
     // head" implied — the earlier occurrence at the head of its page (A), at the
@@ -101,7 +101,7 @@ describe("20 — Matterhorn 01-002 : un titre de section déjà lu au sommaire, 
     ]);
   });
 
-  it("TÉMOIN : la prose de la section suit son titre, rien d'autre n'a bougé sur la page", async () => {
+  it("WITNESS: the section's prose follows its heading, nothing else moved on the page", async () => {
     const { pages } = await extractPdf(bytesOf("20-Sommaire-Puis-Section"));
     const texte = pageText(pages[1]!);
     expect(texte.indexOf("Conditions de retour")).toBeLessThan(texte.indexOf("Un materiel defectueux"));
@@ -109,7 +109,7 @@ describe("20 — Matterhorn 01-002 : un titre de section déjà lu au sommaire, 
   });
 });
 
-describe("21 — Matterhorn 15-004 : un encadré coloré déclaré tableau", () => {
+describe("21 — Matterhorn 15-004: a coloured box declared as a table", () => {
   // Since lot « 33 » (22/09/2026) no background colour is published: the box that came
   // out as a `#dbebff` panel comes out flat, as its content. The test used to check the
   // panel and its colour; it now checks that no `bgColor` is written and nothing is lost.
@@ -134,7 +134,7 @@ describe("21 — Matterhorn 15-004 : un encadré coloré déclaré tableau", () 
     expect(pageText(blocks)).toContain("A retenir");
   });
 
-  it("TÉMOIN : le titre de page, hors encadré, reste un titre de niveau 1", async () => {
+  it("WITNESS: the page title, outside the box, stays a level-1 heading", async () => {
     // « A retenir » was already an h2, inside the panel, where this top-level filter did
     // not see it. Since lot « 33 » the box is flat, so it shows up here: same heading.
     const { pages } = await extractPdf(bytesOf("21-Encadre-Avec-Intitule"));
@@ -146,11 +146,11 @@ describe("21 — Matterhorn 15-004 : un encadré coloré déclaré tableau", () 
   });
 });
 
-describe("22 — tableau BALISÉ aux en-têtes faux : l'ORDRE se prend, le TYPE jamais", () => {
+describe("22 — a TAGGED table with wrong headers: the ORDER is taken, the TYPE never", () => {
   // That pdf.js saw the structure tree here, and nowhere else, was
   // verified by the boundary oracle (`pdf-source.oracle.test.ts` (deleted, see git history), the only test allowed to open
   // pdf.js directly, removed with it).
-  it("la frontière rend l'ORDRE déclaré de la page, et rien d'autre de l'arbre", async () => {
+  it("the boundary returns the page's declared ORDER, and nothing else of the tree", async () => {
     const source = await readPdfSource(bytesOf("22-Tableau-Balise-En-Tetes-Faux"));
     const page = source.pages[0]!;
     expect(page.declaredOrder?.length).toBeGreaterThan(0);
@@ -159,7 +159,7 @@ describe("22 — tableau BALISÉ aux en-têtes faux : l'ORDRE se prend, le TYPE 
     expect(page.runs.every((run) => run.markedContentId !== undefined)).toBe(true);
   });
 
-  it("lu par la géométrie, le tableau a des en-têtes JUSTES là où le balisage les donne faux", async () => {
+  it("read by the geometry, the table has RIGHT headers where the tagging gives them wrong", async () => {
     // 🔴 THE DECISIVE COUNTER-EXAMPLE, and it has been a NON-REGRESSION one since
     // 23/09/2026: this document passes `PASS ua1` at veraPDF and its markup
     // puts the header row in TD and the first column in TH. The

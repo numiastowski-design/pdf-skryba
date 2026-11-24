@@ -33,7 +33,7 @@ const image = (over: Record<string, unknown> = {}): Record<string, unknown> => (
   ...over,
 });
 
-describe("readImageObject — trois formats de pixels, traduits en noms", () => {
+describe("readImageObject — three pixel formats, translated into names", () => {
   it("RGB 24 bits", () => {
     const read = readImageObject(objs({ img1: image() }), "img1", ImageKind);
     expect(read?.format).toBe("rgb-24");
@@ -46,35 +46,35 @@ describe("readImageObject — trois formats de pixels, traduits en noms", () => 
     expect(read?.format).toBe("rgba-32");
   });
 
-  it("gris sur un bit", () => {
+  it("gray on one bit", () => {
     const read = readImageObject(objs({ i: image({ kind: ImageKind.GRAYSCALE_1BPP }) }), "i", ImageKind);
     expect(read?.format).toBe("gray-1");
   });
 });
 
-describe("readImageObject — ABSTENTION plutôt qu'image à moitié lue", () => {
+describe("readImageObject — ABSTENTION rather than a half-read image", () => {
   // A half-read image would be published AS an image: plausible and
   // wrong, exactly what we refuse everywhere else.
 
-  it("objet pas encore résolu : `get` lève, on rend `undefined`", () => {
+  it("object not resolved yet: `get` throws, we return `undefined`", () => {
     expect(readImageObject(objs({}), "absent", ImageKind)).toBeUndefined();
   });
 
-  it("objet nul ou pas un objet", () => {
+  it("object null or not an object", () => {
     expect(readImageObject(objs({ i: null }), "i", ImageKind)).toBeUndefined();
     expect(readImageObject(objs({ i: 42 }), "i", ImageKind)).toBeUndefined();
   });
 
-  it("dimensions absentes ou non numériques", () => {
+  it("dimensions missing or not numeric", () => {
     expect(readImageObject(objs({ i: image({ width: undefined }) }), "i", ImageKind)).toBeUndefined();
     expect(readImageObject(objs({ i: image({ height: "2" }) }), "i", ImageKind)).toBeUndefined();
   });
 
-  it("données absentes", () => {
+  it("data missing", () => {
     expect(readImageObject(objs({ i: image({ data: undefined }) }), "i", ImageKind)).toBeUndefined();
   });
 
-  it("UN `kind` INCONNU S'ABSTIENT, il ne devine pas", () => {
+  it("AN UNKNOWN `kind` ABSTAINS, it does not guess", () => {
     // This is the case that matters for a version upgrade: if the store added
     // or renumbered a format (pdf.js could), we publish nothing rather than an image whose
     // channels would be interpreted wrongly.

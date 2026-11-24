@@ -7,7 +7,7 @@
  *  `/Type`, or the absence of `/Kids` when the file does not say); what a page MEASURES — the CropBox clipped to
  *  the MediaBox, corners normalised, which is what pdf.js's `page.view` gave (history: the two readings were compared before its removal); and that
  *  a document we cannot decrypt is REFUSED rather than half-read.
- *  TWO DELIBERATE DIVERGENCES FROM pdf.js (removed from the product; history), both written in `docs/POC-SANS-PDFJS.md`: a page with no MediaBox is
+ *  TWO DELIBERATE DIVERGENCES FROM pdf.js (removed from the product; history), both written in the proof of concept of the reader without pdf.js: a page with no MediaBox is
  *  REFUSED here (`page-box`) where pdf.js invented US Letter; a `/Rotate` that is not a quarter turn reads as 0,
  *  which is what pdf.js did, so that one was deliberate agreement.
  *  NOT here: the cross-reference section itself (`xref.ts`), decoding (`streams.ts`), the lexer (`parse.ts`), the

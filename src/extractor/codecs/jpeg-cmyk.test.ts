@@ -1,6 +1,6 @@
 /** The CMYK JPEG of a digital page, decoded by the vendored decoder (`vendor/jpeg-js-decoder.cjs`) and converted
  *  with our DeviceCMYK polynomial (`pdf-colour-ours.ts`). The fixture `fixtures/pdf/digital-cmyk-jpeg.pdf` is synthetic
- *  (a 64 × 48 gradient written by Pillow as a four-component Adobe JPEG). The two hashes are the output of pdf.js (since removed from the product) on the
+ *  (a 64 × 48 gradient written by Pillow as a four-component Adobe JPEG). The two hashes are what pdf.js (since removed from the product) produced on the
  *  same stream: its raw components (`getData` for a PDF source) and its RGB (`forceRGB`), measured 1/11/2026: our raw
  *  components and our RGB are byte-for-byte equal to them. */
 import { createHash } from "node:crypto";
@@ -25,14 +25,14 @@ function jpegOfFixture(): Uint8Array {
   return FILE.subarray(stream.start, stream.start + stream.length);
 }
 
-describe("le JPEG CMJN : décodé par le décodeur vendoré, converti par notre polynôme", () => {
-  it("les composantes brutes sont celles de pdf.js, octet pour octet", () => {
+describe("the CMYK JPEG: decoded by the vendored decoder, converted by our polynomial", () => {
+  it("the raw components are those pdf.js gave, byte for byte", () => {
     const raw = decodeRaw(jpegOfFixture(), {});
     expect([raw.width, raw.height, raw.numComponents, raw.ycck]).toEqual([64, 48, 4, false]);
     expect(createHash("sha256").update(raw.data).digest("hex")).toBe(CMYK_SHA256);
   });
 
-  it("la conversion en RVB est celle de pdf.js (forceRGB), octet pour octet", () => {
+  it("the RGB conversion is the one pdf.js made (forceRGB), byte for byte", () => {
     const raw = decodeRaw(jpegOfFixture(), {});
     const rgb = new Uint8Array(raw.width * raw.height * 3);
     for (let p = 0; p < raw.width * raw.height; p += 1) {

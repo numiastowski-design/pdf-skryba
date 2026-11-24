@@ -13,7 +13,7 @@ const GREY_1 = 1;
 const FILE = new Uint8Array(readFileSync(join(__dirname, "../../fixtures/pdf/60-Image-CCITT-Groupe4.pdf")));
 const fixture = () => openPdfObjects(FILE);
 
-describe("ccittImageObjectOf: une image CCITT lue par notre décodeur", () => {
+describe("ccittImageObjectOf: a CCITT image read by our decoder", () => {
   it("gives the size, the 1-bit grey format, and the 147 black pixels its generator drew", () => {
     const doc = fixture();
     const image = ccittImageObjectOf(doc, FILE, doc.pages()[0]!, "Im1", GREY_1)!;
@@ -24,7 +24,7 @@ describe("ccittImageObjectOf: une image CCITT lue par notre décodeur", () => {
     expect(black).toBe(147);
   });
 
-  it("une image qui n'est pas CCITT n'est pas décodée ici", () => {
+  it("an image that is not CCITT is not decoded here", () => {
     const doc = fixture();
     expect(ccittImageObjectOf(doc, FILE, doc.pages()[0]!, "Missing", GREY_1)).toBeUndefined();
   });

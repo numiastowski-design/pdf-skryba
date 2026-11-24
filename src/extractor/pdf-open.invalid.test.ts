@@ -42,8 +42,8 @@ const failureOf = async (bytes: Uint8Array): Promise<ReaderError> => {
 
 const named = (name: string, message = "simulated"): Error => Object.assign(new Error(message), { name });
 
-describe("openPdfSource — a PDF pdf.js cannot open is a failure", () => {
-  it("🔴 bytes that are not a PDF (the real InvalidPDFException) give EXTRACT_FAILED", async () => {
+describe("openPdfSource — a PDF our reader cannot open is a failure", () => {
+  it("🔴 bytes that are not a PDF (what raised pdf.js's real InvalidPDFException) give EXTRACT_FAILED", async () => {
     expect((await failureOf(new Uint8Array([1, 2, 3, 4, 5]))).code as string).toBe("EXTRACT_FAILED");
   });
 

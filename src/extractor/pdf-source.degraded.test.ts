@@ -156,8 +156,8 @@ describe("readPdfSource: the best-effort reads", () => {
   }, 60_000);
 
   it("links come from our document, on pages with text only; a page without text has none and keeps no cost", async () => {
-    // Links are read from OUR document since 31/10/2026 (`pdf-links-ours.ts`): pdf.js is no longer called for
-    // them. A document that our reader refuses therefore has no links, and its text is published all the same.
+    // Links are read from OUR document since 31/10/2026 (`pdf-links-ours.ts`); pdf.js, removed on 01/11/2026, no longer
+    // read them. A document that our reader refuses therefore has no links, and its text is published all the same.
     const cost = emptyExtractionCost();
     const source = await readPdfSource(bytes, { cost });
     expect(texts(source.pages[1]!)).toContain("uniqvistwo");
@@ -171,7 +171,7 @@ describe("readPdfSource: the best-effort reads", () => {
   }, 60_000);
 
   it("the structure is read from our document: a page with no tree declares no order; a tagged page declares its content", async () => {
-    // The tree is read from OUR document since 31/10/2026 (`pdf-structure.ts`): pdf.js is no longer called for it.
+    // The tree is read from OUR document since 31/10/2026 (`pdf-structure.ts`); pdf.js, removed on 01/11/2026, no longer read it.
     const plain = await readPdfSource(bytes);
     expect(plain.pages.every((p) => p.declaredOrder === undefined || p.declaredOrder.length === 0)).toBe(true);
     const made = await PDFDocument.create();
@@ -239,8 +239,8 @@ describe("readPdfSource: the best-effort reads", () => {
   }, 60_000);
 
   it("the weight of each run comes from our font object: regular, bold, and a run whose font we cannot name is unknown", async () => {
-    // The weight comes from OUR dictionary since 31/10/2026 (ISO 32000-1 Table 122, then the name): pdf.js no longer
-    // answers. A base font without "Bold" is regular, a font with a bold name is bold.
+    // The weight comes from OUR dictionary since 31/10/2026 (ISO 32000-1 Table 122, then the name); pdf.js was
+    // removed on 01/11/2026. A base font without "Bold" is regular, a font with a bold name is bold.
     state.glyphFailure = undefined;
     state.extraOps = undefined;
     const doc = await PDFDocument.create();

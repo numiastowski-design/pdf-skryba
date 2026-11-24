@@ -11,7 +11,7 @@ const at = (x: number, y: number): NamedOp => ({ op: "setTextMatrix", args: { a:
 const font: NamedOp = { op: "setFont", args: ["f1", 10] };
 
 describe("glyphRuns — cases measured on the fixtures", () => {
-  it("a glyph pdf.js flags `isSpace` (character code 32) but whose text is a letter is not blank: « » » of fixture 31, page 1", () => {
+  it("a glyph flagged `isSpace` (character code 32) but whose text is a letter is not blank: « » » of fixture 31, page 1", () => {
     // A subset font may give code 32 to any glyph; `isSpace` follows the code, the text follows the glyph.
     const guillemet = { unicode: "»", width: 500, isSpace: true };
     const runs = glyphRuns([
@@ -32,7 +32,7 @@ describe("glyphRuns — cases measured on the fixtures", () => {
   });
   const show = (text: string): NamedOp => ({ op: "showText", args: [[...text].map(glyph)] });
 
-  it("a run neither starts nor ends with a blank, as pdf.js's cycles: its origin is the first letter, its width ends with the last (the blank is spacing, not text)", () => {
+  it("a run neither starts nor ends with a blank, as pdf.js's cycles did: its origin is the first letter, its width ends with the last (the blank is spacing, not text)", () => {
     const [run] = glyphRuns([at(100, 700), font, show(" ab ")]);
     expect(run!.text).toBe("ab");
     expect(run!.x).toBe(102.5);

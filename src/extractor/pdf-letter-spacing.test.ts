@@ -97,9 +97,9 @@ describe("respaceLetterSpacedRuns", () => {
   });
 });
 
-describe("l'information « lettres espacées » est gardée sur le morceau recomposé (05/11/2026)", () => {
+describe("the « letter-spaced » information is kept on the rebuilt run (05/11/2026)", () => {
   // Kept in case it becomes useful: no rule reads it.
-  it("🔴 la copie recomposée porte letterSpaced: true, un morceau ordinaire rien", () => {
+  it("🔴 the rebuilt copy carries letterSpaced: true, an ordinary run nothing", () => {
     const spaced = run("L I V R E T", 100, 110);
     const out = respaceLetterSpacedRuns([spaced, run("corps", 300, 40)], glyphsOf("LIVRET", 100, 18));
     expect((out[0] as { letterSpaced?: boolean }).letterSpaced).toBe(true);

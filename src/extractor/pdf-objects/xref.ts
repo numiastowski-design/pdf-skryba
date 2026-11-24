@@ -8,7 +8,7 @@
  *  NOT here: whether the object FOUND at an offset carries the expected number (the document layer checks that,
  *  which is how a stale table shows), the MEMBERS of an object stream (`streams.ts`), the lexer and the objects
  *  themselves (`parse.ts`).
- *  Called by: the document layer of the POC (`docs/POC-SANS-PDFJS.md`), and `xref.test.ts`.
+ *  Called by: the document layer (`document.ts`), and `xref.test.ts`.
  *
  *  ITS OWN SCANNER, on purpose. A cross-reference table is not general PDF syntax: §7.5.4 allows digits, single
  *  spaces, end-of-line markers and two keywords, and no comment. Twenty lines of scanner read exactly that

@@ -1,4 +1,4 @@
-/** POC `docs/POC-SANS-PDFJS.md`: how many glyphs a content stream PAINTS, and with which font — the only
+/** POC of the reader without pdf.js: how many glyphs a content stream PAINTS, and with which font — the only
  *  implementation, read by the two POC tools (`./glyph-count-shadow.ts` (deleted, see git history), `./first-divergence.ts` (deleted, see git history)).
  *  DEVELOPMENT tool, outside the bundle. Decides: nothing, it counts.
  *

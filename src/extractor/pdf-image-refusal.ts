@@ -10,7 +10,7 @@
  *  the shape is one we read »; it never means « we do not know what this is ».
  *  NOT here: the counting and the notice (`extractor/pdf.ts`), where the places come from
  *  (`extractor/pdf-page-figures.ts`, `extractor/pdf-table-detector.ts`), the words shown to a human
- *  (`static/dashboard/src/UnpublishedPartsDialog.tsx`).
+ *  (the application's own screens).
  *  Called by: `extractor/pdf-source.ts` (`imageRefusal`, beside `imageFailure`). */
 
 import type { PictureRefusal } from "doc-ir";

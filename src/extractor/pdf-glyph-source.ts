@@ -38,7 +38,7 @@ export interface OurGlyph {
    *    we have the font and its encoding, and nothing says what this code paints. We publish nothing (
    *    31/10/2026: "we abstain"), because pdf.js re-read the glyph NUMBER there as a code point (HISTORICAL).
    *  - `"default-font"`: the page declares NO font under the name used, and we read with the default one,
-   *    the same as pdf.js's (`FALLBACK_FONT`). That is a reading, not an abstention.
+   *    the one pdf.js used (`FALLBACK_FONT`). That is a reading, not an abstention.
    *  - `"not-ours"`: we know we LACK the machinery to read this font — a Type0 whose
    *    `/Encoding` is an Adobe PREDEFINED CMap, which only the resources embedded in pdf.js decoded.
    *    This is not a verdict on the file, it is an ignorance on our side. `pdf-glyph-swap.ts` (deleted, see git history) used to leave
@@ -89,7 +89,7 @@ export interface TextState {
  *  WHOLE SENTENCE disappeared from a document that pdf.js read correctly
  *  (`pdf-synthetic-italic-order.test.ts`, found by the full `check` of 31/10/2026).
  *  WHAT IT IS WORTH is an external fact, so a TEST holds it and not this comment
- *  (`pdf-glyph-source.test.ts`, "la police par défaut est celle de pdf.js"): Helvetica, WinAnsiEncoding, and
+ *  (`pdf-glyph-source.test.ts`, the default-font block): Helvetica, WinAnsiEncoding, and
  *  a SIMPLE font — one byte per code.
  *  Written limit, and it was the same as pdf.js's: if the font really used was COMPOSITE, reading
  *  its codes on one byte invents two where one was needed. So we do no worse than what the
@@ -148,7 +148,7 @@ export const newGlyphMemo = (): GlyphMemo => ({ fonts: new Map(), cmaps: new Map
 
 /** The functions of a font, built once per font dictionary. */
 export function stateOf(doc: PdfObjectsDocument, declared: PdfDict | undefined, memo: GlyphMemo): TextState {
-  // No font under this name: the default one, as pdf.js does (see `FALLBACK_FONT`).
+  // No font under this name: the default one, as pdf.js did (see `FALLBACK_FONT`).
   const font = declared ?? FALLBACK_FONT;
   const known = memo.fonts.get(font);
   if (known !== undefined) return known;

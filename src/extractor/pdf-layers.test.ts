@@ -1,4 +1,4 @@
-/** The layers of a document, read from our dictionary (`pdf-layers.ts`). The expected verdicts are pdf.js's own, on this
+/** The layers of a document, read from our dictionary (`pdf-layers.ts`). The expected verdicts are the ones pdf.js gave on this
  *  same file (`tools/poc/layers-shadow.ts` (deleted, see git history), 1/11/2026: ten groups, three hidden, zero disagreements). */
 import { describe, expect, it } from "vitest";
 
@@ -43,37 +43,37 @@ const ocmd = (ids: string[], policy?: string): LayerGroup => ({
   expression: null,
 });
 
-describe("layerConfigOf: les calques de l'affichage, lus de notre dictionnaire", () => {
+describe("layerConfigOf: the layers of the display, read from our dictionary", () => {
   const config = layerConfigOf(openPdfObjects(layeredPdf()));
 
-  it("un groupe suit /BaseState, /ON et /OFF ; un groupe dont la vue est OFF est masqué", () => {
+  it("a group follows /BaseState, /ON and /OFF; a group whose view is OFF is hidden", () => {
     expect(config.isVisible(ocg("4R"))).toBe(true); // A, ON by default
-    expect(config.isVisible(ocg("5R"))).toBe(false); // B, listé dans /OFF
+    expect(config.isVisible(ocg("5R"))).toBe(false); // B, listed in /OFF
     expect(config.isVisible(ocg("6R"))).toBe(false); // C, /Usage /View /ViewState OFF
     expect(config.isVisible(ocg("7R"))).toBe(true); // D
   });
 
-  it("une politique de membres : AllOn est faux dès qu'un membre est masqué ; AnyOn suffit d'un seul", () => {
+  it("a membership policy: AllOn is false as soon as one member is hidden; AnyOn needs only one", () => {
     expect(config.isVisible(ocmd(["4R", "5R"], "AllOn"))).toBe(false);
     expect(config.isVisible(ocmd(["4R", "7R"]))).toBe(true);
   });
 
-  it("une politique AllOff est vraie quand tous les membres sont masqués", () => {
+  it("an AllOff policy is true when all members are hidden", () => {
     expect(config.isVisible(ocmd(["5R", "6R"], "AllOff"))).toBe(true);
   });
 
-  it("un groupe que la configuration ne nomme pas est affiché, comme pdf.js", () => {
+  it("a group the configuration does not name is shown, as pdf.js did", () => {
     expect(config.isVisible(ocg("99R"))).toBe(true);
     expect(config.isVisible(undefined)).toBe(true);
   });
 
-  it("un groupe à politique inconnue est affiché, comme pdf.js", () => {
+  it("a group with an unknown policy is shown, as pdf.js did", () => {
     expect(config.isVisible(ocmd(["5R"], "Sometimes"))).toBe(true);
   });
 });
 
-describe("layerConfigOf: sans /OCProperties, tout est affiché", () => {
-  it("rend vrai pour tout groupe, même masqué ailleurs", () => {
+describe("layerConfigOf: without /OCProperties, everything is shown", () => {
+  it("returns true for any group, even one hidden elsewhere", () => {
     // Same length, so the cross-reference offsets stay right: the key is renamed, the layers are still in the file.
     const text = Buffer.from(layeredPdf()).toString("latin1").replace("/OCProperties", "/XCProperties");
     const config = layerConfigOf(openPdfObjects(Uint8Array.from(Buffer.from(text, "latin1"))));

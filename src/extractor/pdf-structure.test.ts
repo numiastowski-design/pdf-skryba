@@ -12,7 +12,7 @@ function pdfWithStructure(
 ): Uint8Array {
   const tree = options.tree ?? true;
   const parents = options.pageStructParents ?? true;
-  // The root carries /ParentTree (object 5): without it, pdf.js walks nothing (ISO 32000-1 Table 322). The element is in 6.
+  // The root carries /ParentTree (object 5): without it, pdf.js walked nothing (ISO 32000-1 Table 322). The element is in 6.
   const rootWithParents = tree ? root.replace(/>>\s*$/, " /ParentTree 5 0 R >>") : root;
   const objects: string[] = [
     "<< /Type /Catalog /Pages 2 0 R /StructTreeRoot 4 0 R >>",
@@ -45,8 +45,8 @@ const readPage = (bytes: Uint8Array) => {
   return declaredStructureOf(doc, doc.pages()[0]!);
 };
 
-describe("declaredStructureOf: l'ordre déclaré d'une page, et ses notes", () => {
-  it("lit les contenus balisés dans l'ordre de l'arbre, sous la forme pNRmcN que pdf.js emploie", () => {
+describe("declaredStructureOf: the declared order of a page, and its notes", () => {
+  it("reads the marked contents in tree order, in the pNRmcN form pdf.js used", () => {
     // A P element (object 5) carrying MCIDs 1 then 0: the declared order is that of the tree, not that of the numbers.
     const bytes = pdfWithStructure("<< /Type /StructTreeRoot /K [6 0 R] >>", {
       element: "<< /Type /StructElem /S /P /Pg 3 0 R /K [1 0] >>",
@@ -54,7 +54,7 @@ describe("declaredStructureOf: l'ordre déclaré d'une page, et ses notes", () =
     expect(readPage(bytes)?.declaredOrder).toEqual(["p3R_mc1", "p3R_mc0"]);
   });
 
-  it("une RoleMap ramène Footnote à Note : ses contenus sont des notes", () => {
+  it("a RoleMap maps Footnote to Note: its contents are notes", () => {
     // pdf.js translated the role before comparing it; without the table, the content of a Word note is not a note.
     const bytes = pdfWithStructure("<< /Type /StructTreeRoot /K [6 0 R] /RoleMap << /Footnote /Note >> >>", {
       element: "<< /Type /StructElem /S /Footnote /Pg 3 0 R /K [2] >>",
@@ -62,7 +62,7 @@ describe("declaredStructureOf: l'ordre déclaré d'une page, et ses notes", () =
     expect([...(readPage(bytes)?.noteIds ?? [])]).toEqual(["p3R_mc2"]);
   });
 
-  it("🔴 un tableau /K partagé n'est parcouru qu'une fois : 24 tableaux de deux renvois chacun ne coûtent pas 2^24 visites", () => {
+  it("🔴 a shared /K array is walked only once: 24 arrays of two references each do not cost 2^24 visits", () => {
     // Security review of 02/11/2026, finding 1: only dictionaries were remembered, so an array that lists the next
     // array twice made the walk double at every level (2^64 at the depth cap) from a file of a few hundred bytes.
     // Objects 6..29 are arrays `[n+1 n+1]`; object 30 is the one real element. 24 levels = 16 M visits (about a second) unguarded.
@@ -76,15 +76,15 @@ describe("declaredStructureOf: l'ordre déclaré d'une page, et ses notes", () =
     expect(structure?.declaredOrder).toEqual(["p3R_mc4"]);
   });
 
-  it("ne lit rien sans /ParentTree : pdf.js ne parcourt pas non plus un arbre sans table des parents", () => {
+  it("reads nothing without /ParentTree: pdf.js did not walk a tree without a parent table either", () => {
     expect(readPage(pdfWithStructure("<< /Type /StructTreeRoot >>", { tree: false }))).toBeUndefined();
   });
 
-  it("ne lit rien pour une page qui n'a pas /StructParents", () => {
+  it("reads nothing for a page that has no /StructParents", () => {
     expect(readPage(pdfWithStructure("<< /Type /StructTreeRoot >>", { pageStructParents: false }))).toBeUndefined();
   });
 
-  it("une racine vide donne un ordre vide, et non une absence", () => {
+  it("an empty root gives an empty order, not an absence", () => {
     expect(readPage(pdfWithStructure("<< /Type /StructTreeRoot >>"))).toEqual({
       declaredOrder: [],
       noteIds: new Set(),

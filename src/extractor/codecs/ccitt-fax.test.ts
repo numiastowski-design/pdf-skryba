@@ -36,7 +36,7 @@ function hashOf(bits: Uint8Array, columns: number, rows: number, pitch: number):
   return createHash("sha256").update(picture).digest("hex");
 }
 
-describe("decodeCcittFax: le décodeur CCITT, contre pdf.js sur le corpus", () => {
+describe("decodeCcittFax: the CCITT decoder, once checked against pdf.js on the corpus", () => {
   it("a made-up picture coded by libtiff gives back the rows its generator drew", () => {
     const image = decodeCcittFax(VECTOR, VECTOR_OPTIONS)!;
     expect(image.rows).toBe(20);
@@ -47,24 +47,24 @@ describe("decodeCcittFax: le décodeur CCITT, contre pdf.js sur le corpus", () =
     );
   });
 
-  it("des lignes verticales sans changement sont des lignes blanches (V0 : un bit à 1 par ligne)", () => {
+  it("vertical codes with no change are white rows (V0: one 1 bit per row)", () => {
     const image = decodeCcittFax(Uint8Array.from([0xff, 0xff]), { ...VECTOR_OPTIONS, rows: 8 })!;
     expect(image.bits.every((b) => b === 0xff)).toBe(true);
   });
 
-  it("BlackIs1 inverse le dessin : le même flux donne des bits complémentaires", () => {
+  it("BlackIs1 inverts the drawing: the same stream gives complementary bits", () => {
     const normal = decodeCcittFax(VECTOR, VECTOR_OPTIONS)!;
     const inverted = decodeCcittFax(VECTOR, { ...VECTOR_OPTIONS, BlackIs1: true })!;
     expect(inverted.bits.every((b, i) => b === (~normal.bits[i]! & 0xff))).toBe(true);
   });
 
-  it("un flux qui s'arrête tôt laisse les lignes manquantes blanches", () => {
+  it("a stream that stops early leaves the missing rows white", () => {
     const image = decodeCcittFax(VECTOR.subarray(0, 4), VECTOR_OPTIONS)!;
     const lastRow = image.bits.subarray((image.rows - 1) * image.pitch, image.rows * image.pitch);
     expect(lastRow.every((b) => b === 0xff)).toBe(true);
   });
 
-  it("une image trop grande est refusée, comme PDFium refuse plus de 65 535 pixels de côté", () => {
+  it("an image too large is refused, as PDFium refuses more than 65,535 pixels a side", () => {
     expect(decodeCcittFax(VECTOR, { ...VECTOR_OPTIONS, columns: 70000 })).toBeUndefined();
     expect(decodeCcittFax(VECTOR, { ...VECTOR_OPTIONS, columns: 60000, rows: 60000 })).toBeUndefined();
   });

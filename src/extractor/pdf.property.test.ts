@@ -1,17 +1,16 @@
 /**
- * Fuzz testing — extractors, priority 1 (docs/FUZZ-TESTING.md [purged 27/09/2026, git history] §2-4), PDF
- * (digital) path. Same "do both" chantier as docx.property.test.ts — see
- * that file's header for the full method/property rationale.
+ * Fuzz testing — extractors, priority 1 (from a fuzz-testing plan purged on 27/09/2026), PDF
+ * (digital) path.
  *
  * Only the small DIGITAL fixture (05a) is used here — the 40-page scanned
  * fixture (05b, 5.3 MB) would make repeated fuzzing far too slow, and its
  * own path (OCR/vision) is a separate, not-yet-built fuzz target
- * (FUZZ-TESTING.md [purged 27/09/2026, git history] §4's own "chemin vision" section), not this one.
+ * (the purged fuzz-testing plan's §4, its own "vision path" section), not this one.
  *
  * `extractPdf` already wraps its ENTIRE read of the document (`readPdfSource`,
  * `pdf-open.ts`; formerly the pdf.js call) in one try/catch — a narrower, more defended surface
  * than pptx's own. The interesting PDF-specific corruption per
- * FUZZ-TESTING.md [purged 27/09/2026, git history] §4 is the xref table (near the file's own tail) and the
+ * that plan is the xref table (near the file's own tail) and the
  * content stream, not a ZIP-style missing-part - constructed by mutating
  * real PDF bytes directly, not synthesizing malformed structure by hand.
  *
@@ -63,7 +62,7 @@ async function assertNeverCrashesOnlyNamedFailure(bytes: Uint8Array): Promise<vo
   }
 }
 
-describe("extractPdf - corruption fuzzing, truncation (fuzz: extractors priority 1, MIKSUDOC « Spécification technique » §13)", () => {
+describe("extractPdf - corruption fuzzing, truncation (fuzz: extractors priority 1)", () => {
   it("truncating a real digital PDF at any byte percentage never crashes the process, only ever fails named", async () => {
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: 1, max: 99 }), async (percent) => {
@@ -75,7 +74,7 @@ describe("extractPdf - corruption fuzzing, truncation (fuzz: extractors priority
   });
 });
 
-describe("extractPdf - corruption fuzzing, xref/trailer corruption (fuzz: extractors priority 1, docs/FUZZ-TESTING.md [purged 27/09/2026, git history] §4, 'table des objets (xref) incohérente')", () => {
+describe("extractPdf - corruption fuzzing, xref/trailer corruption (fuzz: extractors priority 1, the purged fuzz-testing plan §4, 'inconsistent object table (xref)')", () => {
   it("corrupting the file's own tail bytes (where the xref table + trailer live) never crashes the process", async () => {
     await fc.assert(
       fc.asyncProperty(fc.integer({ min: 1, max: 500 }), fc.integer({ min: 0, max: 255 }), (tailBytes, fillByte) => {
@@ -94,10 +93,10 @@ describe("extractPdf - corruption fuzzing, the exact corruption behind CI run 13
   // post-mortem isolated as a reliable-ish producer of pdf.js's internally-
   // escaping rejection (src/extractor/pdfjs-internal-errors.ts, a file that went with pdf.js — a promise
   // nobody held, unreachable from extractPdf's try/catch, timing-dependent).
-  // vitest.config.ts's `onUnhandledError` filter is what keeps that escapee
-  // from failing the run; this case keeps the scenario permanently in the
-  // suite so a regression of THAT filter — or a change of reader behavior
-  // — surfaces here first, not as a once-a-fortnight red main.
+  // vitest.config.ts's `onUnhandledError` filter was what kept that escapee
+  // from failing the run (it no longer exists); this case keeps the scenario permanently in the
+  // suite so a change of reader behavior surfaces here first, not as a
+  // once-a-fortnight red main.
   it("the corruption that leaked a floating pdf.js rejection still fails named, never crashes the run", async () => {
     const corrupted = FIXTURE_BYTES.slice();
     for (let i = 500; i < 690; i++) corrupted[i] = 0x54;
@@ -105,7 +104,7 @@ describe("extractPdf - corruption fuzzing, the exact corruption behind CI run 13
   });
 });
 
-describe("extractPdf - corruption fuzzing, content-stream corruption (fuzz: extractors priority 1, docs/FUZZ-TESTING.md [purged 27/09/2026, git history] §4, 'flux de contenu corrompu')", () => {
+describe("extractPdf - corruption fuzzing, content-stream corruption (fuzz: extractors priority 1, the purged fuzz-testing plan §4, 'corrupted content stream')", () => {
   it("flipping a contiguous byte range anywhere in the file never crashes the process", async () => {
     await fc.assert(
       fc.asyncProperty(

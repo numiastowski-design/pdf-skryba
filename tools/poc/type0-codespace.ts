@@ -1,4 +1,4 @@
-/** POC `docs/POC-SANS-PDFJS.md`: the hypothesis of `shown-glyphs.ts` — "a Type0 font codes its glyphs on
+/** POC of the reader without pdf.js: the hypothesis of `shown-glyphs.ts` — "a Type0 font codes its glyphs on
  *  TWO bytes" — measured instead of assumed. DEVELOPMENT tool, outside the bundle.
  *  Decides: nothing. It classifies each USED Type0 font by its `/Encoding` (§9.7.5): `Identity-H/V`, a named
  *  predefined CMap, or an EMBEDDED CMap — and for the latter it reads its `codespacerange` (§9.7.6.2) to

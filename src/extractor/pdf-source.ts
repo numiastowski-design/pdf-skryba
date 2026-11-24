@@ -104,7 +104,8 @@ export interface PdfTextRun {
    *
    * It is the same reading `pdf-table-detector.ts#walkPage` does for IMAGES,
    * from the operator stream; here it comes from the marked-content boundaries
-   * `getTextContent({ includeMarkedContent: true })` already interleaves, so it
+   * our glyphs already carry (`glyph-positions.ts`), as pdf.js's
+   * `getTextContent({ includeMarkedContent: true })` interleaved them, so it
    * costs nothing extra and holds on every page, including the ones whose
    * operators are never named.
    *
@@ -201,7 +202,7 @@ export interface PdfSourcePage {
    * KNOWN LIMIT, measured 29/09/2026, CORRECTED 29/09/2026 (an independent
    * counter-diagnosis found "declares zero content" and "legal" both false —
    * see below): a document can call itself tagged (`/MarkInfo`) and still
-   * handed pdf.js a NON-NULL `getStructTree()` that comes back
+   * handed pdf.js a NON-NULL `getStructTree()` that came back
    * `{ role: "Root", children: [] }`.
    * `fixtures/pdf/37-Circulaire-Rentree-2023-Pages.pdf` (Apple Pages/Quartz)
    * does this on all six of its pages — the only corpus document that does.
@@ -209,7 +210,7 @@ export interface PdfSourcePage {
    * it carries 51 `/StructElem /P` with `/Pg` and `/K <MCID>`, and 133 `BDC`
    * operators marking content in its streams. What it LACKS is `/ParentTree`
    * and, on every page, `/StructParents` — and `StructTreePage.parse()`
-   * (pdf.worker.mjs ~l.40041-40054) returns immediately once `parentTree` is
+   * (pdf.worker.mjs ~l.40041-40054) returned immediately once `parentTree` was
    * falsy, before ever walking those 51 elements. ISO 32000-1 Table 322 marks
    * `/ParentTree` "Required if any structure element contains content
    * items" — this document has content items and no `/ParentTree`: it is
@@ -266,7 +267,7 @@ export interface PdfDocumentInfo {
   signatures?: number;
 }
 
-/** One text cycle (pdf.js's, before its removal; now built from our glyphs), reduced to what the letters control needs (`pipeline/letter-conservation.ts#ReferenceCycle`, the same shape): the
+/** One text cycle (pdf.js's, before its removal; now built from our glyphs), reduced to what the letters control needs (the application's `ReferenceCycle`, the same shape): the
  *  second reading of a page, kept beside the runs our own glyphs build. Hidden text is already left out. */
 export interface PdfReferenceCycle {
   text: string;
@@ -493,7 +494,7 @@ interface ReadPdfSourceOptions {
 
 /** The most operators one page may carry. A content stream can inflate to hundreds of millions of operators, which
  *  saturates Forge's 512 MB or its 900 s, and the retry replays the same bomb; real pages are far below.
- *  🔴 ARBITRARY THRESHOLD, settled by on 31/10/2026: a "clear refusal" rather than a memory risk.
+ *  🔴 ARBITRARY THRESHOLD, settled on 31/10/2026: a "clear refusal" rather than a memory risk.
  *  It is DELIBERATELY the same number as `pdf-objects/bounds.ts#MAX_CONTENT_OPS`, so that both readers
  *  refuse the same page; the two go down together or not at all. */
 export const PDF_MAX_OPS_PER_PAGE = 1_000_000;

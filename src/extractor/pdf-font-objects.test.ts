@@ -1,9 +1,9 @@
 /**
  * The fields of a font object read from the DICTIONARY (`pdf-font-objects.ts`), and the Symbol detection that
  * follows from it. ISO 32000-1:2008 §9.6 (simple fonts), §9.6.5 (Type 3), §9.8 (descriptor).
- * The fact that motivates the repair, measured on 31/10/2026: pdf.js NEVER fills `name` with the `BaseFont`
+ * The fact that motivated the repair, measured on 31/10/2026: pdf.js NEVER filled `name` with the `BaseFont`
  * (0 fonts out of 633 seen in the fixtures), so the product's Symbol detection never triggered —
- * whereas 359 Symbol fonts are present. Our dictionary, for its part, carries the name.
+ * whereas 359 Symbol fonts were present. Our dictionary, for its part, carries the name.
  */
 import { describe, expect, it } from "vitest";
 
@@ -45,86 +45,86 @@ const fontOf = (font: string) => {
   return ourFontObject(doc, dict);
 };
 
-describe("ourFontObject: le nom vient de /BaseFont, jamais d'une valeur de pdf.js", () => {
-  it("lit le nom du dictionnaire, sous-ensemble compris", () => {
+describe("ourFontObject: the name comes from /BaseFont, never from a pdf.js value", () => {
+  it("reads the name from the dictionary, subset prefix included", () => {
     expect(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /BCDJEE+SymbolMT >>").name).toBe("BCDJEE+SymbolMT");
   });
 
-  it("donne la graisse d'après le nom, quand le descripteur n'en dit rien", () => {
+  it("gives the weight from the name when the descriptor says nothing of it", () => {
     expect(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>").weight).toBe("bold");
     expect(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>").weight).toBe("normal");
     expect(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Calibri >>").weight).toBe("unknown");
   });
 
-  it("n'invente aucun nom quand /BaseFont manque", () => {
+  it("invents no name when /BaseFont is missing", () => {
     expect(fontOf("<< /Type /Font /Subtype /Type1 >>").name).toBeUndefined();
   });
 });
 
-describe("ourFontObject: une police Type 3 porte sa matrice", () => {
-  it("reconnaît /Subtype /Type3 et rend /FontMatrix telle quelle", () => {
+describe("ourFontObject: a Type 3 font carries its matrix", () => {
+  it("recognises /Subtype /Type3 and returns /FontMatrix as is", () => {
     const font = fontOf("<< /Type /Font /Subtype /Type3 /FontMatrix [0.001 0 0 0.001 0 0] >>");
     expect(font.isType3Font).toBe(true);
     expect(font.fontMatrix).toEqual([0.001, 0, 0, 0.001, 0, 0]);
   });
 
-  it("n'a PAS de matrice pour une police simple", () => {
+  it("has NO matrix for a simple font", () => {
     expect(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>").isType3Font).toBe(false);
   });
 
-  it("s'abstient sur une matrice qui n'a pas six nombres", () => {
+  it("abstains on a matrix that does not have six numbers", () => {
     expect(fontOf("<< /Type /Font /Subtype /Type3 /FontMatrix [0.001 0] >>").fontMatrix).toBeUndefined();
   });
 });
 
-describe("ourFontObject: un programme de police manquant", () => {
-  it("dit absent quand le descripteur ne porte aucun /FontFile", () => {
+describe("ourFontObject: a missing font program", () => {
+  it("says missing when the descriptor carries no /FontFile", () => {
     expect(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>").missingFile).toBe(true);
   });
 });
 
-describe("la détection de Symbol, lue du dictionnaire (réparée le 31/10/2026)", () => {
-  it("🔴 reconnaît une SymbolMT sous-ensemble, celle qui était invisible au produit", () => {
+describe("Symbol detection, read from the dictionary (repaired on 31/10/2026)", () => {
+  it("🔴 recognises a subset SymbolMT, the one that was invisible to the product", () => {
     // This is THE measured case: 359 fonts of this type in the fixtures, zero detected before the repair.
     expect(isSymbolFont(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /BCDJEE+SymbolMT >>").name)).toBe(true);
   });
 
-  it("ne prend pas Helvetica pour Symbol", () => {
+  it("does not take Helvetica for Symbol", () => {
     expect(isSymbolFont(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>").name)).toBe(false);
   });
 });
 
-describe("ourWeightOf: la graisse selon ISO 32000-1 Table 122, puis le nom", () => {
-  it("🔴 /FontWeight du descripteur prime : 700 et 900 sont gras, 400 est régulier, même si le nom dit Bold", () => {
+describe("ourWeightOf: the weight per ISO 32000-1 Table 122, then the name", () => {
+  it("🔴 the descriptor's /FontWeight prevails: 700 and 900 are bold, 400 is regular, even if the name says Bold", () => {
     expect(ourWeightOf(700, "Arial")).toBe("bold");
     expect(ourWeightOf(900, "Arial-Black")).toBe("bold");
     expect(ourWeightOf(400, "Arial-BoldMT")).toBe("normal");
   });
 
-  it("sans /FontWeight, le nom décide : Bold, Black ou Heavy sont gras", () => {
+  it("without /FontWeight, the name decides: Bold, Black or Heavy are bold", () => {
     expect(ourWeightOf(undefined, "Arial-BoldMT")).toBe("bold");
     expect(ourWeightOf(undefined, "Impact-Heavy")).toBe("bold");
   });
 
-  it("une police de base sans « Bold » dans son nom est régulière ; une autre au nom muet reste inconnue", () => {
+  it("a base font without « Bold » in its name is regular; another with a mute name stays unknown", () => {
     expect(ourWeightOf(undefined, "Helvetica")).toBe("normal");
     expect(ourWeightOf(undefined, "Calibri")).toBe("unknown");
   });
 
-  it("n'utilise PAS le bit 19 de /Flags (ForceBold) : la norme le réserve au rendu des petits corps", () => {
+  it("does NOT use bit 19 of /Flags (ForceBold): the standard reserves it for rendering small sizes", () => {
     // ForceBold alone does not fix the weight: this module does not even receive /Flags.
     expect(ourWeightOf(400, "Arial")).toBe("normal");
   });
 
-  it("ignore une valeur hors de 100 à 900 : la norme ne la permet pas", () => {
+  it("ignores a value outside 100 to 900: the standard does not allow it", () => {
     expect(ourWeightOf(1000, "Calibri")).toBe("unknown");
   });
 });
 
-describe("l'italique d'une police, lu dans ce que le PDF déclare (05/11/2026 : « à faire oui »)", () => {
+describe("the italic of a font, read from what the PDF declares (05/11/2026)", () => {
   // ISO 32000-1: bit 7 of `/Flags` (value 64, Table 123 "Italic"), a non-zero `/ItalicAngle` (Table 122), and the
   // font's name ("-Italic", "-Oblique"). A name that says nothing, without a descriptor: unknown.
-  it("🔴 le drapeau Italic du descripteur suffit", () => {
+  it("🔴 the descriptor's Italic flag is enough", () => {
     expect(
       fontOf(
         "<< /Type /Font /Subtype /TrueType /BaseFont /ABCDEF+Garamond /FontDescriptor << /Type /FontDescriptor /FontName /ABCDEF+Garamond /Flags 96 >> >>",
@@ -132,7 +132,7 @@ describe("l'italique d'une police, lu dans ce que le PDF déclare (05/11/2026 : 
     ).toBe(true);
   });
 
-  it("🔴 un angle d'italique non nul suffit", () => {
+  it("🔴 a non-zero italic angle is enough", () => {
     expect(
       fontOf(
         "<< /Type /Font /Subtype /TrueType /BaseFont /ABCDEF+Garamond /FontDescriptor << /Type /FontDescriptor /FontName /ABCDEF+Garamond /Flags 32 /ItalicAngle -12 >> >>",
@@ -140,14 +140,14 @@ describe("l'italique d'une police, lu dans ce que le PDF déclare (05/11/2026 : 
     ).toBe(true);
   });
 
-  it("🔴 le nom le dit : Oblique, Italic ; une police de base droite ne l'est pas ; un nom muet sans descripteur ne dit rien", () => {
+  it("🔴 the name says it: Oblique, Italic; an upright base font is not; a mute name without a descriptor says nothing", () => {
     expect(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique >>").italic).toBe(true);
     expect(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Times-BoldItalic >>").italic).toBe(true);
     expect(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>").italic).toBe(false);
     expect(fontOf("<< /Type /Font /Subtype /TrueType /BaseFont /ABCDEF+Garamond >>").italic).toBeUndefined();
   });
 
-  it("ourItalicOf : les trois lectures dans l'ordre", () => {
+  it("ourItalicOf: the three readings in order", () => {
     expect(ourItalicOf(64, undefined, "ABCDEF+Garamond")).toBe(true);
     expect(ourItalicOf(32, -12, "ABCDEF+Garamond")).toBe(true);
     expect(ourItalicOf(32, 0, "Garamond-Italic")).toBe(true);

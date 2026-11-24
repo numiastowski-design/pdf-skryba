@@ -79,9 +79,9 @@ async function readPage(path: string, pageIndex: number): Promise<{ ops: NamedOp
 const glyphAt = (glyphs: readonly GlyphFragment[], x: number, y: number): GlyphFragment | undefined =>
   glyphs.find((g) => Math.abs(g.x - x) < 0.05 && Math.abs(g.y - y) < 0.05);
 
-describe("oracle — chaque cycle de getTextContent se retrouve dans nos glyphes", () => {
+describe("oracle — each run of the page is found in our glyphs (formerly each getTextContent cycle)", () => {
   for (const fixture of FIXTURES) {
-    it(`origine et premier caractère de chaque item — ${fixture.split("/").pop()}`, async () => {
+    it(`origin and first character of each item — ${fixture.split("/").pop()}`, async () => {
       const { ops, items } = await readPage(fixture, 0);
       const glyphs = buildGlyphFragments(ops);
 
@@ -100,7 +100,7 @@ describe("oracle — chaque cycle de getTextContent se retrouve dans nos glyphes
       ).toEqual([]);
     });
 
-    it(`aucun NaN, et le texte de la page se retrouve entier — ${fixture.split("/").pop()}`, async () => {
+    it(`no NaN, and the whole text of the page is found — ${fixture.split("/").pop()}`, async () => {
       const { ops, items } = await readPage(fixture, 0);
       const glyphs = buildGlyphFragments(ops);
 
@@ -122,7 +122,7 @@ describe("oracle — chaque cycle de getTextContent se retrouve dans nos glyphes
     });
   }
 
-  it("subdivise réellement : un item de plusieurs caractères vaut plusieurs glyphes", async () => {
+  it("really subdivides: an item of several characters makes several glyphs", async () => {
     const { ops, items } = await readPage(FIXTURES[0]!, 0);
     const glyphs = buildGlyphFragments(ops);
     const longest = items.reduce((a, b) => (b.str.length > a.str.length ? b : a));

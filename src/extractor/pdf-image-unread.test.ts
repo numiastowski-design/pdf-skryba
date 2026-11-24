@@ -4,7 +4,7 @@
  * and `extractPdf` turns the total into one `{ kind: "pdf-image-unread", slow, unreadable }` document notice.
  *
  * Interface assumed (to be implemented):
- *  - `PdfSourcePage.imageFailure(name): "slow" | "unreadable" | undefined` — why our reader has no pixels under that object name (`slow` is the pdf.js timeout, gone with it):
+ *  - `PdfSourcePage.imageFailure(name): "slow" | "unreadable" | undefined` — why our reader has no pixels under that object name (`slow` was the pdf.js timeout, gone with it):
  *    "slow" when `awaitImageObject` resolved on its timer, "unreadable" when the object arrived but `readImage` still gives
  *    `undefined`, `undefined` when `readImage` works.
  *  - `PageFigures.lost(): { slow: number; unreadable: number }` — placements lost so far on this page, counted when a placed
@@ -166,14 +166,14 @@ describe("pageFigures counts the placements it could not read, by cause", () => 
     expect(lostOf(figures)).toEqual({ slow: 0, unreadable: 0, places: [] });
   });
 
-  it("with pdf-lib unavailable altogether, a pdf.js timeout is still counted slow", () => {
+  it("with pdf-lib unavailable altogether, a `slow` failure (formerly a pdf.js timeout) is still counted slow", () => {
     const { figures } = figuresOf([box("img_1", "5R")], sourceOf({}, { img_1: "slow" }), undefined);
     readAll(figures);
     expect(lostOf(figures)).toEqual({ slow: 1, unreadable: 0, places: [{ id: "5R", why: "bytes" }] });
   });
 });
 
-// 🔴 A STENCIL MASK (`/ImageMask true`) IS A PICTURE WITH NO COLOUR OF ITS OWN (03/11/2026: « branche-le »).
+// 🔴 A STENCIL MASK (`/ImageMask true`) IS A PICTURE WITH NO COLOUR OF ITS OWN (03/11/2026: « wire it in »).
 // It says « paint the current fill colour here, leave the page showing there », one bit per dot — a monochrome logo, a
 // stamp, a rule. Until that day it left the page in SILENCE: no decoder read one and no path even looked at
 // `paintImageMaskXObject`, so the stamp was neither published nor counted. pdf.js did not publish them either (it named

@@ -58,7 +58,7 @@ export const pageFigures = (
   // lot « 31 »): the same object painted twice at two sizes keeps one
   // attachment (sha256) and two widths. The file's pixel width is NOT it —
   // Confluence displayed that one, and a 1 559-px footer band drawn 548 pt wide
-  // scrolled the page sideways (docs/PLATFORM-STATUS.md §41).
+  // scrolled the page sideways.
   // The file's own pixel width travels with the drawn one: the page never
   // publishes an image wider than its pixels (G2, renderer/storage.ts).
   const pixelWidthOf = (imgBytes: Uint8Array): { pixelWidth?: number } => {

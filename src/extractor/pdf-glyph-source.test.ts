@@ -56,8 +56,8 @@ function refusalOf(fn: () => unknown): PdfObjectsRefusal {
   throw new Error("expected a PdfObjectsRefusal, nothing was thrown");
 }
 
-describe("openOurGlyphs: les trois champs que la couche de position lit", () => {
-  it("rend un tableau par opérateur de texte, dans l'ordre du flux", () => {
+describe("openOurGlyphs: the three fields the position layer reads", () => {
+  it("returns one array per text operator, in stream order", () => {
     const source = openOurGlyphs(onePage("BT /F1 12 Tf (Hi) Tj (there) Tj ET"));
     const ops = source.glyphsOfPage(0);
     expect(ops.length).toBe(2);
@@ -65,18 +65,18 @@ describe("openOurGlyphs: les trois champs que la couche de position lit", () => 
     expect(ops[1]?.map((g) => g.unicode).join("")).toBe("there");
   });
 
-  it("marque isSpace sur le code 32 d'une police à UN octet, et sur lui seul (§9.3.3)", () => {
+  it("marks isSpace on code 32 of a ONE-byte font, and on it alone (§9.3.3)", () => {
     const glyphs = openOurGlyphs(onePage("BT /F1 12 Tf (a b) Tj ET")).glyphsOfPage(0)[0];
     expect(glyphs?.map((g) => g.isSpace)).toEqual([false, true, false]);
   });
 
-  it("donne l'avance de chaque code depuis les métriques de la police standard", () => {
+  it("gives the advance of each code from the standard font's metrics", () => {
     const glyphs = openOurGlyphs(onePage("BT /F1 12 Tf (A) Tj ET")).glyphsOfPage(0)[0];
     // Helvetica, "A": 667 thousandths of an em (Adobe AFM).
     expect(glyphs?.[0]?.width).toBe(667);
   });
 
-  it("s'abstient quand rien ne dit ce qu'un code peint, au lieu d'inventer", () => {
+  it("abstains when nothing says what a code paints, instead of inventing", () => {
     // A Type0 `Identity-H` without `/ToUnicode`: its codes are glyph numbers, and only its font program
     // could speak (31/10/2026: "we abstain").
     const resources = "<< /Font << /F1 5 0 R >> >>";
@@ -91,13 +91,13 @@ describe("openOurGlyphs: les trois champs que la couche de position lit", () => 
     expect(openOurGlyphs(bytes).glyphsOfPage(0)[0]?.[0]?.unicode).toBeUndefined();
   });
 
-  it("garde la police à travers q/Q, parce qu'elle est dans l'état graphique (Table 52)", () => {
+  it("keeps the font across q/Q, because it is in the graphics state (Table 52)", () => {
     const ops = openOurGlyphs(onePage("/F1 12 Tf q Q BT (Hi) Tj ET")).glyphsOfPage(0);
     expect(ops[0]?.map((g) => g.unicode).join("")).toBe("Hi");
   });
 });
 
-describe("openOurGlyphs: la police PAR DÉFAUT est celle de pdf.js", () => {
+describe("openOurGlyphs: the DEFAULT font is the one pdf.js used", () => {
   /** A page that paints with a name its resources do NOT declare — what pdf-lib's `pushOperators` produces, and
    *  what made a whole sentence disappear before the default font (31/10/2026). */
   const undeclared = (painted: string): Uint8Array =>
@@ -108,17 +108,17 @@ describe("openOurGlyphs: la police PAR DÉFAUT est celle de pdf.js", () => {
       stream(`BT /Helvetica 10 Tf ${painted} Tj ET`),
     ]);
 
-  it("lit le texte au lieu de le perdre, quand la page ne déclare aucune police sous ce nom", () => {
+  it("reads the text instead of losing it, when the page declares no font under that name", () => {
     const glyphs = openOurGlyphs(undeclared("(Chiens)")).glyphsOfPage(0)[0];
     expect(glyphs?.map((g) => g.unicode).join("")).toBe("Chiens");
   });
 
-  it("marque ces glyphes comme venant du DÉFAUT, pour qu'on puisse les compter", () => {
+  it("marks these glyphs as coming from the DEFAULT, so that they can be counted", () => {
     const glyphs = openOurGlyphs(undeclared("(A)")).glyphsOfPage(0)[0];
     expect(glyphs?.[0]?.read).toBe("default-font");
   });
 
-  it("🔴 C'EST WinAnsiEncoding, PAS StandardEncoding — le fait externe que ce test tient", () => {
+  it("🔴 IT IS WinAnsiEncoding, NOT StandardEncoding — the external fact this test holds", () => {
     // The discriminant is chosen, not picked at random: code 0xE9 is "é" (U+00E9) in WinAnsi and the glyph
     // `Oslash` ("Ø") in StandardEncoding. pdf.js took Helvetica + WinAnsiEncoding as its fallback font
     // (`fallbackFontDict`, checked in the installed bundle on 31/10/2026); we keep that choice, and this test pins it:
@@ -127,23 +127,23 @@ describe("openOurGlyphs: la police PAR DÉFAUT est celle de pdf.js", () => {
     expect(glyphs?.[0]?.unicode).toBe("é");
   });
 
-  it("et c'est une police SIMPLE : un octet par code, jamais deux", () => {
+  it("and it is a SIMPLE font: one byte per code, never two", () => {
     const glyphs = openOurGlyphs(undeclared("<4142>")).glyphsOfPage(0)[0];
     expect(glyphs?.map((g) => g.unicode)).toEqual(["A", "B"]);
   });
 
-  it("donne aussi l'avance d'Helvetica, pour que la ligne ne se décale pas", () => {
+  it("also gives Helvetica's advance, so that the line does not shift", () => {
     const glyphs = openOurGlyphs(undeclared("(A)")).glyphsOfPage(0)[0];
     expect(glyphs?.[0]?.width).toBe(667);
   });
 
-  it("une police DÉCLARÉE n'est jamais marquée comme venant du défaut", () => {
+  it("a DECLARED font is never marked as coming from the default", () => {
     const glyphs = openOurGlyphs(onePage("BT /F1 12 Tf (A) Tj ET")).glyphsOfPage(0)[0];
     expect(glyphs?.[0]?.read).toBe("ours");
   });
 });
 
-describe("openOurGlyphs: un émoji écrit sur DEUX codes voisins est recomposé", () => {
+describe("openOurGlyphs: an emoji written on TWO neighbouring codes is recomposed", () => {
   // 🔴 31/10/2026: "we have to do it ourselves", for emojis. A producer can write the UTF-16 units
   // as CIDs — FreeMono and DejaVuSans via LibreOffice do —, so an emoji occupies TWO neighbouring painted
   // codes, each carrying an isolated half-pair. Taken alone each is refused; together they spell a
@@ -173,41 +173,41 @@ end`;
     ]);
   };
 
-  it("rend l'émoji sur le PREMIER des deux glyphes", () => {
+  it("returns the emoji on the FIRST of the two glyphs", () => {
     // D83D DC00 spells U+1F400.
     const glyphs = openOurGlyphs(emojiDoc("D83DDC00")).glyphsOfPage(0)[0];
     expect(glyphs?.[0]?.unicode).toBe("\u{1F400}");
   });
 
-  it("et ne publie RIEN sur le second, qui n'est que la moitié basse", () => {
+  it("and publishes NOTHING on the second, which is only the low half", () => {
     const glyphs = openOurGlyphs(emojiDoc("D83DDC00")).glyphsOfPage(0)[0];
     expect(glyphs?.[1]?.unicode).toBe("");
   });
 
-  it("garde les DEUX glyphes, avec leurs avances : la géométrie ne bouge pas", () => {
+  it("keeps BOTH glyphs, with their advances: the geometry does not move", () => {
     const glyphs = openOurGlyphs(emojiDoc("D83DDC00")).glyphsOfPage(0)[0];
     expect(glyphs?.length).toBe(2);
     expect(glyphs?.map((g) => g.width)).toEqual([1000, 1000]);
   });
 
-  it("n'apparie PAS une demi-paire haute suivie d'autre chose", () => {
+  it("does NOT pair a high half-pair followed by something else", () => {
     // D83D then 0041 ("A"): the high half stays isolated, hence abstention, and the "A" is published.
     const glyphs = openOurGlyphs(emojiDoc("D83D0041")).glyphsOfPage(0)[0];
     expect(glyphs?.map((g) => g.unicode)).toEqual(["", "A"]);
   });
 
-  it("n'apparie pas non plus une demi-paire BASSE qui vient la première", () => {
+  it("nor pairs a LOW half-pair that comes first", () => {
     const glyphs = openOurGlyphs(emojiDoc("DC00D83D")).glyphsOfPage(0)[0];
     expect(glyphs?.map((g) => g.unicode)).toEqual(["", ""]);
   });
 
-  it("apparie DEUX émojis de suite, sans mélanger leurs moitiés", () => {
+  it("pairs TWO emojis in a row, without mixing their halves", () => {
     // D83D DC00 then D83D DC01: U+1F400 and U+1F401.
     const glyphs = openOurGlyphs(emojiDoc("D83DDC00D83DDC01")).glyphsOfPage(0)[0];
     expect(glyphs?.map((g) => g.unicode)).toEqual(["\u{1F400}", "", "\u{1F401}", ""]);
   });
 
-  it("n'apparie pas à travers la fin d'un opérateur de texte", () => {
+  it("does not pair across the end of a text operator", () => {
     // The high half ends one `Tj`, the low one starts the next: nothing says they are the same letters,
     // and pairing across two separate paintings would invent a character.
     const bytes = buildPdf([
@@ -226,7 +226,7 @@ end`;
   });
 });
 
-describe("openOurGlyphs: une CMap PRÉDÉFINIE, on ne sait pas la lire et on le DIT", () => {
+describe("openOurGlyphs: a PREDEFINED CMap we cannot read, and we SAY so", () => {
   /** A Type0 whose `/Encoding` is a predefined, non-embedded Adobe CMap — the case of safedocs
    *  `0000316` and `0000877`, which write their English body in `MSungStd-Light-Acro-UniCNS-UCS2-H`. */
   const predefined = (encoding: string, w = ""): Uint8Array =>
@@ -239,7 +239,7 @@ describe("openOurGlyphs: une CMap PRÉDÉFINIE, on ne sait pas la lire et on le 
       `<< /Type /Font /Subtype /CIDFontType0 /BaseFont /MSungStd-Light /DW 1000${w} >>`,
     ]);
 
-  it("🔴 UniCNS-UCS2-H SE LIT, parce que son code EST le point de code Unicode", () => {
+  it("🔴 UniCNS-UCS2-H IS READ, because its code IS the Unicode code point", () => {
     // 🔴 31/10/2026: "yes, if you do it properly tonight". And it is clean AND small, because a
     // `UniXXX-UCS2-[HV]` CMap needs no table: its code space is `0x0000–0xD7FF & 0xE000–0xFFFF`, so
     // the code is the character (checked in `adobe-type-tools/cmap-resources`, see `./pdf-fonts/predefined-cmaps.ts`).
@@ -249,7 +249,7 @@ describe("openOurGlyphs: une CMap PRÉDÉFINIE, on ne sait pas la lire et on le 
     expect(glyphs?.map((g) => g.read)).toEqual(["ours", "ours"]);
   });
 
-  it("🔴 et son AVANCE est EXACTE depuis le 03/11/2026 : le CID vient de la table d'Adobe", () => {
+  it("🔴 and its ADVANCE is EXACT since 03/11/2026: the CID comes from Adobe's table", () => {
     // `/W` is indexed by CID, and a UCS2 code is not the CID: Adobe's table gives it. Without the table every advance
     // was undefined and all the letters landed on one point.
     // The fixture needs a `/W`: with `/DW 1000` alone, the table and the fallback both give 1000 and the test proves
@@ -264,14 +264,14 @@ describe("openOurGlyphs: une CMap PRÉDÉFINIE, on ne sait pas la lire et on le 
     ).toEqual([1000, 1000]);
   });
 
-  it("une CMap prédéfinie dont nous n'avons PAS la table garde le repli `/DW`, jamais rien", () => {
+  it("a predefined CMap whose table we do NOT have keeps the `/DW` fallback, never nothing", () => {
     // ISO 32000-1 §9.7.4.3 makes `/DW` the default width of every unlisted CID: evenly spaced letters, ugly and
     // visible, where `undefined` put them all on one point.
     const glyphs = openOurGlyphs(predefined("UniKS-UCS2-H")).glyphsOfPage(0)[0];
     expect(glyphs?.map((g) => g.width)).toEqual([1000, 1000]);
   });
 
-  it("une /ToUnicode PRIME sur l'identité, comme §9.10.2 l'ordonne", () => {
+  it("a /ToUnicode PREVAILS over the identity, as §9.10.2 orders", () => {
     const bytes = buildPdf([
       "<< /Type /Catalog /Pages 2 0 R >>",
       "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 612 792] >>",
@@ -286,7 +286,7 @@ describe("openOurGlyphs: une CMap PRÉDÉFINIE, on ne sait pas la lire et on le 
     expect(openOurGlyphs(bytes).glyphsOfPage(0)[0]?.[0]?.unicode).toBe("Z");
   });
 
-  it("🔴 un encodage HÉRITÉ rend `read: \"not-ours\"` au lieu de s'abstenir — c'est une IGNORANCE, pas un verdict", () => {
+  it('🔴 an INHERITED encoding returns `read: "not-ours"` instead of abstaining — it is IGNORANCE, not a verdict', () => {
     // 🔴 THIS CASE COST THE 31/10/2026 MEASUREMENT: my tool only read the files DIRECTLY in
     // `fixtures/pdf`, never its subfolders, so the 20 safedocs of the measurement corpus, living in a subfolder, were outside the
     // population — and I announced "100% agreement" on a corpus that excluded precisely what breaks.
@@ -297,13 +297,13 @@ describe("openOurGlyphs: une CMap PRÉDÉFINIE, on ne sait pas la lire et on le 
     expect(glyphs?.map((g) => g.read)).toEqual(["not-ours", "not-ours"]);
   });
 
-  it("ne prétend ni texte ni avance pour ces glyphes", () => {
+  it("claims neither text nor advance for these glyphs", () => {
     const glyph = openOurGlyphs(predefined("90ms-RKSJ-H")).glyphsOfPage(0)[0]?.[0];
     expect(glyph?.unicode).toBeUndefined();
     expect(glyph?.width).toBeUndefined();
   });
 
-  it("une UTF16 est à NOUS, et son code de quatre octets donne UN glyphe", () => {
+  it("a UTF16 one is OURS, and its four-byte code gives ONE glyph", () => {
     // ⚠️ This case claimed the opposite an hour earlier: our splitting did not know how to read the four-byte
     // code range of the `UTF16` space (`<D800DC00> <DBFFDFFF>`). It reads it now, so a character outside the BMP is
     // ONE code and ONE glyph, as pdf.js counted it — which kept the pairing with it.
@@ -320,7 +320,7 @@ describe("openOurGlyphs: une CMap PRÉDÉFINIE, on ne sait pas la lire et on le 
     expect(glyphs?.map((g) => g.read)).toEqual(["ours", "ours", "ours"]);
   });
 
-  it("une UTF16 dont la demi-paire haute n'est PAS suivie d'une basse s'abstient sur ce code", () => {
+  it("a UTF16 one whose high half-pair is NOT followed by a low one abstains on that code", () => {
     const bytes = buildPdf([
       "<< /Type /Catalog /Pages 2 0 R >>",
       "<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 612 792] >>",
@@ -336,22 +336,22 @@ describe("openOurGlyphs: une CMap PRÉDÉFINIE, on ne sait pas la lire et on le 
     ).toEqual(["", "A"]);
   });
 
-  it("et la variante demi-largeur du japonais se lit comme une UCS2", () => {
+  it("and the Japanese half-width variant reads like a UCS2 one", () => {
     const glyphs = openOurGlyphs(predefined("UniJIS-UCS2-HW-H")).glyphsOfPage(0)[0];
     expect(glyphs?.map((g) => g.unicode)).toEqual(["A", "B"]);
   });
 
-  it("une Identity-H reste à nous aussi", () => {
+  it("an Identity-H one stays ours too", () => {
     const glyphs = openOurGlyphs(predefined("Identity-H")).glyphsOfPage(0)[0];
     expect(glyphs?.map((g) => g.read)).toEqual(["ours", "ours"]);
   });
 
-  it("une police simple reste à nous aussi", () => {
+  it("a simple font stays ours too", () => {
     expect(openOurGlyphs(onePage("BT /F1 12 Tf (A) Tj ET")).glyphsOfPage(0)[0]?.[0]?.read).toBe("ours");
   });
 });
 
-describe("openOurGlyphs: PAGE PAR PAGE, et non tout le document (revue sécurité du 31/10/2026)", () => {
+describe("openOurGlyphs: PAGE BY PAGE, not the whole document (security review of 31/10/2026)", () => {
   /** Two pages, whose SECOND carries a content stream that refuses. */
   function twoPagesSecondBroken(): Uint8Array {
     return buildPdf([
@@ -365,12 +365,12 @@ describe("openOurGlyphs: PAGE PAR PAGE, et non tout le document (revue sécurit�
     ]);
   }
 
-  it("dit combien de pages il y a sans lire une seule d'entre elles", () => {
+  it("tells how many pages there are without reading a single one of them", () => {
     // 🔴 This is the guard seen biting: if opening read the pages, the second would make it fail.
     expect(openOurGlyphs(twoPagesSecondBroken()).pageCount).toBe(2);
   });
 
-  it("lit la première page même quand la seconde est illisible", () => {
+  it("reads the first page even when the second is unreadable", () => {
     const source = openOurGlyphs(twoPagesSecondBroken());
     expect(
       source
@@ -381,13 +381,13 @@ describe("openOurGlyphs: PAGE PAR PAGE, et non tout le document (revue sécurit�
     expect(refusalOf(() => source.glyphsOfPage(1)).reason).toBe("content-syntax");
   });
 
-  it("refuse un indice de page qui n'existe pas, sans rien inventer", () => {
+  it("refuses a page index that does not exist, inventing nothing", () => {
     expect(refusalOf(() => openOurGlyphs(onePage("BT ET")).glyphsOfPage(7)).reason).toBe("page-missing");
   });
 });
 
-describe("openOurGlyphs: le plafond de glyphes d'une page", () => {
-  it("refuse une page qui peindrait plus de MAX_SHOWN_GLYPHS_PER_PAGE glyphes", () => {
+describe("openOurGlyphs: the glyph cap of a page", () => {
+  it("refuses a page that would paint more than MAX_SHOWN_GLYPHS_PER_PAGE glyphs", () => {
     // 🔴 Security review of 31/10/2026: one object per PAINTED BYTE, and nothing bounded it. `MAX_CONTENT_NODES` cannot
     // see it — a painted string is ONE node whatever its length, so a `Tj` costs two
     // nodes whether it paints two bytes or sixty-four megabytes.
@@ -397,15 +397,15 @@ describe("openOurGlyphs: le plafond de glyphes d'une page", () => {
     );
   });
 
-  it("compte les glyphes de TOUS les opérateurs de la page, pas d'un seul", () => {
+  it("counts the glyphs of ALL the page's operators, not of one", () => {
     const run = "A".repeat(Math.ceil(MAX_SHOWN_GLYPHS_PER_PAGE / 2) + 1);
     const content = `BT /F1 12 Tf (${run}) Tj (${run}) Tj ET`;
     expect(refusalOf(() => openOurGlyphs(onePage(content)).glyphsOfPage(0)).reason).toBe("glyphs-too-many");
   });
 });
 
-describe("openOurGlyphs: deux polices sur la MÊME /ToUnicode partagent sa table", () => {
-  it("ne lit la CMap qu'UNE fois, quel que soit le nombre de polices qui la nomment", () => {
+describe("openOurGlyphs: two fonts on the SAME /ToUnicode share its table", () => {
+  it("reads the CMap only ONCE, whatever the number of fonts that name it", () => {
     // 🔴 Security review of 31/10/2026: `/ToUnicode` was re-read and retained per font, so five hundred fonts
     // of one dictionary each, all pointing at one sixty-byte object, retained five hundred tables of
     // 65,536 entries — about three gigabytes for a 60 KB file. The table is shared per OBJECT.

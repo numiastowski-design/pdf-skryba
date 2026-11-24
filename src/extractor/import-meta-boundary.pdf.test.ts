@@ -1,13 +1,13 @@
 /**
  * Boundary (05/10/2026): every `import.meta` in shipped source takes a form Forge's webpack supports.
  *
- * Since 05/10/2026 esbuild bundles the functions (manual packaging, `tools/build-functions.ts`); in
+ * Since 05/10/2026 esbuild bundles the functions (manual packaging, in the application); in
  * CommonJS output it empties `import.meta`, so the same forms behave the same. The boundary stays for a
- * way back to Forge's webpack (removing `app.package` from `manifest.yml`), which rewrites
+ * way back to Forge's webpack (removing `app.package` from the application's manifest), which rewrites
  * `import.meta.url` and a destructuring `const { x } = import.meta`; any other use, such as
  * `import.meta.resolve(...)`, becomes `({})` and prints « Critical dependency: Accessing import.meta
- * directly is unsupported » on every deploy (`docs/PLATFORM-STATUS.md` §28). That warning came from
- * `pdfjs-module.ts` (deleted, see git history) (since removed with pdf.js) alone and hid any new one behind it.
+ * directly is unsupported » on every deploy (a measured platform fact). That warning came from
+ * `pdfjs-module.ts` alone (deleted with pdf.js, see git history) and hid any new one behind it.
  *
  * This is a text check, not a bundle: it does not run webpack. The rewrite itself was measured once with
  * the webpack of Forge CLI 13.4.0 (destructuring: no warning, `resolve: undefined` in the bundle).

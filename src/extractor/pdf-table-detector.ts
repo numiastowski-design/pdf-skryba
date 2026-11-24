@@ -9,8 +9,8 @@
  *  `extractor/pdf-page-figures.ts` and `extractor/pdf-page-markers.ts`. */
 
 /**
- * PDF table detection — the ADAPTER of our reader (pdf.js until 01/11/2026; docs/ARBITRAGE-TABLEAUX-
- * PDF.md [purged 27/09/2026, git history] §8, milestone 1). All the design decisions (tolerances, what
+ * PDF table detection — the ADAPTER of our reader (pdf.js until 01/11/2026; the PDF tables arbitration,
+ * purged on 27/09/2026, §8, milestone 1). All the design decisions (tolerances, what
  * counts as "a grid") live in the PURE module `layout/geometry.ts`;
  * the only work here is to turn a real list of operators and real
  * text items into segments and fragments that this module accepts, then to
@@ -162,7 +162,7 @@ const REPAINT_WIDTH_RATIO_LIMIT = 0.5;
  *
  * The reading of the object and the translation of its format have lived in
  * `./pdf-images` since 14/09/2026: `{width, height, kind, data}`
- * is declared nowhere in pdf.js, and `ImageKind` is on the contrary
+ * was declared nowhere in pdf.js, and `ImageKind` was on the contrary
  * publicly exported there. Only the encoding remains here.
  */
 function encodeImageObject(page: PdfSourcePage, name: string): Uint8Array | undefined {
@@ -507,9 +507,9 @@ function withoutHiddenRepaintHorizontals(walker: PageWalker): LineSegment[] {
  *  Empirically verified (04/09/2026), and NOT how the PDF spec's own `S`/
  *  `f`/`B` operators read: pdf.js's operator-list COMPILER fused "construct
  *  path, then immediately paint it" into a SINGLE `constructPath` fnArray
- *  entry — there is no separate `stroke`/`fill` entry to look for
- *  afterward. The paint operation is encoded as `args[0]` of
- *  `constructPath` itself (its numeric value is literally `OPS.stroke`,
+ *  entry — there was no separate `stroke`/`fill` entry to look for
+ *  afterward. The paint operation was encoded as `args[0]` of
+ *  `constructPath` itself (its numeric value was literally `OPS.stroke`,
  *  `OPS.fill`, etc. — confirmed by printing both side by side against a
  *  real synthetic `drawLine`). A path whose `args[0]` isn't one of the
  *  known paint codes (e.g. a clip-only path) is simply not painted, so no
@@ -519,7 +519,7 @@ function withoutHiddenRepaintHorizontals(walker: PageWalker): LineSegment[] {
  *  is part of the graphics state, so it is pushed and popped with the matrix, not tracked aside.
  *
  *  `isLayerVisible` is the optional-content verdict of the document (`HidePolicy.isLayerVisible`): text inside a layer
- *  that is switched off is invisible ("Rien d'invisible"), so it counts as neither visible nor invisible text here. */
+ *  that is switched off is invisible ("Nothing invisible"), so it counts as neither visible nor invisible text here. */
 export function walkPage(
   ops: readonly PdfOp[],
   pageWidth: number,
@@ -553,7 +553,7 @@ export function walkPage(
     // A STENCIL IS AN IMAGE TOO, for the box and for the count (03/11/2026). `/ImageMask true` is a 1-bit picture
     // painted with the fill colour — a monochrome logo, a stamp, a rule. No decoder of ours reads one, and until this
     // day none of the three paths even looked at it: the picture left the page with NOTHING at the counter, the
-    // « échec déguisé » the rule of 06/10/2026 forbids. Recorded here, it goes through the ordinary road and comes out
+    // « disguised failure » the rule of 06/10/2026 forbids. Recorded here, it goes through the ordinary road and comes out
     // counted and named, with the cause `mask`. Measured first: ZERO stencil in the 57 fixtures and the 251 documents
     // of the corpus, so this adds no notice to any document we know — it adds one the day a stencil turns up.
     else if (op === "paintImageXObject" || op === "paintInlineImageXObject" || op === "paintImageMaskXObject")
@@ -580,19 +580,19 @@ export function walkPage(
  * then glued its results back to the first (`extractTextItems`) by an
  * `(x, y, text)` key. Two reasons for this second reading, both obsolete:
  *
- *  1. **ROTATION.** `unpdf`'s `extractTextItems` DROPS it. Measured on an
+ *  1. **ROTATION.** `unpdf`'s `extractTextItems` DROPPED it. Measured on an
  *     axis label at 90° of `11-Brochure-Deux-Colonnes.pdf`:
  *
  *       extractTextItems : { str: "2023", x: 154, y: 320, width: 22.24, dir: "ltr" }
  *       getTextContent   : { str: "2023", transform: [~0, 10, -10, ~0, 154, 320] }
  *
- *     The matrix IS the rotation; `unpdf` consumes it and keeps nothing of it. It
- *     returns a HORIZONTAL box of 22.24 pt for a text that occupies a vertical
- *     strip of 10 pt. The label is therefore declared where it is not, with
- *     a width it does not have — and a few axis labels are enough to
+ *     The matrix IS the rotation; `unpdf` consumed it and kept nothing of it. It
+ *     returned a HORIZONTAL box of 22.24 pt for a text that occupies a vertical
+ *     strip of 10 pt. The label was therefore declared where it was not, with
+ *     a width it did not have — and a few axis labels are enough to
  *     fill a real gutter, which is the entry guard of the discriminant.
  *
- *  2. **WEIGHT.** `extractTextItems` replaces the font name with a generic
+ *  2. **WEIGHT.** `extractTextItems` replaced the font name with a generic
  *     family ("sans-serif" for everything, bold included).
  *
  * `readPdfSource` carries both DIRECTLY on each run (`rotated`,
@@ -667,7 +667,7 @@ export interface PdfPageSignals {
   columnCuts: { pageIndex: number; cut: number; above?: number }[];
   /**
    * Per page, the positions of the items drawn in BOLD — `positionKey` keys,
-   * to be paired with `unpdf`'s items.
+   * formerly paired with `unpdf`'s items.
    *
    * Separate from `grids` for the same reason as the two previous signals: it
    * is not a table candidate, and it is not persisted. Absent for a
@@ -1154,7 +1154,7 @@ export async function detectPdfTableGrids(bytes: Uint8Array): Promise<PageTableG
   return (await detectPdfPageSignals(bytes)).grids;
 }
 
-/** jalon 1's original, unchanged shape — the persisted dashboard signal
+/** milestone 1's original, unchanged shape — the persisted dashboard signal
  *  (`SyncedDocument.pdfTableDetections`) never needs the render-time
  *  `grid`/`lineRange` data, only the origin. */
 export async function detectPdfTableOrigins(bytes: Uint8Array): Promise<PdfTableDetection[]> {

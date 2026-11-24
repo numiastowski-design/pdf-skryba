@@ -19,20 +19,20 @@
 
 /**
  * glyph-positions — rebuilds the position of EVERY GLYPH from the operator
- * stream, where `getTextContent()` only returns aggregated runs.
+ * stream, where `getTextContent()` only returned aggregated runs.
  *
- * WHY THIS FILE EXISTS (measured on 09/09/2026, `docs/INVENTAIRE-PDFJS-
- * UNPDF.md` [purged 27/09/2026, git history]). On a real bordered table, twelve ambiguous fragments out of fifteen
+ * WHY THIS FILE EXISTS (measured on 09/09/2026, in the inventory of pdf.js and
+ * unpdf, purged on 27/09/2026). On a real bordered table, twelve ambiguous fragments out of fifteen
  * came from a single text run crossing three cells — 383.7 pt
- * wide over a column 18.4 pt wide. The aggregation is the doing neither of the
+ * wide over a column 18.4 pt wide. The aggregation was the doing neither of the
  * file nor of `unpdf`: **the document emits 2990 `moveText` and 2990
- * `showText`, one glyph each**. It is `getTextContent`, a view DERIVED from the paint
- * stream, that glues them back together. The sub-cell position is therefore in the file,
- * and `getOperatorList()` — which `pdf-table-detector.ts#walkPage` already walks
- * — exposes it.
+ * `showText`, one glyph each**. It was `getTextContent`, a view DERIVED from the paint
+ * stream, that glued them back together. The sub-cell position is therefore in the file,
+ * and `getOperatorList()` — which `pdf-table-detector.ts#walkPage` already walked
+ * — exposed it.
  *
  * TWO SHORTCUTS CLOSED BEFORE GETTING HERE, so that they are not reopened:
- * `getStructTree()` can NOT give what this file looks for — the structure
+ * `getStructTree()` could NOT give what this file looks for — the structure
  * tree declares a reading ORDER and ROLES, never a coordinate,
  * hence never a sub-cell position (this is the structural reason, the one
  * that does not expire; `pdf-source.ts#declaredOrder` says what we take from it).
@@ -41,8 +41,8 @@
  * 28/10/2026, most of our PDFs in the repo return a non-empty declared
  * order (the count lives in `STATUS` and in the day's journal, not here: a
  * comment does not carry a verifiable external fact). And
- * `disableCombineTextItems` **no longer exists** in `pdfjs-dist` 6.2.108, where
- * passing it is a silent no-op.
+ * `disableCombineTextItems` **no longer existed** in `pdfjs-dist` 6.2.108, where
+ * passing it was a silent no-op.
  *
  * THIS FILE IS ON THE COUPLED SIDE OF THE BOUNDARY, and that is deliberate
  * (`layout/geometry.ts`, header): it is format decoding, and it is the
@@ -72,7 +72,7 @@
  * The arithmetic checks out on the measured values: `Td 763 −90` with
  * CTM = [0.12; 0; 0; 0.12; 28.31; 810.9] gives
  * 763 × 0.12 + 28.31 = **119.87** and −90 × 0.12 + 810.9 = **800.10**, which is
- * exactly what `getTextContent` returns for this glyph. And 28.3 / 810.9 are
+ * exactly what `getTextContent` returned for this glyph. And 28.3 / 810.9 are
  * moreover the left margin and the top edge of the page.
  *
  * THE ADVANCE, which gives the width (PDF 32000-1, 9.4.4):
@@ -172,13 +172,13 @@ export interface GlyphFragment {
    * `showText` — measured on the SYNTHETIC fixture `14-Ligatures-ToUnicode.pdf`
    * as well as on the REAL fixture `37-Circulaire-Rentree-2023-Pages.pdf`
    * (Apple Pages), whose `/ToUnicode` CMaps themselves map TO that precomposed
-   * form. `showText` and `getTextContent()` resolve this Unicode the SAME way
+   * form. `showText` and `getTextContent()` resolved this Unicode the SAME way
    * (`font.charsToGlyphs()` → `_charToGlyph()`'s `toUnicode.get(charcode)`,
    * pdf.worker.mjs ~l.28767, fed to both paths — ~l.34704 for `showText`,
-   * ~l.36098 for `getTextContent()`). What decomposes `getTextContent()`'s text
-   * is a POST-PROCESSING step only that path runs, `normalizeUnicode()`
+   * ~l.36098 for `getTextContent()`). What decomposed `getTextContent()`'s text
+   * was a POST-PROCESSING step only that path ran, `normalizeUnicode()`
    * (~l.720, NFKC over a closed code-point list), called from
-   * `runBidiTransform()` (~l.35856-35859); `showText`'s glyphs never go
+   * `runBidiTransform()` (~l.35856-35859); `showText`'s glyphs never went
    * through it, which is why this module decomposes on its own instead.
    */
   text: string;
@@ -187,7 +187,7 @@ export interface GlyphFragment {
   width: number;
   height: number;
   /** `Trm` — carries the rotation, which the bounding box cannot carry
-   *  (point 13: `extractTextItems` returns `dir: "ltr"` and a wrong width
+   *  (point 13: `extractTextItems` returned `dir: "ltr"` and a wrong width
    *  for a vertical text). */
   matrix: Matrix2D;
   /** Index of the originating paint operation. Two glyphs with the same `runId`
@@ -233,7 +233,7 @@ export interface GlyphFragment {
    * optional content whose group is OFF (§8.11), `"paint"` for a glyph filled WHITE on the bare page — the typesetter's
    * marks of the Federal Register `sd-4133285` (« VerDate Sep<11>2014 … », drawn after `1 g`, 05/11/2026). A
    * white glyph over a non-white box painted before it on the page is shown. Written limit: only white is the page's
-   * colour here; a text painted in the colour of a coloured box is not caught. "Rien d'invisible" (09/10/2026).
+   * colour here; a text painted in the colour of a coloured box is not caught. "Nothing invisible" (09/10/2026).
    */
   hidden?: "mode" | "layer" | "paint" | "size" | "clip";
   /** Set ONLY by `readGlyphs`, on a glyph in a `NOT_PAINTED_MODES` mode that is NOT hidden (mode 7): published, but
@@ -286,32 +286,32 @@ interface GlyphLike {
  * WHY DECOMPOSE AT ALL, CORRECTED 29/09/2026 — an independent counter-
  * diagnosis of this fix (commit bc3900d) found the mechanism below false.
  * `getTextContent()`'s own text (`PdfTextRun.text`, what everything outside a
- * table cell is built from) never carries one of these — measured on the
- * corpus, `pdf-ligatures.test.ts` — but NOT because it reads the font's
- * `/ToUnicode` CMap while `showText` doesn't: both paths resolve a glyph's
+ * table cell was built from) never carried one of these — measured on the
+ * corpus, `pdf-ligatures.test.ts` — but NOT because it read the font's
+ * `/ToUnicode` CMap while `showText` didn't: both paths resolved a glyph's
  * `unicode` the SAME way (`_charToGlyph`'s `toUnicode.get(charcode)`,
  * pdf.worker.mjs ~l.28767, shared by `handleText` ~l.34704 and the
  * text-content builder ~l.36098), and on `14-Ligatures-ToUnicode.pdf` and
  * `37-Circulaire-Rentree-2023-Pages.pdf` alike that CMap maps TO the
- * precomposed ligature, not away from it. What actually decomposes
- * `getTextContent()`'s text is `normalizeUnicode()` (~l.720, NFKC over a
+ * precomposed ligature, not away from it. What actually decomposed
+ * `getTextContent()`'s text was `normalizeUnicode()` (~l.720, NFKC over a
  * closed code-point list including U+FB00-FB06), a POST-PROCESSING step run
  * only inside `runBidiTransform()` (~l.35856-35859) when text-content items
- * are composed. `showText`'s per-glyph objects, which THIS module reads,
- * never go through it — hence the decomposition below. Left uncorrected, a
+ * were composed. `showText`'s per-glyph objects, which THIS module read,
+ * never went through it — hence the decomposition below. Left uncorrected, a
  * ligature word inside a table cell (`layout/cell-text.ts` reads glyphs, not
  * runs) publishes with the precomposed character instead of its letters: 73
  * occurrences over 5 cells of `37-Circulaire-Rentree-2023-Pages.pdf`, 0
  * outside a table.
  *
- * KNOWN DIVERGENCE, not fixed: `normalizeUnicode()` also maps U+00A0 and
+ * KNOWN DIVERGENCE, not fixed: `normalizeUnicode()` also mapped U+00A0 and
  * U+2000-200A/202F to an ordinary space; this module keeps NBSP as-is (123 on
  * fixture 37). No effect measured — search treats it as a word boundary, and
  * `conservationKey` drops non-letters.
  */
 const LIGATURE_PRESENTATION_FORMS = /^[\uFB00-\uFB06]$/;
 
-/** The glyph's text — decomposed like `getTextContent()`'s own text for five
+/** The glyph's text — decomposed as `getTextContent()`'s own text was for five
  *  of the six forms; NOT for U+FB05, where pdf.js's own `normalizeUnicode()`
  *  special-cased the result to "ſt" (long s) while plain NFKC here gives
  *  "st" — see `pdf-ligatures.test.ts`. Kept: "st" is the better outcome for
@@ -319,7 +319,7 @@ const LIGATURE_PRESENTATION_FORMS = /^[\uFB00-\uFB06]$/;
  *
  *  A glyph of more than one code unit is also composed (NFC): Word 2010 gives « é » the Unicode « e » + U+0301, which
  *  pdf.js's own text kept decomposed (fixture 48), so a search typed with the precomposed « é » did not match it
- *  (14/10/2026, docs/CONCEPTION-TEXTE-PDF-GLYPHES.md). It is done HERE, on the glyph, so that a run built from glyphs,
+ *  (14/10/2026, design of the PDF text from glyphs). It is done HERE, on the glyph, so that a run built from glyphs,
  *  a link walking the glyphs of a word (`pdf-links.ts`) and a table cell all count the same characters. A mark painted
  *  as a glyph of its own after its base is not composed. */
 const glyphText = (unicode: string): string =>
@@ -398,7 +398,7 @@ export const NOT_PAINTED_MODES: ReadonlySet<number> = new Set([3, 7]);
  *  itself; what follows in the same `q` may be painted through the letters. */
 const CLIP_ONLY_MODE = 7;
 
-/** The modes whose text is HIDDEN by the rule "Rien d'invisible" (what is dropped): only 3. Mode 7 is published
+/** The modes whose text is HIDDEN by the rule "Nothing invisible" (what is dropped): only 3. Mode 7 is published
  *  (09/10/2026: a gradient title exported from PowerPoint is visible through its clip). Bias, chosen: an
  *  unpainted stencil is published. */
 export const INVISIBLE_TEXT_MODES: ReadonlySet<number> = new Set([3]);
@@ -407,7 +407,7 @@ export const INVISIBLE_TEXT_MODES: ReadonlySet<number> = new Set([3]);
 export const isGlyphDropped = (hidden: GlyphFragment["hidden"], dropModeHidden: boolean): boolean =>
   hidden === "layer" || hidden === "paint" || (hidden === "mode" && dropModeHidden);
 
-/** How `buildGlyphFragments` treats glyphs a viewer does not show ("Rien d'invisible", 09/10/2026). */
+/** How `buildGlyphFragments` treats glyphs a viewer does not show ("Nothing invisible", 09/10/2026). */
 export interface HidePolicy {
   /** Whether an optional-content group (`pdf-layers.ts`, ISO 32000-1 §8.11) is shown. */
   isLayerVisible: (group: unknown) => boolean;
@@ -892,7 +892,7 @@ const glyphUnicode = (unicode: string | undefined, inSymbolFont: boolean): strin
 /** 🔴 WE ABSTAIN RATHER THAN PUBLISH WHAT pdf.js INVENTED (31/10/2026: "we abstain").
  *  When nothing says what a code paints — a glyph named `g03`, a CID without `/ToUnicode` — pdf.js returned the CODE
  *  as if it were a character: U+0003 for `g03`. Measured by the POC (`tools/poc/which-names.ts` (deleted, see git history)): 27 glyphs
- *  of `13-Police-Sans-CMap` and `49-GrandSoissons-RPQS` thus become CONTROL characters, which nothing
+ *  of `13-Police-Sans-CMap` and `49-GrandSoissons-RPQS` thus became CONTROL characters, which nothing
  *  in the rendering filtered — only `publisher/title.ts` cleans a page's title.
  *  A control character is never the content of a document: it is invisible, and the product rule says
  *  that nothing invisible is published. The tab is kept, because a document can really

@@ -28,8 +28,8 @@ const infoOf = (made: { bytes: Uint8Array }) => {
   return documentInfoOf(doc, made.bytes);
 };
 
-describe("documentInfoOf: producteur et créateur", () => {
-  it("lit Producer et Creator du dictionnaire /Info, décodés comme des chaînes de texte", () => {
+describe("documentInfoOf: producer and creator", () => {
+  it("reads Producer and Creator from the /Info dictionary, decoded as text strings", () => {
     const info = infoOf(
       pdfWith(
         {
@@ -44,20 +44,20 @@ describe("documentInfoOf: producteur et créateur", () => {
   });
 });
 
-describe("documentInfoOf: la version du format (comme pdf.js : /Version du catalogue, sinon l'en-tête)", () => {
-  it("prend la version de l'en-tête quand le catalogue n'en déclare pas", () => {
+describe("documentInfoOf: the format version (as pdf.js did: the catalog's /Version, otherwise the header)", () => {
+  it("takes the header's version when the catalog declares none", () => {
     expect(infoOf(pdfWith({ 1: "<< /Type /Catalog >>" }, false, "%PDF-1.6"))).toMatchObject({ pdfVersion: "1.6" });
   });
 
-  it("🔴 prend /Version du catalogue même quand il est PLUS ANCIEN que l'en-tête (1.3 contre 1.4 mesuré)", () => {
+  it("🔴 takes the catalog's /Version even when the header is OLDER (1.3 against 1.4, measured)", () => {
     expect(infoOf(pdfWith({ 1: "<< /Type /Catalog /Version /1.4 >>" }, false, "%PDF-1.3"))).toMatchObject({
       pdfVersion: "1.4",
     });
   });
 });
 
-describe("documentInfoOf: linéarisé", () => {
-  it("🔴 n'est PAS linéarisé quand /L ne correspond pas à la taille du fichier (fichier modifié après coup)", () => {
+describe("documentInfoOf: linearized", () => {
+  it("🔴 is NOT linearized when /L does not match the file size (file modified afterwards)", () => {
     const made = pdfWith(
       { 1: "<< /Type /Catalog >>" },
       false,
@@ -66,7 +66,7 @@ describe("documentInfoOf: linéarisé", () => {
     expect(infoOf(made)).not.toHaveProperty("linearized");
   });
 
-  it("l'est quand /L égale la taille réelle, même si /L n'est pas la première clé", () => {
+  it("is linearized when /L equals the real size, even if /L is not the first key", () => {
     // A VALID PDF (xref table and trailer), with a linearized leading object. /L has a fixed width: we fill it
     // once with a placeholder, measure the size, then write it with the exact value.
     const build = (length: string) =>
@@ -81,8 +81,8 @@ describe("documentInfoOf: linéarisé", () => {
   });
 });
 
-describe("documentInfoOf: formulaire (comme pdf.js : des champs, et pas seulement des signatures invisibles)", () => {
-  it("🔴 n'a PAS de formulaire quand ses seuls champs sont des signatures invisibles (SigFlags bit 1)", () => {
+describe("documentInfoOf: form (as pdf.js did: fields, and not only invisible signatures)", () => {
+  it("🔴 has NO form when its only fields are invisible signatures (SigFlags bit 1)", () => {
     const made = pdfWith({
       1: "<< /Type /Catalog /AcroForm << /Fields [3 0 R] /SigFlags 3 >> >>",
       3: "<< /FT /Sig /Rect [0 0 0 0] >>",
@@ -90,7 +90,7 @@ describe("documentInfoOf: formulaire (comme pdf.js : des champs, et pas seulemen
     expect(infoOf(made)).not.toHaveProperty("form");
   });
 
-  it("en a un quand il y a un champ de texte", () => {
+  it("has one when there is a text field", () => {
     const made = pdfWith({
       1: "<< /Type /Catalog /AcroForm << /Fields [3 0 R] >> >>",
       3: "<< /FT /Tx /T (nom) /Rect [0 0 50 20] >>",
@@ -98,7 +98,7 @@ describe("documentInfoOf: formulaire (comme pdf.js : des champs, et pas seulemen
     expect(infoOf(made)).toMatchObject({ form: true });
   });
 
-  it("n'en a pas quand /Fields est vide", () => {
+  it("has none when /Fields is empty", () => {
     expect(infoOf(pdfWith({ 1: "<< /Type /Catalog /AcroForm << /Fields [] >> >>" }))).not.toHaveProperty("form");
   });
 });

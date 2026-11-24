@@ -38,7 +38,7 @@ import { buildGlyphFragments, type NamedOp } from "./glyph-positions";
 
 /** The report card's CTM, deduced from the measurements and verified by arithmetic:
  *  763 × 0.12 + 28.31 = 119.87 and −90 × 0.12 + 810.9 = 800.10, i.e. exactly
- *  the coordinates that `getTextContent` returns for the first glyph. 28.3 and
+ *  the coordinates that pdf.js's `getTextContent` returned for the first glyph. 28.3 and
  *  810.9 are moreover the left margin and the top edge measured on the page. */
 const CTM: NamedOp = { op: "transform", args: { a: 0.12, b: 0, c: 0, d: 0.12, e: 28.31, f: 810.9 } };
 
@@ -58,7 +58,7 @@ const glyph = (unicode: string, width: number, isSpace = false): Record<string, 
   isInFont: true,
 });
 
-describe("buildGlyphFragments — un Td par glyphe, la forme du document réel", () => {
+describe("buildGlyphFragments — one Td per glyph, the shape of the real document", () => {
   const ops: NamedOp[] = [
     CTM,
     { op: "beginText", args: null },
@@ -73,21 +73,21 @@ describe("buildGlyphFragments — un Td par glyphe, la forme du document réel",
     { op: "endText", args: null },
   ];
 
-  it("place le premier glyphe où getTextContent le place — 119,87 / 800,10", () => {
+  it("places the first glyph where pdf.js's getTextContent placed it — 119.87 / 800.10", () => {
     const [first] = buildGlyphFragments(ops);
     expect(first!.text).toBe("C");
     expect(first!.x).toBeCloseTo(119.87, 2);
     expect(first!.y).toBeCloseTo(800.1, 2);
   });
 
-  it("rend la taille EFFECTIVE (9,0), jamais les 75 bruts de setFont", () => {
+  it("returns the EFFECTIVE size (9.0), never the raw 75 of setFont", () => {
     const [first] = buildGlyphFragments(ops);
     // 75 × 0.12 — the factor comes from the CTM. Composing Tfs without it would give a
     // wrong order of magnitude, hence a plausible one, hence worse than a NaN.
     expect(first!.height).toBeCloseTo(9.0, 3);
   });
 
-  it("accumule les Td successifs au lieu de repartir de la matrice de texte", () => {
+  it("accumulates successive Td instead of restarting from the text matrix", () => {
     const frags = buildGlyphFragments(ops);
     // 763 then +54 then +42, all × 0.12 and shifted by 28.31.
     expect(frags.map((f) => f.x)).toEqual([
@@ -97,7 +97,7 @@ describe("buildGlyphFragments — un Td par glyphe, la forme du document réel",
     ]);
   });
 
-  it("ne rend jamais NaN — la régression exacte des deux tentatives jetées", () => {
+  it("never returns NaN — the exact regression of the two discarded attempts", () => {
     for (const f of buildGlyphFragments(ops)) {
       expect(Number.isFinite(f.x)).toBe(true);
       expect(Number.isFinite(f.y)).toBe(true);
@@ -106,7 +106,7 @@ describe("buildGlyphFragments — un Td par glyphe, la forme du document réel",
     }
   });
 
-  it("LÈVE si la matrice n'a pas été dépiégée en amont", () => {
+  it("THROWS if the matrix was not unwrapped upstream", () => {
     // The decoding of the four encodings of the former pdf.js left this module at step
     // 4a; its cases live in `pdf-ops.test.ts`. What remains here is the
     // refusal to rebuild on anything but a matrix — silently
@@ -115,7 +115,7 @@ describe("buildGlyphFragments — un Td par glyphe, la forme du document réel",
     expect(() => buildGlyphFragments(brut)).toThrow(/expected a decoded matrix/);
   });
 
-  it("donne un runId par opération de peinture — de quoi recomposer le texte d'une cellule", () => {
+  it("gives one runId per painting operation — enough to recompose the text of a cell", () => {
     // The PROPERTY, not the value: two glyphs of the same run share their
     // `runId`, two different runs do not. The value itself
     // is the index in the operator list — useful to trace back to the source,
@@ -135,7 +135,7 @@ describe("buildGlyphFragments — un Td par glyphe, la forme du document réel",
   });
 });
 
-describe("buildGlyphFragments — TJ et son crénage", () => {
+describe("buildGlyphFragments — TJ and its kerning", () => {
   // Covered from this lot on although the measured document does not emit it: it is
   // the most common text operator, every other producer uses it, and
   // the kerning it carries enters the computation of the advance.
@@ -148,23 +148,23 @@ describe("buildGlyphFragments — TJ et son crénage", () => {
     { op: "endText", args: null },
   ];
 
-  it("sans crénage, le second glyphe suit l'avance du premier", () => {
+  it("without kerning, the second glyph follows the advance of the first", () => {
     const [, second] = buildGlyphFragments(withKerning(0));
     expect(second!.x).toBeCloseTo(5, 6); // 500/1000 × 10
   });
 
-  it("un nombre NÉGATIF écarte vers la droite", () => {
+  it("a NEGATIVE number moves apart to the right", () => {
     const [, second] = buildGlyphFragments(withKerning(-200));
     expect(second!.x).toBeCloseTo(5 + 2, 6); // −(−200)/1000 × 10
   });
 
-  it("un nombre POSITIF rapproche vers la gauche", () => {
+  it("a POSITIVE number moves closer to the left", () => {
     const [, second] = buildGlyphFragments(withKerning(300));
     expect(second!.x).toBeCloseTo(5 - 3, 6);
   });
 });
 
-describe("buildGlyphFragments — T* et TL, l'autre façon de descendre d'une ligne", () => {
+describe("buildGlyphFragments — T* and TL, the other way to move down one line", () => {
   // Covered on 09/09/2026 because the FIVE PDF fixtures of the repository emit
   // `T*` and never `Td` — the exact opposite of the real document. As long as `T*`
   // threw, the oracle had no subject in the repository and the central
@@ -183,7 +183,7 @@ describe("buildGlyphFragments — T* et TL, l'autre façon de descendre d'une li
     { op: "endText", args: null },
   ];
 
-  it("descend d'exactement TL par T*, et revient à la marge de la ligne", () => {
+  it("moves down by exactly TL per T*, and returns to the line's margin", () => {
     const frags = buildGlyphFragments(lines(12));
     expect(frags.map((f) => f.text)).toEqual(["A", "B", "C"]);
     expect(frags.map((f) => f.y)).toEqual([700, 688, 676]);
@@ -193,13 +193,13 @@ describe("buildGlyphFragments — T* et TL, l'autre façon de descendre d'une li
     expect(frags.map((f) => f.x)).toEqual([100, 100, 100]);
   });
 
-  it("suit un TL redéfini en cours de bloc", () => {
+  it("follows a TL redefined inside the block", () => {
     const ops = lines(12);
     ops.splice(8, 0, { op: "setLeading", args: [30] });
     expect(buildGlyphFragments(ops).map((f) => f.y)).toEqual([700, 688, 658]);
   });
 
-  it("sans TL, T* ne descend pas — et ne fabrique aucun interligne par défaut", () => {
+  it("without TL, T* does not move down — and invents no default leading", () => {
     const ops = lines(12).filter((o) => o.op !== "setLeading");
     expect(buildGlyphFragments(ops).map((f) => f.y)).toEqual([700, 700, 700]);
   });
@@ -230,7 +230,7 @@ describe("buildGlyphFragments — the text state: Tc, Tw, Tz, TD, q/Q", () => {
     expect(a!.width).toBeCloseTo(6, 6);
   });
 
-  it("Tw applies to an isSpace glyph only, as in pdf.js — never to a space pdf.js does not mark", () => {
+  it("Tw applies to an isSpace glyph only, as pdf.js did — never to a space not marked as one", () => {
     const run = (spaceIsSpace: boolean): NamedOp[] =>
       at(
         { op: "setWordSpacing", args: [3] },
@@ -301,7 +301,7 @@ describe("buildGlyphFragments — the text state: Tc, Tw, Tz, TD, q/Q", () => {
     expect(b!.y).toBe(688); // TL 12, not 40
   });
 
-  it('the sequence pdf.js emits for `"` — T*, Tw, Tc, Tj — lands where the operator puts it', () => {
+  it('the sequence pdf.js emitted for `"` — T*, Tw, Tc, Tj — lands where the operator puts it', () => {
     // `aw ac (string) "` ≡ `aw Tw ac Tc (string) '` ≡ `aw Tw ac Tc T* (string) Tj`
     // (PDF 32000-1, table 107). pdf.js emitted nextLine, setWordSpacing,
     // setCharSpacing, showText, in that order.
@@ -331,10 +331,10 @@ describe("buildGlyphFragments — the text state: Tc, Tw, Tz, TD, q/Q", () => {
   });
 });
 
-describe("buildGlyphFragments — texte pivoté", () => {
-  it("conserve la matrice, et ne prétend pas à une boîte horizontale", () => {
-    // 90°, the exact shape that point 13 describes: extractTextItems drops
-    // this rotation and returns a wrong horizontal width.
+describe("buildGlyphFragments — rotated text", () => {
+  it("keeps the matrix, and does not claim a horizontal box", () => {
+    // 90°, the exact shape that point 13 describes: the former extractTextItems dropped
+    // this rotation and returned a wrong horizontal width.
     const frags = buildGlyphFragments([
       { op: "transform", args: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } },
       { op: "beginText", args: null },
@@ -353,7 +353,7 @@ describe("buildGlyphFragments — texte pivoté", () => {
   });
 });
 
-describe("buildGlyphFragments — l'échec est bruyant et NOMME l'opérateur", () => {
+describe("buildGlyphFragments — failure is loud and NAMES the operator", () => {
   const withOp = (op: string, args: unknown[]): NamedOp[] => [
     { op: "beginText", args: null },
     identityTextMatrix,
@@ -365,7 +365,7 @@ describe("buildGlyphFragments — l'échec est bruyant et NOMME l'opérateur", (
   it.each([
     ["nextLineShowText", [[]]],
     ["nextLineSetSpacingShowText", [0, 0, []]],
-  ])("refuse %s plutôt que de rendre une position fausse en silence", (op, args) => {
+  ])("refuses %s rather than silently returning a wrong position", (op, args) => {
     // Our reader (`pdf-ops-ours.ts`) rewrites `'` and `"` before they reach this module (as pdf.js did);
     // meeting one means that fact changed.
     expect(() => buildGlyphFragments(withOp(op, args))).toThrow(new RegExp(op));
@@ -381,19 +381,19 @@ describe("buildGlyphFragments — l'échec est bruyant et NOMME l'opérateur", (
     expect(() => buildGlyphFragments(ops)).toThrow(/vertical writing/);
   });
 
-  it("nomme un opérateur de texte inconnu au lieu de l'ignorer", () => {
+  it("names an unknown text operator instead of ignoring it", () => {
     expect(() => buildGlyphFragments(withOp("setTextMatrixSomethingNew", [1]))).toThrow(/setTextMatrixSomethingNew/);
   });
 
-  it("ignore en revanche ce qui ne déplace rien — couleur, mode de rendu", () => {
+  it("ignores, on the other hand, what moves nothing — colour, rendering mode", () => {
     expect(() =>
       buildGlyphFragments([...withOp("setTextRenderingMode", [3]), { op: "setFillRGBColor", args: [0, 0, 0] }]),
     ).not.toThrow();
   });
 });
 
-describe("buildGlyphFragments — les espaces sont marqués, pas jetés", () => {
-  it("porte isSpace pour que l'assignation puisse les ignorer sans les perdre", () => {
+describe("buildGlyphFragments — spaces are marked, not dropped", () => {
+  it("carries isSpace so that the assignment can ignore them without losing them", () => {
     const frags = buildGlyphFragments([
       { op: "transform", args: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } },
       { op: "beginText", args: null },
@@ -407,7 +407,7 @@ describe("buildGlyphFragments — les espaces sont marqués, pas jetés", () => 
   });
 });
 
-describe("le mode de rendu du texte — le faux gras", () => {
+describe("the text rendering mode — fake bold", () => {
   /** A minimal run: a font, a text matrix, a glyph. */
   const cycle = (mode: number | undefined, x = 100): NamedOp[] => [
     { op: "beginText", args: [] },
@@ -418,22 +418,22 @@ describe("le mode de rendu du texte — le faux gras", () => {
     { op: "endText", args: [] },
   ];
 
-  it("mode 2 — remplir PUIS tracer : c'est du faux gras", () => {
+  it("mode 2 — fill THEN stroke: that is fake bold", () => {
     expect(buildGlyphFragments(cycle(2)).map((g) => g.stroked)).toEqual([true]);
   });
 
-  it("mode 0 par défaut, et sans opération explicite — remplissage seul", () => {
+  it("mode 0 by default, and without an explicit operation — fill only", () => {
     expect(buildGlyphFragments(cycle(undefined)).map((g) => g.stroked)).toEqual([false]);
     expect(buildGlyphFragments(cycle(0)).map((g) => g.stroked)).toEqual([false]);
   });
 
-  it("mode 1 — CONTOUR SEUL, du texte évidé, jamais du gras", () => {
+  it("mode 1 — STROKE ONLY, hollow text, never bold", () => {
     // The distinction is not cosmetic: a hollow drop cap or a title
     // effect would pass for bold if we settled for "it strokes".
     expect(buildGlyphFragments(cycle(1)).map((g) => g.stroked)).toEqual([false]);
   });
 
-  it("le mode suit l'état de texte d'un cycle à l'autre", () => {
+  it("the mode follows the text state from one cycle to the next", () => {
     // The two runs are written at different X POSITIONS, and this is
     // necessary: at the same point, `collapseOverpaint` would see only one
     // glyph painted twice — its key is the position and the character, not the
@@ -441,7 +441,7 @@ describe("le mode de rendu du texte — le faux gras", () => {
     expect(buildGlyphFragments([...cycle(2), ...cycle(0, 200)]).map((g) => g.stroked)).toEqual([true, false]);
   });
 
-  it("deux peintures au MÊME point ne font qu'un glyphe, et la première l'emporte", () => {
+  it("two paintings at the SAME point make one glyph, and the first one wins", () => {
     const merged = buildGlyphFragments([...cycle(2), ...cycle(0)]);
     expect(merged).toHaveLength(1);
     expect(merged[0]?.paintCount).toBe(2);
@@ -449,21 +449,21 @@ describe("le mode de rendu du texte — le faux gras", () => {
   });
 });
 
-describe("buildGlyphFragments — ligature presentation forms, decomposed unlike pdf.js's own runs", () => {
+describe("buildGlyphFragments — ligature presentation forms, decomposed unlike pdf.js's former runs", () => {
   /**
    * FOUND ON A REAL DOCUMENT (fixture 37, Apple Pages/Quartz), 29/09/2026.
-   * `pdf-ligatures.test.ts` measured that `getTextContent()`'s runs never
-   * carry a precomposed ligature (U+FB00-FB06) — true, and still true. But
+   * A former test measured that pdf.js's `getTextContent()` runs never
+   * carried a precomposed ligature (U+FB00-FB06) — true at the time. But
    * that measurement never exercised THIS path: `showText`'s own decoded
    * glyph list. CORRECTED 29/09/2026 by an independent counter-diagnosis:
-   * `showText` does NOT carry a different, glyph-name-based unicode
-   * resolution — it reads the exact same `toUnicode.get(charcode)` result as
+   * pdf.js's `showText` did NOT carry a different, glyph-name-based unicode
+   * resolution — it read the exact same `toUnicode.get(charcode)` result as
    * `getTextContent()` (pdf.worker.mjs `_charToGlyph` ~l.28767, fed to both
    * `handleText` ~l.34704 and the text-content builder ~l.36098), and on
    * fixture 37 and on the synthetic fixture 14 that CMap itself maps TO the
-   * precomposed character. What `showText`'s glyph list never goes through is
+   * precomposed character. What `showText`'s glyph list never went through was
    * `normalizeUnicode()` (~l.720), the NFKC post-processing step
-   * `runBidiTransform()` (~l.35856-35859) applies only when building
+   * `runBidiTransform()` (~l.35856-35859) applied only when building
    * `getTextContent()`'s text. Unfixed, a ligature glyph inside a table cell
    * (`layout/cell-text.ts` reads glyphs, not runs) publishes "eﬃcace" instead
    * of "efficace": measured on fixture 37, 73 occurrences in 5 cells (0
@@ -475,7 +475,7 @@ describe("buildGlyphFragments — ligature presentation forms, decomposed unlike
    * `String.prototype.normalize("NFKC")` applies. Applying it only to these
    * six code points keeps every other glyph untouched.
    *
-   * NOT the same string `getTextContent()` would give, for U+FB05 alone:
+   * NOT the same string pdf.js's `getTextContent()` gave, for U+FB05 alone:
    * pdf.js's own `normalizeUnicode()` (removed since) special-cased it to "ſt" (long s,
    * `NormalizationMap`, pdf.worker.mjs ~l.723) because plain
    * `String.prototype.normalize("NFKC")` gives "st" (plain s) in this
@@ -511,7 +511,7 @@ describe("buildGlyphFragments — ligature presentation forms, decomposed unlike
   });
 });
 
-describe("buildGlyphFragments — what a text run needs from each glyph (docs/CONCEPTION-TEXTE-PDF-GLYPHES.md)", () => {
+describe("buildGlyphFragments — what a text run needs from each glyph", () => {
   const g = (unicode: string, width = 500): Record<string, unknown> => ({ unicode, width, isSpace: false });
   const at = (x: number, y: number): NamedOp => ({ op: "setTextMatrix", args: { a: 1, b: 0, c: 0, d: 1, e: x, f: y } });
   const show = (...glyphs: Record<string, unknown>[]): NamedOp => ({ op: "showText", args: [glyphs] });
@@ -594,7 +594,7 @@ describe("buildGlyphFragments — what a text run needs from each glyph (docs/CO
 });
 
 describe("buildGlyphFragments — the tag of a plain `BMC` (fixture 33, page 6)", () => {
-  it("pdf.js's operator list gives the tag of a `BMC` as a name object, not a string: still an artifact", () => {
+  it("a `BMC` tag given as a name object, as pdf.js's operator list gave it, not a string: still an artifact", () => {
     const frags = buildGlyphFragments([
       { op: "setTextMatrix", args: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } },
       { op: "setFont", args: ["f1", 10] },

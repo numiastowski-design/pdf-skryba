@@ -1,5 +1,5 @@
 /**
- * Step 1 of the unicode layer (docs/POC-SANS-PDFJS.md): a font's `/ToUnicode` CMap, which says what TEXT
+ * Step 1 of the unicode layer (proof of concept of the reader without pdf.js): a font's `/ToUnicode` CMap, which says what TEXT
  * a glyph code paints. ISO 32000-1:2008 §9.10.3 (`/ToUnicode`) and §9.7.5-9.7.6 (the syntax of a CMap),
  * https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf
  * Tests only, written before the code. The contract fixed here:
@@ -151,7 +151,7 @@ describe("readToUnicode: refusals and ceilings", () => {
   });
 });
 
-describe("readToUnicode: un caractère irréel ne voyage pas, même accompagné", () => {
+describe("readToUnicode: an unreal character does not travel, even accompanied", () => {
   // 🔴 Security review of 31/10/2026: the guard added the same day only looked at ONE-unit destinations,
   // so a surrogate half-pair got through as soon as it counted two. `String.fromCharCode` then emitted
   // invalid UTF-16 up to the page — exactly what `names.ts` forbids. The criterion rests on the
@@ -159,25 +159,25 @@ describe("readToUnicode: un caractère irréel ne voyage pas, même accompagné"
   const textOf = (hex: string): string | undefined =>
     readToUnicode(cmap(`1 beginbfchar\n<0041> <${hex}>\nendbfchar`)).get(0x41);
 
-  it("laisse passer une paire de substitution COMPLÈTE, qui épelle un vrai caractère", () => {
+  it("lets a COMPLETE surrogate pair through, which spells a real character", () => {
     // U+1D400 (mathematical letter A): D835 DC00.
     expect(textOf("D835DC00")).toBe("\u{1D400}");
   });
 
-  it("s'abstient sur DEUX demi-paires hautes", () => {
+  it("abstains on TWO high half-pairs", () => {
     expect(textOf("D800D800")).toBe("");
   });
 
-  it("s'abstient sur une lettre SUIVIE d'une demi-paire", () => {
+  it("abstains on a letter FOLLOWED by a half-pair", () => {
     expect(textOf("0041D800")).toBe("");
   });
 
-  it("s'abstient sur une demi-paire BASSE seule au milieu d'un texte", () => {
+  it("abstains on a lone LOW half-pair in the middle of a text", () => {
     expect(textOf("0041DC00")).toBe("");
   });
 });
 
-describe("readToUnicode: une plage dont la destination COMMENCE à U+0000 (régression du 31/10/2026)", () => {
+describe("readToUnicode: a range whose destination STARTS at U+0000 (regression of 31/10/2026)", () => {
   // 🔴 THE DEFECT I INTRODUCED MYSELF, WHICH COST 98.7 % OF THE TEXT OF A REAL FILE.
   // The `isRealCharacter` guard added at the 5th review makes U+0000 return "" — an abstention that is right in itself.
   // But `readBfRange` computed the text of each code by INCREMENTING the string returned for the first one:
@@ -189,20 +189,20 @@ describe("readToUnicode: une plage dont la destination COMMENCE à U+0000 (régr
   const identityRange = (): ReadonlyMap<number, string> =>
     readToUnicode(cmap("1 beginbfrange\n<0000> <00ff> <0000>\nendbfrange"));
 
-  it("rend « e » pour le code 0x65, et non la chaîne vide", () => {
+  it("returns « e » for code 0x65, not the empty string", () => {
     expect(identityRange().get(0x65)).toBe("e");
   });
 
-  it("rend bien tout le reste de la plage", () => {
+  it("returns all the rest of the range too", () => {
     const table = identityRange();
     expect([0x41, 0x42, 0x7a, 0x20, 0xe9].map((code) => table.get(code))).toEqual(["A", "B", "z", " ", "é"]);
   });
 
-  it("et s'abstient TOUJOURS sur le code dont la destination EST U+0000", () => {
+  it("and ALWAYS abstains on the code whose destination IS U+0000", () => {
     expect(identityRange().get(0x00)).toBe("");
   });
 
-  it("une plage qui TOMBE sur une demi-paire s'abstient sur ce code-là seulement", () => {
+  it("a range that LANDS on a half-pair abstains on that code only", () => {
     // The range starts at U+D7FF: the first code stays a real character, the next two are halves.
     const table = readToUnicode(cmap("1 beginbfrange\n<0010> <0012> <D7FF>\nendbfrange"));
     expect(table.get(0x10)).toBe(String.fromCharCode(0xd7ff));
@@ -211,7 +211,7 @@ describe("readToUnicode: une plage dont la destination COMMENCE à U+0000 (régr
   });
 });
 
-describe("readToUnicode: ce que la CMap DÉCLARE là où on refuse de publier", () => {
+describe("readToUnicode: what the CMap DECLARES where we refuse to publish", () => {
   // 🔴 31/10/2026: "we have to do it ourselves", for emojis. A producer may write the UTF-16
   // units as CIDs (FreeMono and DejaVuSans by LibreOffice do): an emoji then occupies TWO neighbouring
   // painted codes, each carrying a lone half-pair. Taken alone, each is rightly refused; together,
@@ -220,25 +220,25 @@ describe("readToUnicode: ce que la CMap DÉCLARE là où on refuse de publier", 
   const high = String.fromCharCode(0xd83d);
   const low = String.fromCharCode(0xdc00);
 
-  it("garde la demi-paire HAUTE qu'un code voisin complétera", () => {
+  it("keeps the HIGH half-pair that a neighbouring code will complete", () => {
     const read = readCMap(cmap("1 beginbfrange\n<d800> <d8ff> <d800>\nendbfrange"));
     expect(read.text.get(0xd83d)).toBe("");
     expect(read.rejected.get(0xd83d)).toBe(high);
   });
 
-  it("garde la demi-paire BASSE de la même façon", () => {
+  it("keeps the LOW half-pair the same way", () => {
     const read = readCMap(cmap("1 beginbfchar\n<0001> <DC00>\nendbfchar"));
     expect(read.text.get(0x01)).toBe("");
     expect(read.rejected.get(0x01)).toBe(low);
   });
 
-  it("ne garde RIEN pour un code qu'on publie : la table refusée reste petite", () => {
+  it("keeps NOTHING for a code we publish: the refused table stays small", () => {
     const read = readCMap(cmap("1 beginbfchar\n<0041> <0061>\nendbfchar"));
     expect(read.text.get(0x41)).toBe("a");
     expect(read.rejected.size).toBe(0);
   });
 
-  it("garde aussi U+0000, qui n'est pas une demi-paire mais que l'appariement devra écarter", () => {
+  it("also keeps U+0000, which is not a half-pair but which the pairing will have to set aside", () => {
     const read = readCMap(cmap("1 beginbfchar\n<0041> <0000>\nendbfchar"));
     expect(read.text.get(0x41)).toBe("");
     expect(read.rejected.get(0x41)).toBe("\u0000");

@@ -1,4 +1,4 @@
-/** The Flate pictures with a soft mask (`pdf-flate-images.ts`). The prefixes are pdf.js's own output (`readImage`, RGBA),
+/** The Flate pictures with a soft mask (`pdf-flate-images.ts`). The prefixes were pdf.js's own output (`readImage`, RGBA),
  *  sha256 of its pixels, first 16 hex, measured on `fixtures/pdf/digital-flate-smask.pdf` (1/11/2026): ours are equal. */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -13,13 +13,13 @@ const RGBA_32 = 4;
 const KINDS = { rgb: 3, rgba: RGBA_32 };
 const FILE = new Uint8Array(readFileSync(join(__dirname, "../../fixtures/pdf/digital-flate-smask.pdf")));
 
-describe("flateImageObjectOf: une image Flate avec masque doux, en RVBA comme pdf.js", () => {
+describe("flateImageObjectOf: a Flate image with a soft mask, in RGBA as pdf.js gave it", () => {
   it.each([
     ["Im1", "b73644e357bb40e4"],
     ["Im2", "d6084ec32145eec5"],
     ["Im3", "4a5f84049bb59100"],
   ])(
-    "%s (RVB 8 × 6 avec un masque de 4 × 3 ; indexée ; indexée en 1 bit avec son masque 1 bit) donne les octets de pdf.js",
+    "%s (RGB 8 × 6 with a 4 × 3 mask; indexed; 1-bit indexed with its 1-bit mask) gives the bytes pdf.js gave",
     (name, prefix) => {
       const doc = openPdfObjects(FILE);
       const image = flateImageObjectOf(doc, doc.pages()[0]!, name, KINDS)!;
@@ -68,16 +68,16 @@ const runLengthEncode = (bytes: Uint8Array): Uint8Array => {
   return Uint8Array.from(out);
 };
 
-describe("flateImageObjectOf: une image sans masque doux est décodée en RVB (03/11/2026)", () => {
-  it("la même image, son /SMask retiré, donne du RVB 24 bits et non plus rien", async () => {
+describe("flateImageObjectOf: an image without a soft mask is decoded as RGB (03/11/2026)", () => {
+  it("the same image, its /SMask removed, gives 24-bit RGB and no longer nothing", async () => {
     const image = (await withChange(({ picture, PDFName }) => picture.dict.delete(PDFName.of("SMask"))))!;
     expect(image.kind).toBe(RGB_24);
     expect(image.data.length).toBe(image.width * image.height * 3);
   });
 });
 
-describe("flateImageObjectOf: les deux refus de masque levés le 03/11/2026", () => {
-  it("un masque gris déclaré ICCBased (N 1) est lu, et donne les mêmes octets que le même masque en DeviceGray", async () => {
+describe("flateImageObjectOf: the two mask refusals lifted on 03/11/2026", () => {
+  it("a grey mask declared ICCBased (N 1) is read, and gives the same bytes as the same mask in DeviceGray", async () => {
     const reference = (await withChange(() => undefined))!;
     const image = (await withChange(({ pdf, PDFName, PDFRawStream, mask }) => {
       // An ICC profile our code never reads: `componentsOfSpace` reads /N and nothing else.
@@ -91,7 +91,7 @@ describe("flateImageObjectOf: les deux refus de masque levés le 03/11/2026", ()
     );
   });
 
-  it("un masque codé RunLength est lu, et donne les mêmes octets que le même masque en Flate", async () => {
+  it("a RunLength-coded mask is read, and gives the same bytes as the same mask in Flate", async () => {
     const reference = (await withChange(() => undefined))!;
     const image = (await withChange(({ pdf, PDFName, PDFRawStream, mask, maskRef }) => {
       const samples = inflateSync(mask.getContents());
@@ -109,19 +109,19 @@ describe("flateImageObjectOf: les deux refus de masque levés le 03/11/2026", ()
   });
 });
 
-describe("flateImageObjectOf: un masque qu'on ne sait PAS lire refuse l'image entière", () => {
+describe("flateImageObjectOf: a mask we CANNOT read refuses the whole image", () => {
   // The product rule decides this, not caution: nothing invisible in the source is published. A picture published
   // opaque would SHOW what its mask hides, so the picture is left out and counted unreadable instead.
   // 🔴 THESE TWO ARE NOT GUARDS ON `maskSupported`, AND IT WAS MEASURED (03/11/2026): with `JPXDecode` added to its
   // filters and 16 bits added to its depths, both tests still pass. What refuses these masks is the stream reader's
   // own filter table (an image codec is never a stream filter) and `unpackSamples` (it unpacks 1, 2, 4 and 8 bits).
   // They assert the OUTCOME, which two layers hold, not the list in `maskSupported`.
-  it("un /SMask en JPEG 2000 (jamais décodé) laisse l'image refusée", async () => {
+  it("a JPEG 2000 /SMask (never decoded) leaves the image refused", async () => {
     const image = await withChange(({ PDFName, mask }) => mask.dict.set(PDFName.of("Filter"), PDFName.of("JPXDecode")));
     expect(image).toBeUndefined();
   });
 
-  it("un /SMask en 16 bits par composante laisse l'image refusée", async () => {
+  it("a 16-bit-per-component /SMask leaves the image refused", async () => {
     const image = await withChange(({ pdf, PDFName, mask }) =>
       mask.dict.set(PDFName.of("BitsPerComponent"), pdf.context.obj(16)),
     );
@@ -132,8 +132,8 @@ describe("flateImageObjectOf: un masque qu'on ne sait PAS lire refuse l'image en
 /** `/Mask` and `/Decode` are read by their value, never by their presence: `/Mask 12 0 R` whose object 12 is free or
  *  null still makes `dict.has("Mask")` true, and an incrementally updated PDF whose mask object was deleted lost
  *  its image. */
-describe("flateImageObjectOf: un renvoi mort n'est pas un masque", () => {
-  it("🔴 une image dont le /Mask renvoie à un objet libre est lue, au lieu d'être perdue", async () => {
+describe("flateImageObjectOf: a dead reference is not a mask", () => {
+  it("🔴 an image whose /Mask points to a free object is read, instead of being lost", async () => {
     const { PDFRef } = await import("@cantoo/pdf-lib");
     const image = await withChange(({ picture, PDFName }) => {
       picture.dict.delete(PDFName.of("SMask"));
@@ -142,7 +142,7 @@ describe("flateImageObjectOf: un renvoi mort n'est pas un masque", () => {
     expect(image?.kind).toBe(RGB_24);
   });
 
-  it("🔴 et un /Decode mort non plus", async () => {
+  it("🔴 and neither is a dead /Decode", async () => {
     const { PDFRef } = await import("@cantoo/pdf-lib");
     const image = await withChange(({ picture, PDFName }) => {
       picture.dict.delete(PDFName.of("SMask"));

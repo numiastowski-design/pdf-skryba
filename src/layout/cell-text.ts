@@ -134,7 +134,7 @@ export interface CellLine {
  *
  * ⚠️ **`hasEOL` DOES NOT EXIST AT THIS GRANULARITY, and that is not an oversight.**
  * pdf.js's (removed) `getTextContent` carried a `hasEOL` on its items, which would have answered
- * the question directly. But it is COMPUTED by that aggregated layer: it
+ * the question directly. But it was COMPUTED by that aggregated layer: it
  * exists nowhere in the operator stream, where the glyphs come from.
  * Fill is therefore the only signal available here. Whoever looks for better
  * later will know that the obvious lead was looked at and that it is closed at
@@ -160,7 +160,7 @@ const WRAP_FILL_RATIO = 0.85;
  * correctly; 20 is wide of both sides.
  *
  * **THIS THRESHOLD WAS ABSOLUTE, AND THAT WAS THE GENERALITY DEFECT** (fixed on
- * 11/09/2026, MIKSUDOC « Spécification technique » §5.4.1). Twenty points, calibrated on one generator
+ * 11/09/2026). Twenty points, calibrated on one generator
  * and two templates, encoded that generator: on a bulletin whose body
  * is 6.50 pt, twenty points are worth three lines of text; on an
  * 11 pt document, less than two. The threshold is therefore now expressed in multiples of the

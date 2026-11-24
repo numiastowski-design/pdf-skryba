@@ -1,6 +1,7 @@
 /**
- * Slice A5 of the POC (docs/POC-SANS-PDFJS.md): the CONTENT STREAM read as operators and operands, the job
- * `page.getOperatorList()` does for us today. ISO 32000-1:2008 §7.8.2 (content streams), §8.9.7 (inline images,
+ * Slice A5 of the proof of concept of the reader without pdf.js: the CONTENT STREAM read as operators and operands,
+ * the job pdf.js's `page.getOperatorList()` did for us before its removal (01/11/2026).
+ * ISO 32000-1:2008 §7.8.2 (content streams), §8.9.7 (inline images,
  * `BI … ID … EI`), §7.3.2-7.3.9 (the operands are ordinary objects, and §7.8.2 forbids indirect references
  * there) — https://opensource.adobe.com/dc-acrobat-sdk-docs/pdfstandards/PDF32000_2008.pdf
  * Tests only, written before any product code. The contract fixed here:
@@ -163,7 +164,7 @@ describe("readContentOps: refusals, never a crash", () => {
 
   it("refuses a stream of more than MAX_CONTENT_OPS operators", () => {
     // The same number as the product's ceiling, so that the two readers refuse the same page
-    // (`core/bounds.ts#PDF_MAX_OPS_PER_PAGE`).
+    // (`PDF_MAX_OPS_PER_PAGE`, in the application).
     expect(refusalOf(() => opsOf("n ".repeat(MAX_CONTENT_OPS + 1))).reason).toBe("content-too-long");
   });
 

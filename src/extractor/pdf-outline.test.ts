@@ -30,15 +30,15 @@ function pdfWith(objects: Record<number, string>): Uint8Array {
   return enc(`${file}${table}trailer\n<< /Size ${count + 1} /Root 1 0 R >>\nstartxref\n${xrefAt}\n%%EOF\n`);
 }
 
-describe("flattenOutline: les bornes et la normalisation de l'ancienne lecture, portées telles quelles", () => {
-  it("abandonne un arbre de plus que la borne, en comptant chaque nœud (titrés ou non)", () => {
+describe("flattenOutline: the bounds and the normalisation of the former reading, carried over as they were", () => {
+  it("drops a tree larger than the bound, counting every node (titled or not)", () => {
     const nodes = Array.from({ length: OUTLINE_READ_MAX_ENTRIES + 1 }, () => ({ title: undefined, items: [] }));
     expect(flattenOutline(nodes)).toBeUndefined();
     const ok = Array.from({ length: OUTLINE_READ_MAX_ENTRIES }, (_, i) => ({ title: `T${i}`, items: [] }));
     expect(flattenOutline(ok)).toHaveLength(OUTLINE_READ_MAX_ENTRIES);
   });
 
-  it("laisse les titres vides et blancs de côté, et garde leurs enfants", () => {
+  it("leaves empty and blank titles aside, and keeps their children", () => {
     const tree: OutlineNode[] = [
       { title: "  ", items: [{ title: "Kid", items: [] }] },
       { items: [] },
@@ -50,12 +50,12 @@ describe("flattenOutline: les bornes et la normalisation de l'ancienne lecture, 
     ]);
   });
 
-  it("coupe chaque titre à la longueur permise", () => {
+  it("cuts each title to the allowed length", () => {
     const entries = flattenOutline([{ title: "x".repeat(1_000_000), items: [] }]);
     expect(entries![0]!.title).toHaveLength(OUTLINE_TITLE_MAX_CHARS);
   });
 
-  it("normalise et rogne AVANT de couper", () => {
+  it("normalises and trims BEFORE cutting", () => {
     const entries = flattenOutline([
       { title: "é".repeat(400), items: [] },
       { title: `${" ".repeat(500)}Real title${" ".repeat(500)}`, items: [] },
@@ -64,14 +64,14 @@ describe("flattenOutline: les bornes et la normalisation de l'ancienne lecture, 
     expect(entries![1]!.title).toBe("Real title");
   });
 
-  it("ne donne rien pour un arbre absent ou vide", () => {
+  it("gives nothing for an absent or empty tree", () => {
     expect(flattenOutline(null)).toBeUndefined();
     expect(flattenOutline(undefined)).toBeUndefined();
     expect(flattenOutline([])).toBeUndefined();
   });
 });
 
-describe("outlineOfDocument: lu de notre dictionnaire", () => {
+describe("outlineOfDocument: read from our dictionary", () => {
   // Catalog 1, pages 2, bookmarks root 3: A (4) with two children A1 (5) and A2 (6), then B (7).
   const outline = {
     1: "<< /Type /Catalog /Pages 2 0 R /Outlines 3 0 R >>",
@@ -83,7 +83,7 @@ describe("outlineOfDocument: lu de notre dictionnaire", () => {
     7: "<< /Title (B) /Parent 3 0 R /Prev 4 0 R >>",
   };
 
-  it("aplatit dans l'ordre de lecture, avec la profondeur", () => {
+  it("flattens in reading order, with the depth", () => {
     const doc = openPdfObjects(pdfWith(outline));
     expect(outlineOfDocument(doc)).toStrictEqual([
       { title: "A", depth: 1 },
@@ -93,14 +93,14 @@ describe("outlineOfDocument: lu de notre dictionnaire", () => {
     ]);
   });
 
-  it("n'en donne aucun à un document sans signets", () => {
+  it("gives none to a document without bookmarks", () => {
     const doc = openPdfObjects(
       pdfWith({ 1: "<< /Type /Catalog /Pages 2 0 R >>", 2: "<< /Type /Pages /Kids [] /Count 0 >>" }),
     );
     expect(outlineOfDocument(doc)).toBeUndefined();
   });
 
-  it("🔴 décode le titre selon la norme : « D\\x90ACCUEIL » devient « D’ACCUEIL », pas un caractère de contrôle", () => {
+  it("🔴 decodes the title per the standard: « D\\x90ACCUEIL » becomes « D’ACCUEIL », not a control character", () => {
     const doc = openPdfObjects(
       pdfWith({
         1: "<< /Type /Catalog /Pages 2 0 R /Outlines 3 0 R >>",
@@ -112,7 +112,7 @@ describe("outlineOfDocument: lu de notre dictionnaire", () => {
     expect(outlineOfDocument(doc)?.[0]?.title).toBe("D’ACCUEIL");
   });
 
-  it("s'abstient sur une boucle de /Next au lieu de tourner sans fin", () => {
+  it("abstains on a /Next loop instead of looping forever", () => {
     const doc = openPdfObjects(
       pdfWith({
         1: "<< /Type /Catalog /Pages 2 0 R /Outlines 3 0 R >>",
@@ -124,7 +124,7 @@ describe("outlineOfDocument: lu de notre dictionnaire", () => {
     expect(outlineOfDocument(doc)).toStrictEqual([{ title: "A", depth: 1 }]);
   });
 
-  it("abandonne un plan de plus de la borne, lu depuis le dictionnaire", () => {
+  it("drops an outline larger than the bound, read from the dictionary", () => {
     // A /Next chain of OUTLINE_READ_MAX_ENTRIES + 1 bookmarks: beyond the bound, the outline is ignored entirely.
     const n = OUTLINE_READ_MAX_ENTRIES + 1;
     const objects: Record<number, string> = {

@@ -57,20 +57,20 @@ import { extractPdf } from "./pdf";
 const here = dirname(fileURLToPath(import.meta.url));
 const bytes = new Uint8Array(readFileSync(join(here, "../../fixtures/pdf/13-Police-Sans-CMap.pdf")));
 
-describe("PDF sans /ToUnicode — la page part à l'OCR au lieu de publier du bruit", () => {
-  it("est signalée scannée, alors qu'elle porte des « lignes » de texte", async () => {
+describe("PDF without /ToUnicode — the page goes to OCR instead of publishing noise", () => {
+  it("is flagged scanned, although it carries « lines » of text", async () => {
     const { scannedPageIndices } = await extractPdf(bytes);
     expect(scannedPageIndices).toEqual([0]);
   });
 
-  it("ne produit aucun bloc — rien de bruité ne descend dans le pipeline", async () => {
+  it("produces no block — nothing noisy goes down the pipeline", async () => {
     const { pages } = await extractPdf(bytes);
     expect(pages).toEqual([[]]);
   });
 });
 
-describe("le prédicat ne se déclenche QUE sur l'absence totale de texte lisible", () => {
-  it("un PDF numérique ordinaire n'est jamais signalé scanné", async () => {
+describe("the predicate triggers ONLY on the total absence of readable text", () => {
+  it("an ordinary digital PDF is never flagged scanned", async () => {
     // Non-regression safeguard: `hasReadableText` must not switch a healthy
     // document to OCR, which costs one vision call per page.
     const digital = new Uint8Array(readFileSync(join(here, "../../fixtures/pdf/05a-Rapport-Annuel-Digital.pdf")));
@@ -78,7 +78,7 @@ describe("le prédicat ne se déclenche QUE sur l'absence totale de texte lisibl
     expect(scannedPageIndices).toEqual([]);
   });
 
-  it("un PDF dont le texte est intact malgré des ligatures reste numérique", async () => {
+  it("a PDF whose text is intact despite ligatures stays digital", async () => {
     const ligatures = new Uint8Array(readFileSync(join(here, "../../fixtures/pdf/14-Ligatures-ToUnicode.pdf")));
     const { scannedPageIndices } = await extractPdf(ligatures);
     expect(scannedPageIndices).toEqual([]);

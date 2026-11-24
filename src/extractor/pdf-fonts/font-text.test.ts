@@ -1,5 +1,5 @@
 /**
- * THE ORDER of the unicode layer (docs/POC-SANS-PDFJS.md, step 2): `/ToUnicode` first, then the name the
+ * THE ORDER of the unicode layer (proof of concept of the reader without pdf.js, step 2): `/ToUnicode` first, then the name the
  * encoding gives, then nothing — and "nothing" is an abstention, never an invented character. ISO 32000-1:2008 §9.10.2.
  * Tests only, written before the code. The reader is a minimal double: this file only judges the order and the
  * reading of the dictionaries, not the tables (`names.test.ts`) nor the CMap (`to-unicode.test.ts`).
@@ -37,8 +37,8 @@ const reader: FontReader = {
 
 const fontOf = (entries: Record<string, PdfValue>): PdfDict => new Map(Object.entries(entries));
 
-describe("fontText: l'ordre de §9.10.2", () => {
-  it("prend `/ToUnicode` avant tout", () => {
+describe("fontText: the order of §9.10.2", () => {
+  it("takes `/ToUnicode` before anything", () => {
     const text = fontText(
       reader,
       fontOf({ Subtype: name("TrueType"), Encoding: name("WinAnsiEncoding"), ToUnicode: stream(CMAP) }),
@@ -46,7 +46,7 @@ describe("fontText: l'ordre de §9.10.2", () => {
     expect(text(1)).toBe("Z");
   });
 
-  it("retombe sur le nom de l'encodage quand `/ToUnicode` ne dit rien de ce code", () => {
+  it("falls back on the encoding's name when `/ToUnicode` says nothing of this code", () => {
     const text = fontText(
       reader,
       fontOf({ Subtype: name("TrueType"), Encoding: name("WinAnsiEncoding"), ToUnicode: stream(CMAP) }),
@@ -54,12 +54,12 @@ describe("fontText: l'ordre de §9.10.2", () => {
     expect(text(0x41)).toBe("A");
   });
 
-  it("lit l'encodage quand il n'y a pas de `/ToUnicode`", () => {
+  it("reads the encoding when there is no `/ToUnicode`", () => {
     const text = fontText(reader, fontOf({ Subtype: name("Type1"), Encoding: name("WinAnsiEncoding") }));
     expect([text(0x41), text(0xe9)]).toEqual(["A", "é"]);
   });
 
-  it("lit un `/Encoding` dictionnaire : sa base ET ses `/Differences` (Table 114)", () => {
+  it("reads an `/Encoding` dictionary: its base AND its `/Differences` (Table 114)", () => {
     const text = fontText(
       reader,
       fontOf({
@@ -73,12 +73,12 @@ describe("fontText: l'ordre de §9.10.2", () => {
     expect([text(1), text(2), text(10), text(0x41)]).toEqual(["•", "é", "Α", "A"]);
   });
 
-  it("S'ABSTIENT sur une police composite sans `/ToUnicode` : ses codes sont des numéros de glyphes", () => {
+  it("ABSTAINS on a composite font without `/ToUnicode`: its codes are glyph numbers", () => {
     const text = fontText(reader, fontOf({ Subtype: name("Type0"), Encoding: name("Identity-H") }));
     expect(text(0x41)).toBeUndefined();
   });
 
-  it("répond pour une police composite QUI a un `/ToUnicode`", () => {
+  it("answers for a composite font THAT has a `/ToUnicode`", () => {
     const text = fontText(
       reader,
       fontOf({ Subtype: name("Type0"), Encoding: name("Identity-H"), ToUnicode: stream(CMAP) }),
@@ -86,12 +86,12 @@ describe("fontText: l'ordre de §9.10.2", () => {
     expect([text(1), text(2)]).toEqual(["Z", undefined]);
   });
 
-  it("S'ABSTIENT sur une police SYMBOLIQUE sans encodage déclaré", () => {
+  it("ABSTAINS on a SYMBOLIC font without a declared encoding", () => {
     const text = fontText(reader, fontOf({ Subtype: name("TrueType"), FontDescriptor: dict({ Flags: number(4) }) }));
     expect(text(0x41)).toBeUndefined();
   });
 
-  it("lit l'encodage standard d'une police NON symbolique sans `/Encoding` (9.6.6.2)", () => {
+  it("reads the standard encoding of a NON-symbolic font without `/Encoding` (9.6.6.2)", () => {
     const text = fontText(reader, fontOf({ Subtype: name("Type1"), FontDescriptor: dict({ Flags: number(32) }) }));
     expect(text(0x41)).toBe("A");
   });
@@ -99,7 +99,7 @@ describe("fontText: l'ordre de §9.10.2", () => {
 
 /** The encoding a Type1 font program declares: only its clear-text header is read, up to `eexec`, never the outlines.
  *  A symbolic Computer Modern font with no `/Encoding` has its text nowhere else. */
-describe("fontText: l'encodage déclaré par le programme d'une police Type1", () => {
+describe("fontText: the encoding declared by the program of a Type1 font", () => {
   const PROGRAM = [
     "%!PS-AdobeFont-1.0: CMR10",
     "/FontName /HEPYVW+CMR10 def",
@@ -120,26 +120,26 @@ describe("fontText: l'encodage déclaré par le programme d'une police Type1", (
   const symbolicType1 = (extra: Record<string, PdfValue> = {}): PdfDict =>
     fontOf({ Subtype: name("Type1"), FontDescriptor: dict({ Flags: number(4), FontFile: stream(PROGRAM) }), ...extra });
 
-  it("lit le texte d'un code que SEUL le programme nomme", () => {
+  it("reads the text of a code that ONLY the program names", () => {
     expect(fontText(readerOf(PROGRAM), symbolicType1())(19)).toBe("Z");
   });
 
-  it("ne touche pas au programme quand la police DÉCLARE son encodage : la déclaration gagne", () => {
+  it("does not touch the program when the font DECLARES its encoding: the declaration wins", () => {
     // WinAnsi names no code 19: had the program won, this would read "Z".
     expect(fontText(readerOf(PROGRAM), symbolicType1({ Encoding: name("WinAnsiEncoding") }))(19)).toBeUndefined();
   });
 
-  it("s'abstient encore quand le programme ne déclare aucun encodage", () => {
+  it("still abstains when the program declares no encoding", () => {
     expect(fontText(readerOf("%!PS-AdobeFont-1.0\ncurrentfile eexec"), symbolicType1())(19)).toBeUndefined();
   });
 
-  it("s'abstient encore quand le descripteur ne porte aucun programme", () => {
+  it("still abstains when the descriptor carries no program", () => {
     const font = fontOf({ Subtype: name("Type1"), FontDescriptor: dict({ Flags: number(4) }) });
     expect(fontText(readerOf(PROGRAM), font)(19)).toBeUndefined();
   });
 });
 
-// docs/CONCEPTION-AVIS-TEXTE-PDF.md, question 5 (16/11/2026): the two catch-alls are narrowed. A refusal of OURS keeps
+// The design review of the PDF text, question 5 (16/11/2026): the two catch-alls are narrowed. A refusal of OURS keeps
 // today's behaviour (the table says nothing, the encoding may answer); an UNEXPECTED error no longer falls back on the
 // standard encoding, which can invent letters — it leaves the font, whose caller drops its glyphs (`pdf-glyph-source.ts`).
 describe("the two catch-alls of the font text, narrowed to our refusals", () => {

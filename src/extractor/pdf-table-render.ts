@@ -320,7 +320,7 @@ interface CellParagraphBox {
  * WHAT THIS RULE DOES NOT TRY TO DO: reproduce the PDF's layout. The photo is
  * to the LEFT of the text and it does not go back there — that would need a
  * two-column layout section (`ac:layout`), documented for Data Center and NEVER
- * MEASURED ON CLOUD (`docs/PLATFORM-STATUS.md`). A Confluence page is a linear
+ * MEASURED ON CLOUD. A Confluence page is a linear
  * sequence: side by side does not exist, one of the two orders has to be
  * chosen. This rule only stops the text being cut.
  */
@@ -449,7 +449,7 @@ function isTightComb({ filled, height }: Strip, widths: readonly number[]): bool
 /** A strip of more filled boxes than this is a COMB — a word written one letter per cell — and its row is published as one
  *  cell of space-separated characters rather than as a table. A GEOMETRY threshold, not a cap: nothing is withheld by it,
  *  so it is not a `ReaderLimits` field and no caller moves it. It held the value of the table column cap until
- *  09/11/2026, when that cap left the library for the app (`core/document-caps.ts#MAX_TABLE_COLS`): same number, 21,
+ *  09/11/2026, when that cap left the library for the app: same number, 21,
  *  now stated here on its own so that moving the product's cap does not silently change what a comb is. */
 const COMB_MIN_COLUMNS = 21;
 
@@ -473,7 +473,7 @@ function combText(
   return filled.length > COMB_MIN_COLUMNS ? filled.map(({ char }) => char).join(" ") : undefined;
 }
 
-/** MIKSUDOC « Spécification technique » §5.4.1, régime 1: attempts to render
+/** Table rendering, regime 1: attempts to render
  *  the table `grid` describes, using ONLY this page's own items. Prose
  *  strictly above/below the grid's own row bounds is reconstructed via the
  *  EXISTING paragraph logic, completely unchanged
@@ -504,7 +504,7 @@ export function renderTableRegion(
   const top = grid.rowBoundaries[0]!;
   const bottom = grid.rowBoundaries[grid.rowBoundaries.length - 1]!;
   // THE PAGE'S BODY TEXT, measured once over all its cells
-  // (11/09/2026, MIKSUDOC « Spécification technique » §5.4.1). It is what sets the indent threshold
+  // (11/09/2026). It is what sets the indent threshold
   // at the scale of the source instead of carrying a page size into it.
   const bodyTextSize = dominantTextSize(glyphs);
 
@@ -519,16 +519,16 @@ export function renderTableRegion(
   //
   // At the glyph level the ambiguity disappears by construction — a character
   // crosses no boundary. Measured: 2,348 glyphs, 2,348 placed, zero
-  // ambiguous (`docs/INVENTAIRE-PDFJS-UNPDF.md` [purged 27/09/2026, git history]).
+  // ambiguous (the inventory of pdf.js and unpdf, purged on 27/09/2026).
   //
   // The prose above and below the grid stays on the aggregated items
   // and on the EXISTING paragraph logic, unchanged: a page of prose
   // with a tabular region does not move outside that region.
   //
   // A PROBLEM THAT DISAPPEARS WITH THE AGGREGATED PATH, and is worth noting
-  // because it cost a filter: `unpdf` inserts FILLER items
+  // because it cost a filter: `unpdf` inserted FILLER items
   // (`str: " "`) to represent the visual space between two runs of the same
-  // line, and their width covers the WHOLE gap — they therefore regularly
+  // line, and their width covered the WHOLE gap — they therefore regularly
   // crossed a real column boundary and were flagged ambiguous
   // for nothing (measured on 04/09/2026). They had to be filtered before assigning.
   // At the glyph level the problem does not exist: a space there is a glyph
@@ -665,7 +665,7 @@ export function renderTableRegion(
   // `colspan`. `renderer/storage.ts` already emits it on `<th>`/`<td>`.
   const built = cells.map((_, rowIndex) =>
     cellsOfRow(cells, rowIndex, merge).map(({ fragments: cellFragments, cell }) => {
-      // No AI column/header labeling in this jalon (§8 jalon 2's own
+      // No AI column/header labeling in this milestone (§8 milestone 2's own
       // staging — 2b, may never be built at all, cost-permitting): the
       // first row as the header is a plain, sane default, not a guess
       // dressed up as a decision — matches the shape of a real school

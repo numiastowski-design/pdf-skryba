@@ -37,25 +37,25 @@ function fontOf(font: string) {
   return ourFontObject(doc, dict);
 }
 
-describe("symbolVerdictOf: le verdict vient du dictionnaire", () => {
-  it("🔴 reconnaît une SymbolMT sous-ensemble — celle qui était invisible au produit", () => {
+describe("symbolVerdictOf: the verdict comes from the dictionary", () => {
+  it("🔴 recognises a subset SymbolMT — the one that was invisible to the product", () => {
     // 359 fonts of this type in the fixtures; the product detected zero before the repair.
     expect(symbolVerdictOf(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /BCDJEE+SymbolMT >>"))).toBe(true);
   });
 
-  it("reconnaît aussi le style, comme le fait `isSymbolFont`", () => {
+  it("also recognises the style, as `isSymbolFont` does", () => {
     expect(symbolVerdictOf(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Symbol,Bold >>"))).toBe(true);
   });
 
-  it("ne prend pas Helvetica pour Symbol", () => {
+  it("does not take Helvetica for Symbol", () => {
     expect(symbolVerdictOf(fontOf("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"))).toBe(false);
   });
 
-  it("une police sans /BaseFont n'est pas Symbol : ignorance, rien à traduire", () => {
+  it("a font without /BaseFont is not Symbol: ignorance, nothing to translate", () => {
     expect(symbolVerdictOf(fontOf("<< /Type /Font /Subtype /Type1 >>"))).toBe(false);
   });
 
-  it("une police absente n'est pas Symbol", () => {
+  it("an absent font is not Symbol", () => {
     expect(symbolVerdictOf(undefined)).toBe(false);
   });
 });

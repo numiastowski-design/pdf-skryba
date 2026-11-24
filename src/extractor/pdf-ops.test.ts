@@ -35,8 +35,8 @@ const list = (pairs: [number, unknown][]): { fnArray: number[]; argsArray: unkno
   argsArray: pairs.map(([, args]) => args),
 });
 
-describe("decodeOps — le fnArray numérique de pdf.js → des opérations nommées", () => {
-  it("nomme les opérations par leur code", () => {
+describe("decodeOps — the numeric fnArray of pdf.js → named operations", () => {
+  it("names the operations by their code", () => {
     expect(
       decodeOps(
         list([
@@ -51,7 +51,7 @@ describe("decodeOps — le fnArray numérique de pdf.js → des opérations nomm
     ]);
   });
 
-  it("IGNORE un code inconnu plutôt que d'inventer un nom", () => {
+  it("IGNORES an unknown code rather than inventing a name", () => {
     // The stream contains operators that do not concern us (colours,
     // images). Naming them "unknown" would make `buildGlyphFragments` throw, which
     // only throws on what LOOKS like text.
@@ -67,15 +67,15 @@ describe("decodeOps — le fnArray numérique de pdf.js → des opérations nomm
   });
 });
 
-describe("decodeOps — LA NORMALISATION DES MATRICES, le décodage qui a produit des NaN", () => {
+describe("decodeOps — THE NORMALISATION OF MATRICES, the decoding that produced NaNs", () => {
   const six = { a: 1, b: 2, c: 3, d: 4, e: 5, f: 6 };
 
-  it("six nombres à plat", () => {
+  it("six flat numbers", () => {
     expect(decodeOps(list([[12, [1, 2, 3, 4, 5, 6]]]), OPS)[0]).toEqual({ op: "transform", args: six });
   });
 
-  it("MESURÉ : un objet à clés numériques ENVELOPPÉ dans un tableau", () => {
-    // The real shape returned by pdf.js for `setTextMatrix`:
+  it("MEASURED: an object with numeric keys WRAPPED in an array", () => {
+    // The real shape pdf.js returned for `setTextMatrix`:
     //   `setTextMatrix -> [{"0":1,"1":0,"2":0,"3":1,"4":0,"5":0}]`
     // `args as number[]` gives `undefined` everywhere there — one of the two causes
     // of the `NaN`s of the first reconstruction (09/09/2026).
@@ -83,13 +83,13 @@ describe("decodeOps — LA NORMALISATION DES MATRICES, le décodage qui a produi
     expect(decodeOps(list([[42, wrapped]]), OPS)[0]).toEqual({ op: "setTextMatrix", args: six });
   });
 
-  it("un Float32Array, enveloppé ou non", () => {
+  it("a Float32Array, wrapped or not", () => {
     const f32 = Float32Array.from([1, 2, 3, 4, 5, 6]);
     expect(decodeOps(list([[12, f32]]), OPS)[0]).toEqual({ op: "transform", args: six });
     expect(decodeOps(list([[12, [f32]]]), OPS)[0]).toEqual({ op: "transform", args: six });
   });
 
-  it("LA LECTURE EST INDEXÉE, JAMAIS FONDÉE SUR `.length`", () => {
+  it("THE READING IS INDEXED, NEVER BASED ON `.length`", () => {
     // A `Float32Array` has a length, an object with numeric keys does not,
     // and both shapes are met. We check what we need — six
     // numbers at indices 0 to 5 — not the type of the container. An array of more
@@ -97,7 +97,7 @@ describe("decodeOps — LA NORMALISATION DES MATRICES, le décodage qui a produi
     expect(decodeOps(list([[12, [1, 2, 3, 4, 5, 6, 7, 8]]]), OPS)[0]).toEqual({ op: "transform", args: six });
   });
 
-  it("LÈVE sur une forme non reconnue, plutôt que de rendre une matrice partielle", () => {
+  it("THROWS on an unrecognised shape, rather than returning a partial matrix", () => {
     // Returning wrong coordinates silently is exactly what we refuse
     // everywhere else: a page published on an invented geometry reads
     // without anyone noticing.
@@ -106,7 +106,7 @@ describe("decodeOps — LA NORMALISATION DES MATRICES, le décodage qui a produi
     expect(() => decodeOps(list([[42, [1, 2, 3, 4, 5, null]]]), OPS)).toThrow(/unrecognized argument shape/);
   });
 
-  it("ne touche PAS aux arguments des autres opérations", () => {
+  it("does NOT touch the arguments of other operations", () => {
     expect(
       decodeOps(
         list([
@@ -122,8 +122,8 @@ describe("decodeOps — LA NORMALISATION DES MATRICES, le décodage qui a produi
   });
 });
 
-describe("readPathArg — la forme de `constructPath`, déballage compris", () => {
-  it("MESURÉ : les segments sont ENVELOPPÉS dans un tableau à un élément", () => {
+describe("readPathArg — the shape of `constructPath`, unwrapping included", () => {
+  it("MEASURED: the segments are WRAPPED in a one-element array", () => {
     // `args = [paintOp, [packedSegments], minMax]` — `args[1][0]`, never
     // `args[1]`. Established empirically on 04/09/2026, undocumented upstream.
     // This unwrapping lived as a comment at two call sites and was tested
@@ -142,23 +142,23 @@ describe("readPathArg — la forme de `constructPath`, déballage compris", () =
     });
   });
 
-  it("MESURÉ : un chemin SANS segments (`args[1][0] === null`) rend zéro sous-chemin, il ne lève pas", () => {
+  it("MEASURED: a path WITHOUT segments (`args[1][0] === null`) returns zero sub-paths, it does not throw", () => {
     // 14 of the 34 `constructPath` of the corpus are in this case. The old code never
     // saw it: it decoded after filtering on the painting
     // operation. It is the oracle that found it, by stumbling on it.
     expect(readPathArg([20, [null], undefined])).toEqual({ paintOp: 20, subpaths: [] });
   });
 
-  it("accepte aussi la forme NON enveloppée, au cas où elle change (jamais observée : 34 sur 34 sont enveloppées)", () => {
+  it("also accepts the UNWRAPPED shape, in case it changes (never observed: 34 out of 34 are wrapped)", () => {
     expect(readPathArg([20, [0, 10, 20], undefined]).subpaths).toEqual([[{ x: 10, y: 20 }]]);
   });
 
-  it("`minMax` est optionnel", () => {
+  it("`minMax` is optional", () => {
     expect(readPathArg([22, [[0, 10, 20]]]).minMax).toBeUndefined();
     expect(readPathArg([22, [[0, 10, 20]], null]).minMax).toBeUndefined();
   });
 
-  it("MESURÉ : `minMax` est un Float32Array, et le jeter fait disparaître les pastilles", () => {
+  it("MEASURED: `minMax` is a Float32Array, and dropping it makes the colour discs disappear", () => {
     // 20 out of 20 of those that carry one. `Array.isArray` returns `false` there — and
     // the detection of colour discs rests ENTIRELY on this box:
     // a disc is a path with curves that `decodePathSubpaths` refuses, so
@@ -167,14 +167,14 @@ describe("readPathArg — la forme de `constructPath`, déballage compris", () =
     expect(readPathArg([22, [[0, 1, 2]], mm]).minMax).toEqual([10, 20, 30, 40]);
   });
 
-  it("LÈVE sur une forme non reconnue plutôt que de rendre un chemin vide", () => {
+  it("THROWS on an unrecognised shape rather than returning an empty path", () => {
     // An empty path would be indistinguishable from a path without segments: the
     // detector would conclude "no border" instead of "I do not know".
     expect(() => readPathArg("pas un chemin")).toThrow(/unrecognized argument shape/);
     expect(() => readPathArg([])).toThrow(/unrecognized argument shape/);
   });
 
-  it("NOMME l'opération de peinture — elle vit dans le même espace de codes qu'`OPS`", () => {
+  it("NAMES the painting operation — it lives in the same code space as `OPS`", () => {
     // `args[0]` of `constructPath` is literally `OPS.stroke`, `OPS.fill`…
     // (checked on 04/09/2026 by printing the two side by side). Naming it here
     // saves the consumer from needing `OPS` to classify a painting,
@@ -183,7 +183,7 @@ describe("readPathArg — la forme de `constructPath`, déballage compris", () =
     expect(readPathArg([22, [[0, 1, 2]]], OPS).paint).toBe("fill");
   });
 
-  it("un code de peinture INCONNU rend `undefined`, pas une erreur", () => {
+  it("an UNKNOWN painting code returns `undefined`, not an error", () => {
     // A clipping path alone is never painted: it has no painting
     // name, and that is not an anomaly.
     expect(readPathArg([777, [[0, 1, 2]]], OPS).paint).toBeUndefined();
@@ -192,7 +192,7 @@ describe("readPathArg — la forme de `constructPath`, déballage compris", () =
     expect(readPathArg([20, [[0, 1, 2]]]).paintOp).toBe(20);
   });
 
-  it("`decodeOps` normalise `constructPath` comme il normalise les matrices", () => {
+  it("`decodeOps` normalises `constructPath` as it normalises matrices", () => {
     const decoded = decodeOps({ fnArray: [91], argsArray: [[20, [[0, 1, 2]], undefined]] }, OPS)[0];
     expect(decoded).toEqual({
       op: "constructPath",
@@ -212,7 +212,7 @@ describe("readPathArg — la forme de `constructPath`, déballage compris", () =
  * that is, on the NEUTRAL side of the tree.
  */
 describe("decodePathSubpaths", () => {
-  it("décode un rectangle moveTo/lineTo…/closePath", () => {
+  it("decodes a moveTo/lineTo…/closePath rectangle", () => {
     const packed = [0, 0, 0, 1, 0, 100, 1, 200, 100, 1, 200, 0, 4];
     expect(decodePathSubpaths(packed)).toEqual([
       [
@@ -225,7 +225,7 @@ describe("decodePathSubpaths", () => {
     ]);
   });
 
-  it("décode une simple ligne à deux points", () => {
+  it("decodes a simple two-point line", () => {
     expect(decodePathSubpaths([0, 50, 500, 1, 250, 500])).toEqual([
       [
         { x: 50, y: 500 },
@@ -234,11 +234,11 @@ describe("decodePathSubpaths", () => {
     ]);
   });
 
-  it("un closePath sur un sous-chemin réduit à son point de départ n'ajoute rien", () => {
+  it("a closePath on a sub-path reduced to its starting point adds nothing", () => {
     expect(decodePathSubpaths([0, 10, 20, 4])).toEqual([[{ x: 10, y: 20 }]]);
   });
 
-  it("S'ARRÊTE sur un code inconnu plutôt que de lire une courbe comme une ligne", () => {
+  it("STOPS on an unknown code rather than reading a curve as a line", () => {
     // A straight-line table border is what the detector looks for;
     // a curve is never one. Abandoning THIS path is a documented
     // limit, not a silently wrong answer.

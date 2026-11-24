@@ -39,12 +39,12 @@ function pdfWithForm(): Uint8Array {
   );
 }
 
-describe("ourOpsOfPage: le flux d'opérateurs de la page, lu de notre document", () => {
+describe("ourOpsOfPage: the page's operator stream, read from our document", () => {
   const doc = openPdfObjects(pdfWithForm());
   const ops = ourOpsOfPage(doc, doc.pages()[0]!);
   const names = ops.map((o) => o.op);
 
-  it("donne les opérateurs de pdf.js, dans l'ordre, forme incluse", () => {
+  it("gives the operators pdf.js gave, in order, form included", () => {
     expect(names).toEqual([
       "save",
       "transform",
@@ -66,17 +66,17 @@ describe("ourOpsOfPage: le flux d'opérateurs de la page, lu de notre document",
     ]);
   });
 
-  it("nomme chaque police par NOTRE clé : la page à sa portée vide, la forme à la sienne", () => {
+  it("names each font by OUR key: the page with its empty scope, the form with its own", () => {
     const fonts = ops.filter((o) => o.op === "setFont").map((o) => (o.args as unknown[])[0]);
     expect(fonts).toEqual(["\u0000F1", "form:Fm0\u0000F2"]);
   });
 
-  it("donne la matrice du cm et la taille de la police", () => {
+  it("gives the cm matrix and the font size", () => {
     expect(ops[1]!.args).toEqual({ a: 1, b: 0, c: 0, d: 1, e: 5, f: 5 });
     expect((ops[3]!.args as unknown[])[1]).toBe(12);
   });
 
-  it("lit le groupe d'un /OC par sa référence, comme pdf.js le rend", () => {
+  it("reads the group of an /OC by its reference, as pdf.js returned it", () => {
     expect(ops[9]!.args).toEqual(["OC", { type: "OCG", id: "6R" }]);
   });
 });
@@ -107,8 +107,8 @@ function pdfWithContent(content: string): Uint8Array {
   );
 }
 
-describe("ourOpsOfPage: les arguments d'affichage portent nos glyphes", () => {
-  it("TJ : les glyphes de chaque chaîne, et le crénage entre elles, dans l'ordre", () => {
+describe("ourOpsOfPage: the show arguments carry our glyphs", () => {
+  it("TJ: the glyphs of each string, and the kerning between them, in order", () => {
     const doc = openPdfObjects(pdfWithContent("BT /F1 12 Tf [(A) -100 (B)] TJ ET"));
     const shown = ourOpsOfPage(doc, doc.pages()[0]!).find((o) => o.op === "showSpacedText")!;
     const items = (shown.args as unknown[][])[0]!;
@@ -118,7 +118,7 @@ describe("ourOpsOfPage: les arguments d'affichage portent nos glyphes", () => {
     expect((items[2] as { unicode: string }).unicode).toBe("B");
   });
 
-  it("' : une fin de ligne, puis l'affichage", () => {
+  it("': a line end, then the show", () => {
     const doc = openPdfObjects(pdfWithContent("BT /F1 12 Tf 14 TL (C) ' ET"));
     expect(ourOpsOfPage(doc, doc.pages()[0]!).map((o) => o.op)).toEqual([
       "beginText",
@@ -130,7 +130,7 @@ describe("ourOpsOfPage: les arguments d'affichage portent nos glyphes", () => {
     ]);
   });
 
-  it("sh : le dégradé est dit (paintShading), il abrite le texte blanc posé après lui", () => {
+  it("sh: the shading is stated (paintShading), it hosts the white text laid after it", () => {
     const doc = openPdfObjects(pdfWithContent("/Sh1 sh BT /F1 12 Tf (E) Tj ET"));
     expect(ourOpsOfPage(doc, doc.pages()[0]!).map((o) => o.op)).toEqual([
       "paintShading",
@@ -141,7 +141,7 @@ describe("ourOpsOfPage: les arguments d'affichage portent nos glyphes", () => {
     ]);
   });
 
-  it("Q rend la police d'avant le q (§8.4.1)", () => {
+  it("Q restores the font from before the q (§8.4.1)", () => {
     const doc = openPdfObjects(pdfWithContent("BT /F1 12 Tf q /F1 9 Tf Q (D) Tj ET"));
     const shown = ourOpsOfPage(doc, doc.pages()[0]!).find((o) => o.op === "showText")!;
     expect(((shown.args as unknown[][])[0]![0] as { unicode: string }).unicode).toBe("D");
@@ -176,8 +176,8 @@ function pdfWithVerticalFont(content: string): Uint8Array {
   );
 }
 
-describe("ourOpsOfPage: l'écriture verticale ne se lit pas à l'horizontale", () => {
-  it("un glyphe d'une police Identity-V porte la marque verticale, un glyphe horizontal non", () => {
+describe("ourOpsOfPage: vertical writing is not read as horizontal", () => {
+  it("a glyph of an Identity-V font carries the vertical mark, a horizontal glyph does not", () => {
     const doc = openPdfObjects(pdfWithVerticalFont("BT /F1 12 Tf (AB) Tj ET BT /F2 12 Tf (C) Tj ET"));
     const shows = ourOpsOfPage(doc, doc.pages()[0]!).filter((o) => o.op === "showText");
     const vertical = (shows[0]!.args as unknown[][])[0]!;

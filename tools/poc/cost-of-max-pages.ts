@@ -1,4 +1,4 @@
-/** POC `docs/POC-SANS-PDFJS.md`: HOW MUCH DOES IT COST a trial that makes `MAX_PAGES` bite? DEVELOPMENT tool,
+/** POC of the reader without pdf.js: HOW MUCH DOES IT COST a trial that makes `MAX_PAGES` bite? DEVELOPMENT tool,
  *  disposable with the POC.
  *  Decides: nothing. It answers a question I had settled by ASSUMING it ("50 001 sheets, too expensive"),
  *  which is the very mistake this POC paid for three times on 31/10/2026. It builds the file, reads it, and

@@ -61,23 +61,23 @@ const overpaint = (text: string, x0: number, times: number): NamedOp[] => {
   return ops;
 };
 
-describe("buildGlyphFragments — une marque peinte plusieurs fois reste UNE marque", () => {
-  it("rend un seul glyphe par position, quel que soit le nombre de passes", () => {
+describe("buildGlyphFragments — a mark painted several times stays ONE mark", () => {
+  it("returns a single glyph per position, whatever the number of passes", () => {
     const frags = buildGlyphFragments(overpaint("AB", 100, 4));
     expect(frags.map((f) => f.text)).toEqual(["A", "B"]);
   });
 
-  it("porte le nombre de passes sur le glyphe survivant — l'information n'est pas perdue", () => {
+  it("carries the number of passes on the surviving glyph — the information is not lost", () => {
     // It serves as a SECOND signal for the colspan: the generator paints the label
     // of a merged cell once per covered sub-column.
     expect(buildGlyphFragments(overpaint("AB", 100, 4)).map((f) => f.paintCount)).toEqual([4, 4]);
   });
 
-  it("vaut 1 pour un glyphe peint une seule fois — le cas de tout le reste d'une page", () => {
+  it("is 1 for a glyph painted only once — the case of all the rest of a page", () => {
     expect(buildGlyphFragments(overpaint("AB", 100, 1)).map((f) => f.paintCount)).toEqual([1, 1]);
   });
 
-  it("ne fusionne PAS deux caractères différents au même point", () => {
+  it("does NOT merge two different characters at the same point", () => {
     const ops: NamedOp[] = [
       { op: "transform", args: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } },
       { op: "beginText", args: null },
@@ -91,7 +91,7 @@ describe("buildGlyphFragments — une marque peinte plusieurs fois reste UNE mar
     expect(buildGlyphFragments(ops).map((f) => f.text)).toEqual(["A", "B"]);
   });
 
-  it("ne fusionne PAS le même caractère à des points distincts", () => {
+  it("does NOT merge the same character at distinct points", () => {
     const ops: NamedOp[] = [
       { op: "transform", args: { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 } },
       { op: "beginText", args: null },
@@ -107,7 +107,7 @@ describe("buildGlyphFragments — une marque peinte plusieurs fois reste UNE mar
     expect(frags.map((f) => f.paintCount)).toEqual([1, 1]);
   });
 
-  it("garde la PREMIÈRE occurrence, donc l'ordre de lecture du document", () => {
+  it("keeps the FIRST occurrence, hence the document's reading order", () => {
     const frags = buildGlyphFragments([...overpaint("A", 100, 3), ...overpaint("B", 140, 2)]);
     expect(frags.map((f) => f.text)).toEqual(["A", "B"]);
     expect(frags.map((f) => f.paintCount)).toEqual([3, 2]);

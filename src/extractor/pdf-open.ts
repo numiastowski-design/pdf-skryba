@@ -16,7 +16,7 @@ export const openPdfSource = async (
   bytes: Uint8Array,
   cost: ExtractionCost,
   // NO CAP by default since 09/11/2026: the library imposes no page ceiling, the CALLER asks for one
-  // (`core/document-caps.ts#PRODUCT_READER_LIMITS.pageLimit` is what Miksumia Publisher asks; the manual upload asks for none).
+  // (the application's `PRODUCT_READER_LIMITS.pageLimit` is what Miksumia Publisher asks; the manual upload asks for none).
   pageLimit: number = NO_CAP,
   // Bench probes only (`readPdfSource`'s `firstPages`): read the first pages of a longer document instead of refusing it.
   firstPages?: number,
@@ -31,10 +31,10 @@ export const openPdfSource = async (
   let documentHasText: boolean | undefined;
   try {
     // ONE SINGLE READING OF THE DOCUMENT, AND IT IS BEHIND THE BOUNDARY
-    // (14/09/2026). This file no longer calls pdf.js: neither
+    // (14/09/2026). Since that day this file has not called pdf.js: neither
     // `getDocumentProxy`, nor `extractTextItems`, nor `getResolvedPDFJS`. The
     // detector receives the SAME reading, and the glyphs are rebuilt on
-    // already-named operations — three pdf.js entries for one.
+    // already-named operations — one entry where pdf.js had three.
     //
     // `wantOps` names the operators of the pages WITH text, and — since 07/10/2026 — of a page without text when
     // another page has some: that page is no scan, its pictures are published (05/10/2026; `pdf-scanned.ts`).
@@ -54,7 +54,7 @@ export const openPdfSource = async (
       // THE CEILING IS APPLIED BEFORE A SINGLE PAGE IS READ. A
       // refused document therefore pays for no extraction — that is the whole point
       // of a volume guard. The ceiling is the CALLER's (`pageLimit`, `NO_CAP` when it
-      // asked for none): see `core/document-caps.ts#DOCUMENT_PAGE_LIMIT` for the
+      // asked for none): see the application's `DOCUMENT_PAGE_LIMIT` for the
       // product's value and for why detection can NOT be done on the file size.
       onOpen: (pageCount) => {
         if (firstPages !== undefined) return;

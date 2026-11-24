@@ -185,11 +185,11 @@ export interface PdfExtractResult {
    *  the whole PDF a scan (`pdf-scanned.ts`): the layer is never published. Never in `scannedPageIndices` (which holds the
    *  pages with no text at all). Absent when none. */
   ocrLayerPageIndices?: number[];
-  /** MIKSUDOC « Spécification technique » §5.4.1, régime 1 — one entry per
+  /** Table rendering, regime 1 — one entry per
    *  page carrying a table candidate, whether or not it actually rendered
    *  as a real table (a conservation-invariant violation falls back to
-   *  flat text — §8's own rule, "violation → repli texte plat +
-   *  signalement", never a silent one — without clearing this signal). */
+   *  flat text — §8's own rule, "violation → flat-text fallback +
+   *  notice", never a silent one — without clearing this signal). */
   tableDetections?: PdfTableDetection[];
   /** The text runs as `readPdfSource` read them, one list per page, and those
    *  this extraction removed as page furniture. Handed on so the
@@ -204,7 +204,7 @@ export interface PdfExtractResult {
     runs: TextSourceRun[][];
     deliberateRemovals: string[];
     deliberateRemovalsByPage: string[][];
-    /** The second reading of the letters control (`pipeline/letter-conservation.ts`): the cycles of every page (read from our glyphs; pdf.js's before its removal), with the tree order
+    /** The second reading of the letters control (in the application): the cycles of every page (read from our glyphs; pdf.js's before its removal), with the tree order
      *  of the pages published in it and the pages that rest on the cycles alone. */
     reference: {
       pages: PdfReferenceCycle[][];

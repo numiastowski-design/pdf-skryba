@@ -21,7 +21,7 @@ export interface LayerGroup {
   readonly expression?: readonly unknown[] | null;
 }
 
-/** The layers of one document: `isVisible` for a group operand, as `OptionalContentConfig.isVisible` has it. */
+/** The layers of one document: `isVisible` for a group operand, as pdf.js's `OptionalContentConfig.isVisible` had it. */
 export interface LayerConfig {
   isVisible(group: unknown): boolean;
 }

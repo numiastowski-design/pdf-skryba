@@ -44,7 +44,7 @@
  * UPSTREAM, in `extractor/pdf-table-detector.ts`. Rebuilding page coordinates
  * from the operator stream (text state machine and CTM) is on the same side,
  * deliberately: that is format decoding, and it is the part we got wrong (see
- * `docs/INVENTAIRE-PDFJS-UNPDF.md` [purged 27/09/2026, git history] §5). It therefore needs its own tests,
+ * the inventory of the pdf.js and unpdf uses, §5, purged on 27/09/2026). It therefore needs its own tests,
  * there.
  *
  * What this family never does: XHTML rendering, IRDoc, model call, Confluence
@@ -53,7 +53,7 @@
  * ABSTENTION IS A FIRST-ORDER OUTPUT, not a detail. It exists today in three
  * shapes — `PdfTableOrigin` equal to `"no-grid"`, an `undefined` grid when none
  * can be built, and a non-empty `CellAssignment.ambiguous`. **Unifying them
- * waits for a measurement** (git history, écart 16): unifying now would freeze
+ * waits for a measurement** (git history, gap 16): unifying now would freeze
  * a contract that is going to move.
  *
  * Coordinate convention, identical to `pdf.ts` (PDF space: y grows upwards, so

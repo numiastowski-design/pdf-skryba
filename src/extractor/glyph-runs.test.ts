@@ -1,6 +1,6 @@
 /**
- * The text runs of a page built from OUR glyphs, not from pdf.js `getTextContent()` (docs/CONCEPTION-TEXTE-PDF-GLYPHES.md,
- * option decided by on 13/10/2026). Each case is a rule of that design, fed as named operators, the shape
+ * The text runs of a page built from OUR glyphs, not from pdf.js's former `getTextContent()` (the design of PDF text from
+ * glyphs, option decided on 13/10/2026). Each case is a rule of that design, fed as named operators, the shape
  * `decodeOps` gives.
  */
 
@@ -106,7 +106,7 @@ describe("glyphRuns — where a run gets a space", () => {
 
   // Bench of 14/10/2026: a blank dropped where a run closes glued « Version 4Page 3 of 9 » (doc 38, its footer no longer
   // seen as repeated) and « 3.Indicateurs » (doc 49). pdf.js emitted that blank as an item of its own; so do we, ONE per cut.
-  it("blanks between two runs that a cut separates become one blank run, as pdf.js emits", () => {
+  it("blanks between two runs that a cut separates become one blank run, as pdf.js emitted", () => {
     expect(
       textsOf([font("f1"), at(100, 700), show("ab"), font("f2"), show("  "), font("f1"), at(140, 700), show("cd")]),
     ).toEqual(["ab", " ", "cd"]);
@@ -204,7 +204,7 @@ describe("glyphRuns — what a run carries", () => {
   });
 });
 
-describe("l'italique SYNTHÉTIQUE : un cisaillement de la matrice de texte (05/11/2026)", () => {
+describe("SYNTHETIC italic: a shear of the text matrix (05/11/2026)", () => {
   // A caption written in the same font as the rest and slanted by the text matrix: an italic the PDF declares by its
   // geometry, not by its font. A rotation (b ≠ 0) is not one.
   const sheared = (x: number, y: number, c: number, b = 0): NamedOp => ({
@@ -212,12 +212,12 @@ describe("l'italique SYNTHÉTIQUE : un cisaillement de la matrice de texte (05/1
     args: { a: 1, b, c, d: 1, e: x, f: y },
   });
 
-  it("🔴 un fragment cisaillé est en italique, un fragment droit non", () => {
+  it("🔴 a sheared fragment is italic, an upright one is not", () => {
     const runs = glyphRuns([BT, font("F5", 8), at(10, 100), show("dont"), sheared(40, 100, 0.19), show("Adieu"), ET]);
     expect(runs.map((r) => `${r.text}:${String(r.italic)}`)).toEqual(["dont:false", "Adieu:true"]);
   });
 
-  it("une rotation n'est pas un italique", () => {
+  it("a rotation is not an italic", () => {
     const runs = glyphRuns([
       BT,
       font("F5", 8),

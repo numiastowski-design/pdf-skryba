@@ -85,8 +85,8 @@ function programEncodingOf(reader: FontReader, font: PdfDict): readonly string[]
     return builtInType1Encoding(reader.streamBytes(file));
   } catch (error) {
     // A stream OUR reader refuses to decode says nothing, and the abstention stands: never a guessed encoding.
-    // Anything else is a defect, and is not turned into the standard encoding, which can INVENT letters (16/11/2026,
-    // docs/CONCEPTION-AVIS-TEXTE-PDF.md, question 5): it leaves the font, whose caller drops its glyphs
+    // Anything else is a defect, and is not turned into the standard encoding, which can INVENT letters (decided on
+    // 16/11/2026): it leaves the font, whose caller drops its glyphs
     // (`pdf-glyph-source.ts`, « A font we cannot read »). Losing words visibly rather than inventing them silently.
     if (error instanceof PdfObjectsRefusal) return undefined;
     throw error;

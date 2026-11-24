@@ -20,8 +20,8 @@ function pathsOf(stream: string): PdfPathArg[] {
   return out;
 }
 
-describe("PathBuilder: un chemin de très nombreux points (revue 06/11/2026, point 3)", () => {
-  it("🔴 200 000 points ne lèvent rien et donnent leur boîte", () => {
+describe("PathBuilder: a path of very many points (review 06/11/2026, point 3)", () => {
+  it("🔴 200 000 points throw nothing and give their box", () => {
     const builder = new PathBuilder();
     const num = (n: number) => ({ kind: "number" as const, value: n });
     builder.feed("m", [num(0), num(0)]);
@@ -31,8 +31,8 @@ describe("PathBuilder: un chemin de très nombreux points (revue 06/11/2026, poi
   });
 });
 
-describe("PathBuilder: les chemins peints d'une page, lus de notre flux", () => {
-  it("un rectangle peint est quatre côtés fermés, peints d'une fois", () => {
+describe("PathBuilder: the painted paths of a page, read from our stream", () => {
+  it("a painted rectangle is four closed sides, painted at once", () => {
     expect(pathsOf("10 20 30 40 re f")).toEqual([
       {
         paintOp: 0,
@@ -51,7 +51,7 @@ describe("PathBuilder: les chemins peints d'une page, lus de notre flux", () => 
     ]);
   });
 
-  it("un côté nul donne une diagonale seule, comme pdf.js", () => {
+  it("a zero side gives a lone diagonal, as pdf.js did", () => {
     const [path] = pathsOf("0 0 10 0 re S");
     expect(path!.subpaths).toEqual([
       [
@@ -62,13 +62,13 @@ describe("PathBuilder: les chemins peints d'une page, lus de notre flux", () => 
     ]);
   });
 
-  it("`s` ferme le chemin avant de le peindre ; `n` peint sans rien dessiner", () => {
+  it("`s` closes the path before painting it; `n` paints without drawing anything", () => {
     expect(pathsOf("0 0 m 5 0 l 5 5 l s")[0]!.paint).toBe("closeStroke");
     expect(pathsOf("0 0 m 5 0 l 5 5 l s")[0]!.subpaths[0]).toHaveLength(4);
     expect(pathsOf("0 0 1 1 re n")[0]).toMatchObject({ paint: "endPath" });
   });
 
-  it("une courbe arrête son sous-chemin : ce qui suit n'est pas lu", () => {
+  it("a curve stops its sub-path: what follows is not read", () => {
     const [path] = pathsOf("0 0 m 5 0 l 5 5 l 1 1 2 2 3 3 c 9 9 l f");
     expect(path!.subpaths).toEqual([
       [
@@ -79,16 +79,16 @@ describe("PathBuilder: les chemins peints d'une page, lus de notre flux", () => 
     ]);
   });
 
-  it("un chemin sans segment est une peinture comme les autres", () => {
+  it("a path without a segment is a painting like the others", () => {
     expect(pathsOf("f")).toEqual([{ paintOp: 0, paint: "fill", subpaths: [] }]);
   });
 
-  it("les coordonnées sont des nombres à virgule flottante simple, comme dans le tampon de pdf.js", () => {
+  it("coordinates are single-precision floats, as in pdf.js's buffer", () => {
     const [path] = pathsOf("0.1 0 m 0.1 1 l S");
     expect(path!.subpaths[0]![0]!.x).toBe(Math.fround(0.1));
   });
 
-  it("les opérateurs de dessin sans chemin ne produisent aucune peinture", () => {
+  it("drawing operators without a path produce no painting", () => {
     expect(pathsOf("1 0 0 1 0 0 cm 0 g")).toEqual([]);
   });
 });
