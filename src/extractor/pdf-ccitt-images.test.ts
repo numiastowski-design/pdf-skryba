@@ -16,7 +16,7 @@ const fixture = () => openPdfObjects(FILE);
 describe("ccittImageObjectOf: a CCITT image read by our decoder", () => {
   it("gives the size, the 1-bit grey format, and the 147 black pixels its generator drew", () => {
     const doc = fixture();
-    const image = ccittImageObjectOf(doc, FILE, doc.pages()[0]!, "Im1", GREY_1)!;
+    const image = ccittImageObjectOf(doc, doc.pages()[0]!, "Im1", GREY_1)!;
     expect([image.width, image.height, image.kind]).toEqual([24, 20, GREY_1]);
     expect(image.data.length).toBe(3 * 20);
     let black = 0;
@@ -26,6 +26,6 @@ describe("ccittImageObjectOf: a CCITT image read by our decoder", () => {
 
   it("an image that is not CCITT is not decoded here", () => {
     const doc = fixture();
-    expect(ccittImageObjectOf(doc, FILE, doc.pages()[0]!, "Missing", GREY_1)).toBeUndefined();
+    expect(ccittImageObjectOf(doc, doc.pages()[0]!, "Missing", GREY_1)).toBeUndefined();
   });
 });

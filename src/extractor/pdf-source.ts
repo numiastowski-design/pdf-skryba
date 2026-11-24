@@ -655,7 +655,7 @@ function ourImagesOf(
     const scope = { resources: painted.resources };
     const rawName = painted.stencil ? resourceNameOf(name) : name;
     const decode = (): DecodedImageObject | undefined =>
-      ccittImageObjectOf(ctx.ourDoc, ctx.file, scope, name, IMAGE_KIND.GRAYSCALE_1BPP) ??
+      ccittImageObjectOf(ctx.ourDoc, scope, name, IMAGE_KIND.GRAYSCALE_1BPP) ??
       jpegImageObjectOf(ctx.ourDoc, scope, name, { rgb: IMAGE_KIND.RGB_24BPP, rgba: IMAGE_KIND.RGBA_32BPP }) ??
       flateImageObjectOf(ctx.ourDoc, scope, name, { rgb: IMAGE_KIND.RGB_24BPP, rgba: IMAGE_KIND.RGBA_32BPP });
     const stream = ctx.ourDoc.resolve(ctx.ourDoc.dictOf(painted.resources?.get("XObject"))?.get(rawName));

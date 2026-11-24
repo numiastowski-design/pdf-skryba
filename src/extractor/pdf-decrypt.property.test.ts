@@ -55,12 +55,6 @@ const CLEAR = [
 ];
 const ENCRYPTED = "pdf/59-Document-Chiffre-RC4.pdf";
 
-/** 🔴 A DEFECT FOUND BY THIS LOT (24/11/2026), REPORTED, NOT FIXED HERE: the CCITT reader takes the stream's bytes as
- *  the file holds them (`pdf-ccitt-images.ts#ccittImageObjectOf`), never decrypted (§7.6.2: every stream is). Fixture 60
- *  encrypted (revision 2, 40 bits, empty password) publishes its words but loses its image ("pdf-image-unread"). Its
- *  images are left out of the comparison until the reader decrypts them; the `it.fails` below turns red that day. */
-const IMAGES_NOT_DECRYPTED = new Set(["pdf/60-Image-CCITT-Groupe4.pdf"]);
-
 interface Reading {
   readonly words: readonly string[];
   readonly images: readonly string[];
@@ -124,15 +118,15 @@ describe("decryption - clear seeds encrypted after ISO 32000-1 §7.6 (RC4)", () 
           const encrypted = encryptPdf(seed.bytes, security, new Choices(draws));
           const reading = readingOf(await extractPdf(encrypted));
           const label = `${name}, revision ${security.revision}`;
-          if (IMAGES_NOT_DECRYPTED.has(name)) expect(reading.words, label).toEqual(seed.reading.words);
-          else expect(reading, label).toEqual(seed.reading);
+          expect(reading, label).toEqual(seed.reading);
         },
       ),
       params(30),
     );
   });
 
-  it.fails("the CCITT image of an encrypted file reads like the clear one (defect of 24/11/2026)", async () => {
+  // Found by this lot, fixed on 24/11/2026: the CCITT reader took the file's bytes, never decrypted (§7.6.2).
+  it("the CCITT image of an encrypted file reads like the clear one (defect of 24/11/2026)", async () => {
     const name = "pdf/60-Image-CCITT-Groupe4.pdf";
     const seed = clear.get(name) as { bytes: Uint8Array; reading: Reading };
     const security: Rc4Security = {

@@ -113,13 +113,13 @@ describe("images CCITT : taille bornée", () => {
   it("🔴 une hauteur déclarée de 5 000 000 n'est pas suivie : le tampon ne se dimensionne pas sur le dictionnaire", () => {
     const bytes = pdfWithImages([ccittOf(5_000_000)]);
     const { doc, scope } = sceneOf(bytes);
-    expect(ccittImageObjectOf(doc, bytes, scope, "Im", 1)).toBeUndefined();
+    expect(ccittImageObjectOf(doc, scope, "Im", 1)).toBeUndefined();
   });
 
   it("la même image à sa vraie taille (24 x 20) est décodée", () => {
     const bytes = pdfWithImages([ccittOf(20)]);
     const { doc, scope } = sceneOf(bytes);
-    expect(ccittImageObjectOf(doc, bytes, scope, "Im", 1)?.height).toBe(20);
+    expect(ccittImageObjectOf(doc, scope, "Im", 1)?.height).toBe(20);
   });
 });
 
