@@ -1,9 +1,15 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { PDFDocument, StandardFonts, rgb } from "@cantoo/pdf-lib";
 import { describe, expect, it } from "vitest";
 
-import { ReaderError } from "doc-ir";
+import { ReaderError, type VisionResult } from "doc-ir";
 import { extractPdf } from "./pdf";
+import { FakeVisionPort } from "./pdf-fake-vision.test.support";
 import { extractPdfWithVision } from "./pdf-scanned";
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 // Plan step 5: a PDF is read under the limits it is given (`ReaderLimits`), the product's when it is given none.
 // Run: npx vitest run --project=main src/extractor/reader-limits.pdf.test.ts
@@ -88,6 +94,24 @@ describe("pdf — the table caps are the limits it is given", () => {
     const limited = await extractPdf(await gridPdf(3, 2), "en", { limits: { tableCols: 1 } });
     expect(tablesOf(limited.pages)).toBe(0);
     expect(limited.notices).toContainEqual({ kind: "table-withheld", count: 1 });
+  });
+
+  // Review of 14/11/2026 (« keptNotices loses table-withheld »): after the AI read the scanned pages, only the loss notices were composed
+  // again, so a table withheld on a page kept as digital went unsaid.
+  it("a table withheld on a digital page is still said after the AI read the document's scanned page", async () => {
+    const doc = await PDFDocument.load(await gridPdf(3, 2));
+    const scanned = await PDFDocument.load(readFileSync(join(here, "../../fixtures/pdf/05c-Scan-Illisible.pdf")));
+    const [scanPage] = await doc.copyPages(scanned, [0]);
+    doc.addPage(scanPage);
+    const vision = new (class extends FakeVisionPort {
+      override async analyzeDocument(): Promise<VisionResult[]> {
+        return [{ text: "read", confidence: 0.95 }];
+      }
+    })();
+    const result = await extractPdfWithVision(await doc.save(), vision, { limits: { tableRows: 2 } });
+    expect(result.scannedPages).toBe(1);
+    // FAILS WITH (notices composed again from the losses only): expected [] to deep equally contain { kind: 'table-withheld', count: 1 }.
+    expect(result.notices ?? []).toContainEqual({ kind: "table-withheld", count: 1 });
   });
 
   it("the words of a withheld table are declared removed on purpose, and none without limits", async () => {

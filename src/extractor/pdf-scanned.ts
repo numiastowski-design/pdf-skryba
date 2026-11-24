@@ -206,20 +206,22 @@ const conservationSourceOf = (
   letters: textSource.reference,
 });
 
-/** The loss notices and the pictures kept once the AI's text replaced the pages of `replaced`. */
+/** The notices and the pictures kept once the AI's text replaced the pages of `replaced`: the two loss notices are composed again
+ *  without those pages; every other notice passes through (a withheld table: only a page kept as digital holds a detected table). */
 const keptAfterAiReading = (
   replaced: ReadonlySet<number>,
-  images: PdfExtraction["images"],
-  pagesOfImage: PdfExtraction["pagesOfImage"],
-  imageLossByPage: PdfExtraction["imageLossByPage"],
-  textUnreadByPage: PdfExtraction["textUnreadByPage"],
+  extraction: Pick<PdfExtraction, "imageLossByPage" | "textUnreadByPage"> & {
+    [Field in "images" | "pagesOfImage" | "notices"]: PdfExtraction[Field] | undefined;
+  },
 ): { keptNotices: DocumentNotice[] | undefined; keptImages: PdfExtraction["images"] } => {
+  const { images, pagesOfImage, imageLossByPage, textUnreadByPage, notices } = extraction;
   // A page whose text could not be read and that the AI read is no loss either (16/11/2026).
-  const keptLosses = [
+  const kept = [
+    ...(notices ?? []).filter((notice) => notice.kind !== "pdf-image-unread" && notice.kind !== "pdf-text-unread"),
     ...(pdfImageUnreadNotices(imageLossByPage, replaced) ?? []),
     ...(pdfTextUnreadNotices(textUnreadByPage, replaced) ?? []),
   ];
-  const keptNotices = keptLosses.length > 0 ? keptLosses : undefined;
+  const keptNotices = kept.length > 0 ? kept : undefined;
   const keptImages = images?.filter((image) => {
     const placedOn = pagesOfImage?.get(image.sha256);
     return placedOn === undefined || [...placedOn].some((pageIndex) => !replaced.has(pageIndex));
@@ -340,13 +342,13 @@ export const extractPdfWithVision = async (
   const merged = pages.map((digitalBlocks, pageIndex) => ocrByPage.get(pageIndex) ?? digitalBlocks);
   // The images of a page the AI's text replaced were never to be published: not counted as lost, and not published
   // (they were read with the page, `pdf-open.ts`; one also placed on a kept page stays).
-  const { keptNotices, keptImages } = keptAfterAiReading(
-    new Set(ocrByPage.keys()),
+  const { keptNotices, keptImages } = keptAfterAiReading(new Set(ocrByPage.keys()), {
     images,
     pagesOfImage,
     imageLossByPage,
     textUnreadByPage,
-  );
+    notices,
+  });
   return result(
     pdfPageTabs(merged, language, opts?.labels),
     { images: keptImages && keptImages.length > 0 ? keptImages : undefined, notices: keptNotices },
