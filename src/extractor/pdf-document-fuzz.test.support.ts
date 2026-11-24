@@ -59,7 +59,8 @@ export function inventedTokens(published: readonly string[], source: PdfSource):
 // ---------------------------------------------------------------------------------------------------------------------
 // The objects that carry no text.
 
-export type TargetKind = "image" | "info" | "outline" | "metadata" | "link";
+/** `encrypt` is the `/Encrypt` dictionary (§7.6.1): it carries no text, but every text needs it (lot 7 only). */
+export type TargetKind = "image" | "info" | "outline" | "metadata" | "link" | "encrypt";
 
 /** One object at an offset of the file: `start` at its `N G obj`, `end` just after its `endobj`. */
 export interface Target {
@@ -86,11 +87,12 @@ function kindOfDict(dict: PdfDict): TargetKind | undefined {
 }
 
 /** The objects that carry no text, as OUR reader places and parses them: every object at an offset of the newest
- *  cross-reference section, classified by its own dictionary, and the trailer's `/Info`. */
+ *  cross-reference section, classified by its own dictionary, and the trailer's `/Info` and `/Encrypt`. */
 export function readerTargets(bytes: Uint8Array): Target[] {
   const doc = openPdfObjects(bytes);
   const xref = readXref(bytes);
   const info = xref.trailer.get("Info");
+  const encrypt = xref.trailer.get("Encrypt");
   const lengthOf = (ref: { readonly num: number; readonly gen: number }): number | undefined => {
     const value = doc.resolve({ kind: "ref", num: ref.num, gen: ref.gen });
     return value?.kind === "number" ? value.value : undefined;
@@ -101,8 +103,13 @@ export function readerTargets(bytes: Uint8Array): Target[] {
     const parsed = parseIndirectObject(bytes, entry.offset, lengthOf);
     const value = parsed.value;
     const dict = value.kind === "stream" ? value.dict : value.kind === "dict" ? value.entries : undefined;
-    const isInfo = info?.kind === "ref" && info.num === num;
-    const kind = isInfo ? "info" : dict === undefined ? undefined : kindOfDict(dict);
+    const fromTrailer =
+      info?.kind === "ref" && info.num === num
+        ? "info"
+        : encrypt?.kind === "ref" && encrypt.num === num
+          ? "encrypt"
+          : undefined;
+    const kind = fromTrailer ?? (dict === undefined ? undefined : kindOfDict(dict));
     if (kind !== undefined) targets.push({ num, gen: entry.gen, kind, start: entry.offset, end: parsed.end });
   }
   return targets;
@@ -112,11 +119,15 @@ const latin1Text = (bytes: Uint8Array): string => Buffer.from(bytes).toString("l
 
 /** The objects that carry no text, found by a NAIVE scan of the bytes, without our parser: each `N G obj` up to the
  *  next `endobj` (after the `endstream` of a stream), classified by regular expressions over its dictionary text; the
- *  info dictionary is the one the last `/Info N G R` of the file names. It sees every revision and no object stream. */
+ *  info and encryption dictionaries are the ones the last `/Info N G R` and `/Encrypt N G R` of the file name. It sees every revision and no object stream. */
 export function naiveTargets(bytes: Uint8Array): Target[] {
   const text = latin1Text(bytes);
-  const infoMatches = [...text.matchAll(/\/Info\s+(\d+)\s+(\d+)\s+R/gu)];
-  const infoNum = infoMatches.length === 0 ? undefined : Number(infoMatches[infoMatches.length - 1]?.[1]);
+  const lastRef = (key: string): number | undefined => {
+    const matches = [...text.matchAll(new RegExp(String.raw`/${key}\s+(\d+)\s+(\d+)\s+R`, "gu"))];
+    return matches.length === 0 ? undefined : Number(matches[matches.length - 1]?.[1]);
+  };
+  const infoNum = lastRef("Info");
+  const encryptNum = lastRef("Encrypt");
   const targets: Target[] = [];
   for (const match of text.matchAll(/(?<![0-9])(\d+)[\0\t\n\f\r ]+(\d+)[\0\t\n\f\r ]+obj(?![A-Za-z])/gu)) {
     const start = match.index;
@@ -134,7 +145,7 @@ export function naiveTargets(bytes: Uint8Array): Target[] {
       end = after + "endobj".length;
     }
     const num = Number(match[1]);
-    const kind = num === infoNum ? "info" : naiveKind(dictText);
+    const kind = num === infoNum ? "info" : num === encryptNum ? "encrypt" : naiveKind(dictText);
     if (kind !== undefined) targets.push({ num, gen: Number(match[2]), kind, start, end });
   }
   return targets;
