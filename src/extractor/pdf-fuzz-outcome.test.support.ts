@@ -3,7 +3,7 @@
  * Decides: what counts as "a refusal of ours", which result fields must repeat on a second read, the closed set of
  * refusal messages, and the fixed seed of the PDF property tests.
  * NOT here: the mutations (the property test), the run counts (`lib/pdf-fuzz-runs.test.support.ts`).
- * Called by: `extractor/pdf.property.test.ts`.
+ * Called by: `extractor/pdf.property.test.ts`, the document-level fuzz of lots 6 to 8.
  */
 
 import { expect } from "vitest";
@@ -79,6 +79,14 @@ export async function checkTrial(read: PdfRead, bytes: Uint8Array): Promise<Tria
     return "read";
   }
   const error = first.error;
+  expectRefusalOfOurs(error);
+  expect(refusalSignature(second.error), "a second read gave another refusal").toEqual(refusalSignature(error));
+  return "refused";
+}
+
+/** A failure of `extractPdf` or `readPdfSource` is a `ReaderError` `EXTRACT_FAILED` that carries a refusal of ours,
+ *  with a message of ours: never a raw error that a catch-all turned into `EXTRACT_FAILED`. */
+export function expectRefusalOfOurs(error: unknown): void {
   expect(error).toBeInstanceOf(ReaderError);
   const named = error as ReaderError;
   expect(named.code).toBe("EXTRACT_FAILED");
@@ -87,8 +95,6 @@ export async function checkTrial(read: PdfRead, bytes: Uint8Array): Promise<Tria
     "an EXTRACT_FAILED without a refusal of ours (a raw error caught by a catch-all)",
   ).toBeInstanceOf(PdfObjectsRefusal);
   expect(named.message).toMatch(OUR_REFUSAL_MESSAGE);
-  expect(refusalSignature(second.error), "a second read gave another refusal").toEqual(refusalSignature(error));
-  return "refused";
 }
 
 /** Counts the outcomes of a property's trials, to check its share of reads once fast-check is done. */
