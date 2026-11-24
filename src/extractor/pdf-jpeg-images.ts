@@ -6,6 +6,7 @@
  *  Called by: `extractor/pdf-source.ts` (ahead of the other image decoders), `pdf-jpeg-images.test.ts`. */
 
 import { imageFilterOf } from "./pdf-objects/document";
+import { rethrowSecurityRefusal } from "./pdf-objects/refusal";
 import type { PdfObjectsDocument } from "./pdf-objects/document";
 import type { PdfDict, PdfStream } from "./pdf-objects/objects";
 import type { PictureScope } from "./pdf-image-pixels";
@@ -66,7 +67,9 @@ function jpegDeclaredOf(doc: PdfObjectsDocument, dict: PdfDict): JpegDeclared | 
 function rawBytesOf(doc: PdfObjectsDocument, stream: PdfStream): Uint8Array | undefined {
   try {
     return doc.imageStreamOf(stream).data;
-  } catch {
+  } catch (error) {
+    // A refusal for security refuses the document (decision of 25/10/2026); the others leave the picture unread.
+    rethrowSecurityRefusal(error);
     return undefined;
   }
 }

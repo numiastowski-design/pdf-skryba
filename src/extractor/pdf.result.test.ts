@@ -32,12 +32,15 @@ describe("extractPdf: the keys of the result", () => {
       "scannedPageIndices",
       "textSource",
       "textUnreadByPage",
+      "unreadObjectsByPage",
     ]);
     expect(result.scannedPageIndices).toEqual([]);
     // Always present; empty on a document with no one-column grid published flat (20/11/2026).
     expect(result.flattenedGridPages).toEqual([]);
     // Always present, empty when every page was read (16/11/2026).
     expect([...result.textUnreadByPage.entries()]).toEqual([]);
+    // Always present, empty when every XObject was read (24/11/2026).
+    expect([...result.unreadObjectsByPage.entries()]).toEqual([]);
     expect([...result.imageLossByPage.entries()]).toEqual([[0, { slow: 0, unreadable: 0, places: [] }]]);
     expect(result.textSource.deliberateRemovals).toEqual([]);
     expect(result.textSource.runs.map((page) => page.map((r) => r.text).join(""))).toEqual([

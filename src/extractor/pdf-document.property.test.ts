@@ -5,10 +5,11 @@
  * stream, a link annotation), located by our reader AND by a naive scan of the bytes that shares no code with it
  * (`pdf-document-fuzz.test.support.ts`); damaged inside its own bytes, the file's length kept: bytes overwritten, a run
  * filled, its body replaced by `null`, its stream data overwritten.
- * Properties: THE SAME WORDS as the intact file, never a refusal (decision of 24/11/2026: a part that carries no text
- * fails alone, `pdf-objects/refusal.ts#partOrAbsent`); and the published words are pieces of the read words (the layout
- * invents nothing). The damage keeps every cross-reference offset true, so it never reaches the structure: a refusal
- * stays allowed only where it does (the `/Encrypt` dictionary of lot 7).
+ * Properties: THE SAME WORDS as the intact file (decision of 24/11/2026: a part that carries no text fails alone,
+ * `pdf-objects/refusal.ts#partOrAbsent`), or a refusal FOR SECURITY, a bound that bit (decision of 25/10/2026: a trapped
+ * file is refused as a whole, `isSecurityRefusal`); never a refusal for a merely unreadable part. And the published words
+ * are pieces of the read words (the layout invents nothing). The damage keeps every cross-reference offset true, so it
+ * never reaches the structure (a structure refusal stays allowed where it does: the `/Encrypt` dictionary of lot 7).
  *
  * The seed is fixed (`PDF_FUZZ_SEED`): a red run replays as is. The run counts are the written ones, times the weekly
  * multiplier (`lib/pdf-fuzz-runs.test.support.ts`): 60 base runs in all (question 5 of the design, 24/11/2026), most on
@@ -35,7 +36,8 @@ import {
   publishedWords,
   type Target,
 } from "./pdf-document-fuzz.test.support";
-import { PDF_FUZZ_SEED } from "./pdf-fuzz-outcome.test.support";
+import { OutcomeTally, PDF_FUZZ_SEED } from "./pdf-fuzz-outcome.test.support";
+import { isSecurityRefusal, PdfObjectsRefusal } from "./pdf-objects/refusal";
 import type { PdfExtractResult } from "./pdf-model";
 import { readPdfSource, type PdfSource } from "./pdf-source";
 import { fuzzRuns, fuzzTestTimeout } from "../lib/pdf-fuzz-runs.test.support";
@@ -124,15 +126,27 @@ const damageArb: fc.Arbitrary<Damage> = fc.oneof(
   }),
 );
 
-/** One trial: the damaged file read by `readPdfSource`, then by `extractPdf`; either refusing fails the trial. */
-async function trial(seed: Seed, target: Target, damage: Damage): Promise<void> {
+/** The refusal behind an extraction's error: the error itself, or its `cause`. */
+const refusalBehind = (error: unknown): unknown =>
+  error instanceof PdfObjectsRefusal ? error : ((error as { cause?: unknown }).cause ?? error);
+
+/** One trial: the damaged file read by `readPdfSource`, then by `extractPdf`. Only a refusal for security may stop it. */
+async function trial(seed: Seed, target: Target, damage: Damage): Promise<"read" | "refused"> {
   const bytes = damaged(seed.bytes, target, damage);
-  const source: PdfSource = await readPdfSource(bytes);
-  const result: PdfExtractResult = await extractPdf(bytes);
+  let source: PdfSource;
+  let result: PdfExtractResult;
+  try {
+    source = await readPdfSource(bytes);
+    result = await extractPdf(bytes);
+  } catch (error) {
+    expect(isSecurityRefusal(refusalBehind(error)), `a refusal at object ${target.num} (${target.kind})`).toBe(true);
+    return "refused";
+  }
   const words = publishedWords(result.pages);
   expect(words, `the same words as the intact ${seed.name} (object ${target.num}, ${target.kind})`).toEqual(seed.words);
   expect([...result.textUnreadByPage], "a page lost its text").toEqual(seed.textUnread);
   expect(inventedTokens(words, source), "published words the reading does not hold").toEqual([]);
+  return "read";
 }
 
 const caseArb = (names: readonly string[]) =>
@@ -157,19 +171,22 @@ describe("readPdfSource and extractPdf - damage outside the objects that carry t
 
   // Measured with this seed, damaged files still read. Before 24/11/2026, when one bad byte in such a part refused
   // the whole document: small seeds 35 of 50 at x1, 329 of 500 at x10; office documents 6 of 10, 59 of 100. Since the
-  // decision of 24/11/2026: 50 of 50, 500 of 500; 10 of 10, 100 of 100.
-  for (const [label, names, runs] of [
-    ["small seeds", SMALL, 50],
-    ["office documents", OFFICE, 10],
+  // decisions of 24/11/2026: 50 of 50, 496 of 500 (four `token-too-long`, a bound); 10 of 10, 100 of 100. The share is a
+  // starting value to calibrate.
+  for (const [label, names, runs, share] of [
+    ["small seeds", SMALL, 50, 0.9],
+    ["office documents", OFFICE, 10, 0.9],
   ] as const) {
-    it(`${label}: the same words as the intact file, never a refusal, and no word the reading does not hold`, async () => {
+    it(`${label}: the same words as the intact file or a refusal for security, and no word the reading does not hold`, async () => {
+      const tally = new OutcomeTally();
       await fc.assert(
         fc.asyncProperty(caseArb(names), async ({ name, pick, damage }) => {
           const seed = seeds.get(name) as Seed;
-          await trial(seed, seed.targets[pick % seed.targets.length] as Target, damage);
+          tally.add(await trial(seed, seed.targets[pick % seed.targets.length] as Target, damage));
         }),
         params(runs),
       );
+      expect(tally.readShare, `${label}: share of damaged files still read`).toBeGreaterThanOrEqual(share);
     });
   }
 });

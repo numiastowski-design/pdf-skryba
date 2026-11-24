@@ -298,7 +298,7 @@ describe("readObjectStream: compressed objects (7.5.7)", () => {
     // of input thus exceeds the 64 MB ceiling, and the buffer refuses before reaching it.
     const run = String.fromCharCode(129, 0x41).repeat(Math.ceil(MAX_DECODED_STREAM_BYTES / 128) + 1);
     const { bytes, stream } = streamObject("/Filter /RunLengthDecode", run);
-    expect(refusalOf(() => decodeStream(bytes, stream)).reason).toBe("stream-decode");
+    expect(refusalOf(() => decodeStream(bytes, stream)).reason).toBe("stream-too-large");
   });
 
   it("refuses a First outside the decoded data", () => {

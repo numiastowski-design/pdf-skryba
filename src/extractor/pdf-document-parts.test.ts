@@ -7,6 +7,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { deflateSync } from "node:zlib";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -14,7 +15,9 @@ import { describe, expect, it } from "vitest";
 
 import { extractPdf } from "./pdf";
 import { agreedTargets, publishedWords, type TargetKind } from "./pdf-document-fuzz.test.support";
+import { MAX_NESTING_DEPTH } from "./pdf-objects/bounds";
 import { openPdfObjects } from "./pdf-objects/document";
+import { PdfObjectsRefusal } from "./pdf-objects/refusal";
 import { decodePdfTextString } from "./pdf-text-string";
 import { readPdfSource } from "./pdf-source";
 
@@ -57,7 +60,9 @@ describe("a part that carries no text fails alone (decision of 24/11/2026)", () 
     expect(after).toEqual(before.slice(0, after.length));
   });
 
-  it("an image XObject: the same words, the image lost and counted in the pdf-image-unread notice", async () => {
+  // Its `/Subtype` is in the damaged bytes, so it may have been a form carrying text: an unread OBJECT, never called a
+  // lost picture (decision of 24/11/2026).
+  it("an XObject whose /Subtype cannot be read: the same words, counted as an unread object, not as a lost image", async () => {
     const intact = fixture("pdf/60-Image-CCITT-Groupe4.pdf");
     const damaged = broken(intact, 5, "image");
     const before = await extractPdf(intact);
@@ -65,7 +70,9 @@ describe("a part that carries no text fails alone (decision of 24/11/2026)", () 
     expect(publishedWords(after.pages)).toEqual(publishedWords(before.pages));
     expect(before.images ?? []).toHaveLength(1);
     expect(after.images ?? []).toEqual([]);
-    expect(after.notices).toContainEqual(expect.objectContaining({ kind: "pdf-image-unread", unreadable: 1 }));
+    expect(after.notices ?? []).not.toContainEqual(expect.objectContaining({ kind: "pdf-image-unread" }));
+    expect([...(after.unreadObjectsByPage ?? [])]).toEqual([[0, 1]]);
+    expect([...(before.unreadObjectsByPage ?? [])]).toEqual([]);
   });
 
   it("a link annotation: the same words, that link absent and the others kept", async () => {
@@ -84,5 +91,79 @@ describe("a part that carries no text fails alone (decision of 24/11/2026)", () 
     const intact = fixture(WORD_TOR);
     const damaged = broken(intact, 558, "metadata");
     expect(publishedWords((await extractPdf(damaged)).pages)).toEqual(publishedWords((await extractPdf(intact)).pages));
+  });
+});
+
+/** A one-page PDF: « Hello world » in Helvetica, then the picture `Im` (object 6), drawn from `image`. */
+function pageWithPicture(image: { readonly dict: string; readonly data: Uint8Array }): Uint8Array {
+  const text = (value: string): Buffer => Buffer.from(value, "latin1");
+  const content = "BT /F1 24 Tf 72 700 Td (Hello world) Tj ET q 100 0 0 100 72 500 cm /Im Do Q";
+  const bodies: Buffer[] = [
+    text("<< /Type /Catalog /Pages 2 0 R >>"),
+    text("<< /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 612 792] >>"),
+    text(
+      "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> /XObject << /Im 6 0 R >> >> >>",
+    ),
+    text(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`),
+    text("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"),
+    Buffer.concat([
+      text(`<< ${image.dict} /Length ${image.data.length} >>\nstream\n`),
+      Buffer.from(image.data),
+      text("\nendstream"),
+    ]),
+  ];
+  const chunks: Buffer[] = [text("%PDF-1.4\n")];
+  const offsets: number[] = [];
+  let length = chunks[0]!.length;
+  bodies.forEach((body, i) => {
+    offsets.push(length);
+    const object = Buffer.concat([text(`${i + 1} 0 obj\n`), body, text("\nendobj\n")]);
+    chunks.push(object);
+    length += object.length;
+  });
+  let table = `xref\n0 ${bodies.length + 1}\n0000000000 65535 f\r\n`;
+  for (const offset of offsets) table += `${String(offset).padStart(10, "0")} 00000 n\r\n`;
+  chunks.push(text(`${table}trailer\n<< /Size ${bodies.length + 1} /Root 1 0 R >>\nstartxref\n${length}\n%%EOF\n`));
+  return new Uint8Array(Buffer.concat(chunks));
+}
+
+const RGB = "/Type /XObject /Subtype /Image /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode";
+
+/** The refusal of ours an extraction ended with: the error itself or its `cause`. */
+async function refusalOfRead(bytes: Uint8Array): Promise<PdfObjectsRefusal | undefined> {
+  try {
+    await extractPdf(bytes);
+    return undefined;
+  } catch (error) {
+    if (error instanceof PdfObjectsRefusal) return error;
+    const cause = (error as { cause?: unknown }).cause;
+    return cause instanceof PdfObjectsRefusal ? cause : undefined;
+  }
+}
+
+describe("a refusal for security is never absorbed by a part (decision of 25/10/2026)", () => {
+  it("a merely damaged picture is dropped alone: the same words, the picture counted lost", async () => {
+    const intact = pageWithPicture({ dict: `${RGB} /Width 2 /Height 2`, data: deflateSync(new Uint8Array(12)) });
+    const damaged = pageWithPicture({ dict: `${RGB} /Width 2 /Height 2`, data: new Uint8Array(12).fill(0x41) });
+    const before = await extractPdf(intact);
+    const after = await extractPdf(damaged);
+    expect(publishedWords(before.pages)).toEqual(["Hello", "world"]);
+    expect(publishedWords(after.pages)).toEqual(["Hello", "world"]);
+    expect(after.notices).toContainEqual(expect.objectContaining({ kind: "pdf-image-unread", unreadable: 1 }));
+  });
+
+  it("a picture that decodes past the stream ceiling refuses the whole document", async () => {
+    // 5000 x 5000 RGB is under the picture ceiling (25 M pixels) and decodes to 75 MB, past MAX_DECODED_STREAM_BYTES.
+    const bomb = deflateSync(new Uint8Array(5000 * 5000 * 3));
+    const refusal = await refusalOfRead(pageWithPicture({ dict: `${RGB} /Width 5000 /Height 5000`, data: bomb }));
+    expect(refusal?.reason).toBe("stream-too-large");
+  });
+
+  it("an XObject nested past the parser's ceiling refuses the whole document", async () => {
+    const deep = `/Deep ${"[".repeat(MAX_NESTING_DEPTH + 1)}${"]".repeat(MAX_NESTING_DEPTH + 1)}`;
+    const refusal = await refusalOfRead(
+      pageWithPicture({ dict: `${RGB} /Width 2 /Height 2 ${deep}`, data: new Uint8Array(1) }),
+    );
+    expect(refusal?.reason).toBe("nesting-too-deep");
   });
 });

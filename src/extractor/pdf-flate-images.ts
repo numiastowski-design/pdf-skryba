@@ -15,6 +15,7 @@
  *  Called by: `extractor/pdf-source.ts` (ahead of the other image decoders). */
 
 import { singleFilterOf } from "./pdf-objects/document";
+import { rethrowSecurityRefusal } from "./pdf-objects/refusal";
 import type { PdfObjectsDocument } from "./pdf-objects/document";
 import type { PdfDict, PdfStream } from "./pdf-objects/objects";
 import type { PictureScope } from "./pdf-image-pixels";
@@ -149,7 +150,9 @@ function samplesOf(doc: PdfObjectsDocument, stream: PdfStream, layout: FlateLayo
   let samples: Uint8Array;
   try {
     samples = doc.streamBytes(stream);
-  } catch {
+  } catch (error) {
+    // A refusal for security refuses the document (decision of 25/10/2026); the others leave the picture unread.
+    rethrowSecurityRefusal(error);
     return undefined;
   }
   return unpackSamples(samples, layout.width, layout.height, layout.components, layout.bpc);

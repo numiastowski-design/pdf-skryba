@@ -252,6 +252,8 @@ export const extractPdfWithVision = async (
   /** The notices of `extractPdf`, passed through — after an AI reading, its `pdf-image-unread` and `pdf-text-unread`
    *  notices composed again without the pages the AI's text replaced; absent when there is none. */
   notices?: DocumentNotice[];
+  /** `extractPdf`'s unread XObjects by page, the pages the AI's text replaced left out; absent when none. */
+  unreadObjectsByPage?: ReadonlyMap<number, number>;
   /** The document's page count, known on opening (the row says « 12 pages »). */
   pageCount: number;
   /** How many pages are scanned, read or not: the pages with NO text at all, or every page of a scan carrying an invisible
@@ -273,6 +275,7 @@ export const extractPdfWithVision = async (
     notices,
     imageLossByPage,
     textUnreadByPage,
+    unreadObjectsByPage,
   } = await extractPdf(bytes, opts?.pageLanguage, opts?.limits === undefined ? undefined : { limits: opts.limits });
   const language = opts?.pageLanguage ?? "en";
   const pageCount = pages.length;
@@ -302,18 +305,23 @@ export const extractPdfWithVision = async (
   // The one shape of the answer; the three exits differ only by the blocks, the pictures and notices kept, and the scan count.
   const result = (
     blocks: IRDoc,
-    kept: { images: typeof images; notices: typeof notices },
+    kept: { images: typeof images; notices: typeof notices; replaced?: ReadonlySet<number> },
     extra: { scannedPages?: number } = {},
-  ) => ({
-    doc: blocks,
-    ...(kept.images ? { images: kept.images } : {}),
-    ...(tableDetections ? { tableDetections } : {}),
-    ...(kept.notices ? { notices: kept.notices } : {}),
-    pageCount,
-    ...extra,
-    docFacts,
-    conservationSource,
-  });
+  ) => {
+    // A page the AI's text replaced lost nothing of its own (as the loss notices, `keptAfterAiReading`).
+    const unread = new Map([...unreadObjectsByPage].filter(([pageIndex]) => kept.replaced?.has(pageIndex) !== true));
+    return {
+      doc: blocks,
+      ...(kept.images ? { images: kept.images } : {}),
+      ...(tableDetections ? { tableDetections } : {}),
+      ...(kept.notices ? { notices: kept.notices } : {}),
+      ...(unread.size > 0 ? { unreadObjectsByPage: unread as ReadonlyMap<number, number> } : {}),
+      pageCount,
+      ...extra,
+      docFacts,
+      conservationSource,
+    };
+  };
   if (toRead.length === 0) return result(pdfPageTabs(pages, language, opts?.labels), { images, notices });
   const scanned = scannedPages > 0 ? { scannedPages } : {};
 
@@ -351,7 +359,11 @@ export const extractPdfWithVision = async (
   });
   return result(
     pdfPageTabs(merged, language, opts?.labels),
-    { images: keptImages && keptImages.length > 0 ? keptImages : undefined, notices: keptNotices },
+    {
+      images: keptImages && keptImages.length > 0 ? keptImages : undefined,
+      notices: keptNotices,
+      replaced: new Set(ocrByPage.keys()),
+    },
     scanned,
   );
 };

@@ -10,6 +10,7 @@
 import { cmykBytes } from "./pdf-colour-ours";
 import { decodeRaw } from "./codecs/vendor/jpeg-js-decoder.cjs";
 import type { PdfObjectsDocument } from "./pdf-objects/document";
+import { rethrowSecurityRefusal } from "./pdf-objects/refusal";
 import { refKey, type PdfDict, type PdfValue } from "./pdf-objects/objects";
 
 export const nameOf = (value: PdfValue | undefined): string | undefined =>
@@ -234,7 +235,9 @@ function paletteBytesOf(doc: PdfObjectsDocument, table: PdfValue | undefined): U
   if (table?.kind !== "stream") return undefined;
   try {
     return doc.streamBytes(table);
-  } catch {
+  } catch (error) {
+    // A refusal for security refuses the document (decision of 25/10/2026); the others leave the picture unread.
+    rethrowSecurityRefusal(error);
     return undefined;
   }
 }

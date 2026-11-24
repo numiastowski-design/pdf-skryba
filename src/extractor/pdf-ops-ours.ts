@@ -390,17 +390,20 @@ function groupOperand(doc: PdfObjectsDocument, entry: PdfValue): unknown {
   return null;
 }
 
+/** The operator that marks a `Do` whose XObject could not be read (decision of 24/11/2026): it paints nothing. */
+export const UNREADABLE_XOBJECT_OP = "unreadableXObject";
+
 /** `Do` of a form (inlined between its begin and end) or of an image (its name only: the picture is decoded downstream). */
 function doXObject(context: PageContext, frame: Frame, name: string | undefined, out: PdfOp[]): void {
   if (name === undefined) return;
   const xobjects = context.doc.dictOf(frame.resources?.get("XObject"));
   const declared = xobjects?.get(name);
-  // An XObject we cannot read fails alone (decision of 24/11/2026): its `/Subtype` is inside it, so it is painted as
-  // an IMAGE, which the image reader then counts as unread (`pdf-image-unread`). The bias is chosen: a damaged FORM
-  // (§8.10) is reported as a lost picture, never refuses the document; its words are lost, and the notice says where.
+  // An XObject we cannot read fails alone (decision of 24/11/2026). Its `/Subtype` is inside it: it may have been a
+  // FORM carrying text (§8.10), so it is never called a lost picture. The page is published without it, and the marker
+  // below counts it (`PdfExtractResult.unreadObjectsByPage`).
   const read = partOrAbsent(() => ({ target: context.doc.resolve(declared) }));
   if (read === undefined) {
-    out.push({ op: "paintImageXObject", args: [name, frame.resources] });
+    out.push({ op: UNREADABLE_XOBJECT_OP, args: [name] });
     return;
   }
   const { target } = read;

@@ -170,6 +170,11 @@ export interface PdfExtractResult {
    *  its text; or `font` (17/11/2026), a page that shows glyphs of a font we could not read and lost those words only. `extractPdfWithVision` leaves out the pages the AI's text replaced and composes the notice again
    *  (`pdfTextUnreadNotices`). Empty when every page was read. */
   textUnreadByPage: ReadonlyMap<number, PdfTextUnreadReason>;
+  /** 0-based page -> how many of its XObjects could not be read (decision of 24/11/2026). Their `/Subtype` is in the
+   *  damaged bytes, so each may have been a picture or a form carrying text: the page is published without them, and
+   *  they are never counted as lost pictures. No `DocumentNotice` carries them yet (`doc-ir` has no kind for it).
+   *  Empty when none. */
+  unreadObjectsByPage: ReadonlyMap<number, number>;
   /** What the file says about itself, reduced (`pdf-facts.ts`): tool from our table, versions, tagging, page count. */
   docFacts: PdfDocumentFacts;
   /** What this extraction cost in work: calls and volumes, never time, so that it is a deterministic regression

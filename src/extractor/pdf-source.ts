@@ -14,7 +14,7 @@ import { ReaderError } from "doc-ir";
 import type { PdfTextUnreadReason, PictureRefusal } from "doc-ir";
 import { pictureRefusalOf } from "./pdf-image-refusal";
 import { stencilImageObjectOf } from "./pdf-stencil-images";
-import { partOrAbsent, PdfObjectsRefusal, type PdfObjectsRefusalReason } from "./pdf-objects/refusal";
+import { partOrAbsent, PdfObjectsRefusal, REFUSAL_IS_BOUND } from "./pdf-objects/refusal";
 import { count, type ExtractionCost } from "./extraction-cost";
 import type { FontWeight } from "./font-weight";
 import { readImageObject, readImageRef, type PdfImageData } from "./pdf-images";
@@ -23,7 +23,7 @@ import { refKey, type PdfDict } from "./pdf-objects/objects";
 import { documentCacheOf } from "./document-cache";
 import { flateImageObjectOf } from "./pdf-flate-images";
 import { jpegImageObjectOf } from "./pdf-jpeg-images";
-import { ourOpsOfPage } from "./pdf-ops-ours";
+import { ourOpsOfPage, UNREADABLE_XOBJECT_OP } from "./pdf-ops-ours";
 import {
   filteredGlyphs,
   GlyphBuilderAbstention,
@@ -185,6 +185,9 @@ export interface PdfSourcePage {
    *  (`glyph-positions.ts#unreadFontKept`), so an invisible one counts for nothing. That font's words are missing, the rest is read.
    *  `pdf.ts` turns it into a `pdf-text-unread` notice of reason `font` (17/11/2026). Never set beside `glyphsUnavailable`. */
   fontUnread?: true;
+  /** How many XObjects of the page could not be read (their `/Subtype` with them, so a picture or a form): published
+   *  without them (decision of 24/11/2026). Absent when none. */
+  unreadObjects?: number;
   /**
    * The marked-content identifiers this page's STRUCTURE TREE holds, in the
    * tree's reading order corrected by `hoistAgainstTree` where the content
@@ -533,6 +536,8 @@ interface PageText {
   glyphsUnavailable?: PdfTextUnreadReason;
   /** A glyph in a font we could not read would have been published (`PdfSourcePage.fontUnread`). */
   fontUnread?: true;
+  /** The XObjects of the page that could not be read (`PdfSourcePage.unreadObjects`). */
+  unreadObjects?: number;
   /** The text runs of the page, built from its glyphs. */
   runs: PdfTextRun[];
   /** The second reading of the page's text (`pdf-reference-ours.ts`), hidden text left out. */
@@ -772,6 +777,7 @@ export function readPageText(ctx: ReadContext, pageIndex: number): PageText {
   if (ops.length > PDF_MAX_OPS_PER_PAGE)
     throw new ReaderError("FILE_UNSAFE", "the PDF has a page with too many drawing operations to be read");
   count(ctx.cost, "operatorsWalked", ops.length);
+  const unreadObjects = ops.filter((op) => op.op === UNREADABLE_XOBJECT_OP).length;
 
   const fonts = fontObjectsOfPage(ctx.ourDoc, entry);
   const ourFont = (name: string): OurFontObject | undefined => fonts.get(name);
@@ -820,49 +826,11 @@ export function readPageText(ctx: ReadContext, pageIndex: number): PageText {
     glyphs: ctx.keepGlyphs ? glyphs : [],
     ...(glyphsUnavailable !== undefined ? { glyphsUnavailable } : {}),
     ...(fontUnread ? { fontUnread: true as const } : {}),
+    ...(unreadObjects > 0 ? { unreadObjects } : {}),
     runs,
     reference,
   };
 }
-
-/** The bounds of our object reader: a refusal for one of them is a `limit` that bit, any other refusal a damaged file.
- *  A `Record` so a reason added to `PdfObjectsRefusalReason` does not compile until it is classified here. */
-const REFUSAL_IS_BOUND: Record<PdfObjectsRefusalReason, boolean> = {
-  syntax: false,
-  truncated: false,
-  "nesting-too-deep": true,
-  "token-too-long": true,
-  "string-too-long": true,
-  "stream-length": false,
-  "stream-end": false,
-  "length-unresolved": false,
-  "startxref-missing": false,
-  "xref-offset": false,
-  "xref-syntax": false,
-  "xref-chain": false,
-  "xref-too-large": true,
-  "filter-unsupported": false,
-  predictor: false,
-  "stream-decode": false,
-  "object-stream": false,
-  "xref-stream": false,
-  "xref-stale": false,
-  "ref-hops": true,
-  "page-tree": false,
-  "page-box": false,
-  "content-syntax": false,
-  "content-operands": false,
-  "content-too-long": true,
-  "inline-image": false,
-  encrypted: false,
-  "to-unicode": false,
-  "value-too-large": true,
-  "document-too-large": true,
-  "glyphs-too-many": true,
-  "forms-too-many": true,
-  "font-tables-too-many": true,
-  "page-missing": false,
-};
 
 /** Why a page's glyphs could not be built, CLASSIFIED from the error by its class, code or closed tag — never by its
  *  message, which is dropped. An abstention of the glyph builder is `unsupported`; a bound of ours that bit is `limit`
@@ -975,6 +943,7 @@ export function readPageSource(text: PageText, pageIndex: number, wants: PageWan
     glyphs,
     ...(text.glyphsUnavailable !== undefined ? { glyphsUnavailable: text.glyphsUnavailable } : {}),
     ...(text.fontUnread === true ? { fontUnread: true as const } : {}),
+    ...(text.unreadObjects !== undefined ? { unreadObjects: text.unreadObjects } : {}),
     ...(declaredOrder.length > 0 ? { declaredOrder: hoistAgainstTree(declaredOrder, runs) } : {}),
     ...(noteIds.size > 0 ? { noteIds } : {}),
     reference,

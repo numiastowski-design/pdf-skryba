@@ -29,6 +29,7 @@ import { inflateSync } from "node:zlib";
 import { encodePngDeflate } from "doc-ir/internal";
 import { unfilterPngRows } from "doc-ir/internal";
 import { imageFilterOf, openPdfObjects, singleFilterOf, type PdfObjectsDocument } from "./pdf-objects/document";
+import { rethrowSecurityRefusal } from "./pdf-objects/refusal";
 import type { PdfDict, PdfStream, PdfValue } from "./pdf-objects/objects";
 import {
   componentsOfSpace,
@@ -80,7 +81,9 @@ function flatePixels(
   let contents: Uint8Array;
   try {
     contents = doc.rawStreamBytes(stream);
-  } catch {
+  } catch (error) {
+    // A refusal for security refuses the document (decision of 25/10/2026); the others leave the picture unread.
+    rethrowSecurityRefusal(error);
     return undefined;
   }
   // The ceiling comes from the DECLARED size: the exact length the later checks accept, so anything
@@ -179,7 +182,9 @@ export async function openEmbeddedImages(source: Uint8Array | PdfObjectsDocument
     let stream: PdfValue | undefined;
     try {
       stream = doc.resolve({ kind: "ref", num: Number(m[1]), gen: m[2] ? Number(m[2]) : 0 });
-    } catch {
+    } catch (error) {
+      // A refusal for security refuses the document (decision of 25/10/2026); the others leave the picture unread.
+      rethrowSecurityRefusal(error);
       return undefined;
     }
     if (stream?.kind !== "stream") return undefined;
@@ -206,7 +211,9 @@ export async function openEmbeddedImages(source: Uint8Array | PdfObjectsDocument
       let raw: Uint8Array;
       try {
         raw = doc.imageStreamOf(stream).data;
-      } catch {
+      } catch (error) {
+        // A refusal for security refuses the document (decision of 25/10/2026); the others leave the picture unread.
+        rethrowSecurityRefusal(error);
         return undefined;
       }
       // 🔴 WE NEVER DELIVER BYTES WHOSE DECLARED TYPE DOES NOT MATCH

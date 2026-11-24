@@ -33,7 +33,7 @@ const takesPredictor = (filter: string): boolean =>
 /** The buffer, grown (by doubling) to hold `needed` more bytes — or the output ceiling refused before a single
  *  byte is allocated. */
 function grownTo(buffer: Uint8Array, length: number, needed: number): Uint8Array {
-  if (length + needed > MAX_DECODED_STREAM_BYTES) throw new PdfObjectsRefusal("stream-decode");
+  if (length + needed > MAX_DECODED_STREAM_BYTES) throw new PdfObjectsRefusal("stream-too-large");
   if (length + needed <= buffer.length) return buffer;
   let next = buffer.length;
   while (next < length + needed) next *= 2;
@@ -331,8 +331,10 @@ const INFLATE_CHUNK_BYTES = 64 * 1024;
 function inflate(raw: Uint8Array): Uint8Array {
   try {
     return inflateSync(raw, { maxOutputLength: MAX_DECODED_STREAM_BYTES, chunkSize: INFLATE_CHUNK_BYTES });
-  } catch {
-    // A zlib failure is a refusal, never a crash: truncated data, a wrong header, or the ceiling reached.
+  } catch (error) {
+    // A zlib failure is a refusal, never a crash: the ceiling reached is a bound, truncated data or a wrong header
+    // a damaged stream.
+    if ((error as { code?: unknown }).code === "ERR_BUFFER_TOO_LARGE") throw new PdfObjectsRefusal("stream-too-large");
     throw new PdfObjectsRefusal("stream-decode");
   }
 }

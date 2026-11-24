@@ -556,6 +556,10 @@ const assembleResult = (
     if (reason !== undefined) textUnreadByPage.set(pageIndex, reason);
   });
   const textUnreadNotices = pdfTextUnreadNotices(textUnreadByPage, new Set());
+  const unreadObjectsByPage = new Map<number, number>();
+  source.pages.forEach((page, pageIndex) => {
+    if (page.unreadObjects !== undefined) unreadObjectsByPage.set(pageIndex, page.unreadObjects);
+  });
   // A table wider than MAX_TABLE_COLS or longer than MAX_TABLE_ROWS is not published, and said (one notice for the document).
   let tablesWithheld = 0;
   const published = merged.map((page, pageIndex) => {
@@ -580,6 +584,7 @@ const assembleResult = (
     ...(notices.length > 0 ? { notices } : {}),
     imageLossByPage,
     textUnreadByPage,
+    unreadObjectsByPage,
     ...(publishedImages.length > 0 ? { images: publishedImages, pagesOfImage: images.pagesOfImage } : {}),
     scannedPageIndices,
     flattenedGridPages: laid.flattenedGridPages,

@@ -8,6 +8,7 @@
 
 import { decodeCcittFax } from "./codecs/ccitt-fax";
 import { singleFilterOf } from "./pdf-objects/document";
+import { rethrowSecurityRefusal } from "./pdf-objects/refusal";
 import type { PdfObjectsDocument } from "./pdf-objects/document";
 import type { PdfStream, PdfValue } from "./pdf-objects/objects";
 import {
@@ -108,7 +109,9 @@ function maskSamplesOf(
     if (filter === "CCITTFaxDecode") return ccittSamplesOf(doc, mask, size.mw, size.mh);
     if (filter === "DCTDecode") return dctSamplesOf(doc, mask, size.mw, size.mh);
     return flateSamplesOf(doc, mask, size.mw, size.mh);
-  } catch {
+  } catch (error) {
+    // A refusal for security refuses the document (decision of 25/10/2026); the others leave the picture unread.
+    rethrowSecurityRefusal(error);
     return undefined;
   }
 }

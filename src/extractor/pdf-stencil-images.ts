@@ -18,6 +18,7 @@
  *  Called by: `extractor/pdf-source.ts` (with the other image decoders). */
 
 import { singleFilterOf } from "./pdf-objects/document";
+import { rethrowSecurityRefusal } from "./pdf-objects/refusal";
 import type { PdfObjectsDocument } from "./pdf-objects/document";
 import type { PdfDict, PdfStream } from "./pdf-objects/objects";
 import type { DecodedImageObject } from "./pdf-ccitt-images";
@@ -92,7 +93,9 @@ function stencilLayoutOf(
 function samplesOf(doc: PdfObjectsDocument, stream: PdfStream, width: number, height: number): Uint8Array | undefined {
   try {
     return unpackSamples(doc.streamBytes(stream), width, height, 1, 1);
-  } catch {
+  } catch (error) {
+    // A refusal for security refuses the document (decision of 25/10/2026); the others leave the picture unread.
+    rethrowSecurityRefusal(error);
     return undefined;
   }
 }
