@@ -24,6 +24,12 @@ export type DecodeStream = (bytes: Uint8Array, stream: PdfStream) => Uint8Array;
 const FLATE = "FlateDecode";
 const LZW = "LZWDecode";
 
+/** §7.4.4.4: the filters that take a predictor — Flate and LZW, under their names and the abbreviations of §8.9.7
+ *  Table 94 (`Fl`, `LZW`). Until 24/11/2026 the chain looked for the full names only, and a single `/DecodeParms`
+ *  dictionary on `[/A85 /Fl]` lost its predictor. */
+const takesPredictor = (filter: string): boolean =>
+  filter === FLATE || filter === "Fl" || filter === LZW || filter === "LZW";
+
 /** The buffer, grown (by doubling) to hold `needed` more bytes — or the output ceiling refused before a single
  *  byte is allocated. */
 function grownTo(buffer: Uint8Array, length: number, needed: number): Uint8Array {
@@ -382,7 +388,7 @@ export const decodeStream: DecodeStream = (bytes, stream) => {
   // filter allocated its buffer. No honest file chains more than two filters (`[/A85 /Fl]`).
   if (filters.length > MAX_FILTER_CHAIN) throw new PdfObjectsRefusal("filter-unsupported");
   // Taken out of the loop for the same reason: it does not depend on the current filter.
-  const predicted = filters.findIndex((filter) => filter === FLATE || filter === LZW);
+  const predicted = filters.findIndex(takesPredictor);
   let data = bytes.subarray(stream.start, stream.start + stream.length);
 
   for (const [index, filter] of filters.entries()) {
@@ -440,7 +446,7 @@ export const decodeToImageFilter = (
 ): { readonly imageFilter: string | undefined; readonly data: Uint8Array } => {
   const filters = filtersOf(dict);
   if (filters.length > MAX_FILTER_CHAIN) throw new PdfObjectsRefusal("filter-unsupported");
-  const predicted = filters.findIndex((filter) => filter === FLATE || filter === LZW);
+  const predicted = filters.findIndex(takesPredictor);
   let out = data;
   for (const [index, filter] of filters.entries()) {
     if (IMAGE_FILTERS.has(filter)) {

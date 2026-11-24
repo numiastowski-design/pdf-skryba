@@ -16,8 +16,8 @@ import type { PdfStream, PdfValue } from "./objects";
 import { parseValue } from "./parse";
 import { PdfObjectsRefusal } from "./refusal";
 import { MAX_DECODED_STREAM_BYTES, MAX_FILTER_CHAIN, MAX_OBJECT_STREAM_MEMBERS } from "./bounds";
-import { lzwEncode } from "./stream-encoders.test.support";
-import { decodeStream, readObjectStream, type DecodeStream } from "./streams";
+import { encodeChain, lzwEncode, pngPredict, type FilterStep } from "./stream-encoders.test.support";
+import { decodeStream, decodeToImageFilter, readObjectStream, type DecodeStream } from "./streams";
 import { Choices } from "./pdf-syntax-writer.test.support";
 import { readXref } from "./xref";
 
@@ -156,6 +156,30 @@ describe("decodeStream: FlateDecode (7.4.4)", () => {
     const encoded = latin1(lzwEncode(enc(text), 1, new Choices([7, 3, 11])));
     const { bytes, stream } = streamObject("/Filter /LZW", encoded);
     expect(latin1(decodeStream(bytes, stream))).toBe(text);
+  });
+
+  describe("a single DecodeParms dictionary on a chain goes to the filter that takes a predictor (7.4.4.4)", () => {
+    // Two rows of three bytes, whole rows for `/Columns 3`.
+    const plain = Uint8Array.from([10, 20, 30, 11, 21, 31]);
+    const parms = "/DecodeParms << /Predictor 12 /Columns 3 >>";
+    // The abbreviations of §8.9.7 Table 94 must behave exactly like the full names.
+    for (const last of ["FlateDecode", "Fl", "LZWDecode", "LZW"] as const) {
+      const steps: FilterStep[] = [{ filter: "A85" }, { filter: last }];
+      const choices = new Choices([5, 2, 9]);
+      const body = latin1(encodeChain(pngPredict(plain, 3, 1, choices), steps, choices));
+      const dict = `/Filter [/A85 /${last}] ${parms}`;
+
+      it(`decodeStream undoes the predictor of a chain ending in /${last}`, () => {
+        const { bytes, stream } = streamObject(dict, body);
+        expect([...decodeStream(bytes, stream)]).toEqual([...plain]);
+      });
+
+      it(`decodeToImageFilter undoes the predictor of a chain ending in /${last}`, () => {
+        const { bytes, stream } = streamObject(dict, body);
+        const raw = bytes.subarray(stream.start, stream.start + stream.length);
+        expect([...decodeToImageFilter(raw, stream.dict).data]).toEqual([...plain]);
+      });
+    }
   });
 
   it("applies a CHAIN of filters in order (7.4: the first one named is the first applied)", () => {
