@@ -474,7 +474,9 @@ function integerAt(data: Uint8Array, from: number): { value: number; end: number
   let parsed;
   try {
     parsed = parseValue(data, from);
-  } catch {
+  } catch (error) {
+    // Only OUR refusal is renamed (decided on 24/11/2026): a defect of ours propagates, never disguised as a damaged file.
+    if (!(error instanceof PdfObjectsRefusal)) throw error;
     throw new PdfObjectsRefusal("object-stream");
   }
   if (parsed.value.kind !== "number" || !Number.isInteger(parsed.value.value) || parsed.value.value < 0) {
@@ -534,7 +536,9 @@ export function readObjectStream(bytes: Uint8Array, stream: PdfStream, decode: D
       try {
         const parsed = parseValue(data, start);
         return { value: parsed.value, nodes: parsed.nodes };
-      } catch {
+      } catch (error) {
+        // Same rule as `integerAt` (24/11/2026): our refusal is renamed, anything else propagates.
+        if (!(error instanceof PdfObjectsRefusal)) throw error;
         throw new PdfObjectsRefusal("object-stream", num);
       }
     },

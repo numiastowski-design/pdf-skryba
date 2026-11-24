@@ -232,8 +232,10 @@ function readStreamSection(bytes: Uint8Array, offset: number, spend: SpendBytes)
   try {
     // An indirect `/Length` cannot be resolved here: resolving it would need the very section being read.
     object = parseIndirectObject(bytes, offset, () => undefined);
-  } catch {
-    // Whatever is at that offset, it is not a cross-reference section.
+  } catch (error) {
+    // Whatever our parser refuses at that offset, it is not a cross-reference section. Only OUR refusal is renamed
+    // (decided on 24/11/2026): a defect of ours propagates, never disguised as a damaged file.
+    if (!(error instanceof PdfObjectsRefusal)) throw error;
     throw new PdfObjectsRefusal("xref-offset");
   }
   const stream = object.value;
