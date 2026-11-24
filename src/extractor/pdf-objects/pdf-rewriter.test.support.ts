@@ -11,7 +11,7 @@
  * pages).
  * NOT here: the properties (`xref.property.test.ts`), the damage. Encrypted files (a string is encrypted with its
  * object's number, so a moved object would still read, but the rewriter does not need them).
- * Called by: `xref.property.test.ts`.
+ * Called by: `xref.property.test.ts`, `../pdf-images.property.test.ts` (`appendObjects`).
  */
 
 import type { PdfObjectsDocument } from "./document";
@@ -361,4 +361,38 @@ export function asBuilt(bytes: Uint8Array): Built {
   const largest = Math.max(0, ...xref.entries.keys());
   const nextNum = Math.max(largest + 1, size?.kind === "number" ? size.value : 0);
   return { bytes, startxref: Number(match[1]), nextNum };
+}
+
+/** One object an update writes: its bytes, `N G obj` to `endobj`. */
+export interface WrittenObject {
+  readonly num: number;
+  readonly gen: number;
+  readonly bytes: Uint8Array;
+}
+
+/** §7.5.6: an incremental update appended to `base` that writes `objects` (new ones, or new versions of existing
+ *  ones), listed by a new section under a table or a stream at random, `Prev` pointing at the base's section. The
+ *  trailer keeps `Root`, `Info` and `ID` from `trailer`. */
+export function appendObjects(
+  base: Built,
+  trailer: Source["trailer"],
+  objects: readonly WrittenObject[],
+  choices: Choices,
+): Built {
+  const asStream = choices.chance(50);
+  const parts: Uint8Array[] = [base.bytes];
+  const last = base.bytes[base.bytes.length - 1];
+  if (last !== 0x0a && last !== 0x0d) parts.push(latin1("\n"));
+  let at = parts.reduce((sum, part) => sum + part.length, 0);
+  const placements = new Map<number, Placement>();
+  for (const object of objects) {
+    placements.set(object.num, { kind: "offset", offset: at, gen: object.gen });
+    const bytes = concat([object.bytes, latin1("\n")]);
+    parts.push(bytes);
+    at += bytes.length;
+  }
+  const nextNum = Math.max(base.nextNum, ...objects.map((object) => object.num + 1));
+  const tail = sectionAndTail(at, placements, { objects: [], trailer }, nextNum, base.startxref, asStream, choices);
+  parts.push(tail.bytes);
+  return { bytes: concat(parts), startxref: at, nextNum: tail.nextNum };
 }
