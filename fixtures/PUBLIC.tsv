@@ -152,3 +152,8 @@ fixtures/xlsx/09-Effectifs-Dates.xlsx	public	made	own	none	fixtures/xlsx/09-10.g
 fixtures/xlsx/10-Commentaires-Cellules.xlsx	public	made	own	none	fixtures/xlsx/09-10.generator.mjs	2026-11-19	
 fixtures/xlsx/11-FABRIQUE-Ventes-Graphique-Liens.xlsx	public	made	own	none	fixtures/xlsx/11-12.generator.py	2026-11-19	
 fixtures/xlsx/12-FABRIQUE-Formules-Sans-Valeur.xlsx	public	made	own	none	fixtures/xlsx/11-12.generator.py	2026-11-19	
+golden/extraction-cost/05a-Rapport-Annuel-Digital.json	public	derived	own	none	fixtures/pdf/05a-Rapport-Annuel-Digital.pdf	2026-11-19	the work the reader counted on the document, kept as a reference
+golden/extraction-cost/05d-Dossier-Mixte.json	public	derived	own	none	fixtures/pdf/05d-Dossier-Mixte.pdf	2026-11-19	the work the reader counted on the document, kept as a reference
+golden/extraction-cost/11-Brochure-Deux-Colonnes.json	public	derived	own	none	fixtures/pdf/11-Brochure-Deux-Colonnes.pdf	2026-11-19	the work the reader counted on the document, kept as a reference
+golden/extraction-cost/16-Brochure-Dense.json	public	derived	own	none	fixtures/pdf/16-Brochure-Dense.pdf	2026-11-19	the work the reader counted on the document, kept as a reference
+golden/extraction-cost/18-Composition-Reelle.json	public	derived	own	none	fixtures/pdf/18-Composition-Reelle.pdf	2026-11-19	the work the reader counted on the document, kept as a reference
