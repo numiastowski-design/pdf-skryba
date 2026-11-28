@@ -225,7 +225,11 @@ The registry also lists `0.0.0-stage` for each name, a placeholder npm creates f
 publishing. It is not a release.
 
 [Unreleased]: https://github.com/numiastowski-design/pdf-skryba
+
 [0.10.1]: https://www.npmjs.com/package/pdf-skryba/v/0.10.1
+[0.10.0]: https://www.npmjs.com/package/pdf-skryba/v/0.10.0
+[0.9.1]: https://www.npmjs.com/package/pdf-skryba/v/0.9.1
+[0.9.0]: https://www.npmjs.com/package/pdf-skryba/v/0.9.0
 [0.8.0]: https://www.npmjs.com/package/pdf-skryba/v/0.8.0
 [0.7.0]: https://www.npmjs.com/package/pdf-skryba/v/0.7.0
 [0.6.2]: https://www.npmjs.com/package/skryba/v/0.6.2
