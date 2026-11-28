@@ -94,7 +94,6 @@
   "sonarjs/no-empty-collection",
   "sonarjs/no-empty-group",
   "sonarjs/no-empty-parameterized-test-dataset",
-  "sonarjs/no-empty-test-file",
   "sonarjs/no-empty-test-title",
   "sonarjs/no-equals-in-for-termination",
   "sonarjs/no-exclusive-tests",

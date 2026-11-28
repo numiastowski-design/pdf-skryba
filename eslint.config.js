@@ -77,4 +77,11 @@ export default tseslint.config(
     files: TESTS,
     rules: { "no-restricted-properties": "off", "no-restricted-syntax": "off", "no-console": "off" },
   },
+  // A test file must hold a test. Since sonarjs 4.2.3 the rule no longer checks that a file is a test file, so it is
+  // scoped here, to the tests only.
+  {
+    files: TESTS,
+    plugins: { sonarjs },
+    rules: { "sonarjs/no-empty-test-file": "error" },
+  },
 );

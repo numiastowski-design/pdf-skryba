@@ -54,7 +54,7 @@
     "test": "vitest run",
     "lint": "eslint --max-warnings 0 src scripts",
     "format:check": "prettier --check src scripts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && node node_modules/typescript7/bin/tsc --noEmit",
     "lint:pack": "publint run --strict && attw --pack . --profile esm-only",
     "prepack": "npm run build"
   },
@@ -75,18 +75,19 @@
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "0.18.5",
-    "@types/node": "26.6.6",
+    "@types/node": "^26.6.11",
     "esbuild": "0.28.2",
-    "eslint": "10.15.0",
-    "eslint-plugin-sonarjs": "4.2.2",
-    "fast-check": "4.10.2",
+    "eslint": "^10.16.0",
+    "eslint-plugin-sonarjs": "^4.2.3",
+    "fast-check": "^4.11.0",
     "jpeg-js": "0.4.4",
     "prettier": "3.10.1",
     "publint": "0.3.25",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
-    "typescript-eslint": "8.73.0",
-    "vitest": "5.1.0"
+    "typescript-eslint": "^8.74.0",
+    "typescript7": "npm:typescript@^7.0.2",
+    "vitest": "^5.1.2"
   },
   "allowScripts": {
     "esbuild": false
