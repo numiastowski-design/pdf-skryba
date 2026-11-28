@@ -10,6 +10,13 @@ The package was named `skryba` from 0.1.0 to 0.6.2; `skryba` stays frozen at 0.6
 with the message « Renamed to pdf-skryba ». Before 0.1.0 the same reader was published as
 `@miksumia/reader`, which the registry no longer serves; those versions are not reconstructed here.
 
+## [0.10.1] - 2026-11-28
+
+### Changed
+
+- No change to the published code. The tests that read only public documents are back in this repository, and
+  the development dependencies are at their latest (TypeScript 7 checks the types beside TypeScript 6).
+
 ## [0.10.0] - 2026-11-24
 
 ### Added
@@ -218,6 +225,7 @@ The registry also lists `0.0.0-stage` for each name, a placeholder npm creates f
 publishing. It is not a release.
 
 [Unreleased]: https://github.com/numiastowski-design/pdf-skryba
+[0.10.1]: https://www.npmjs.com/package/pdf-skryba/v/0.10.1
 [0.8.0]: https://www.npmjs.com/package/pdf-skryba/v/0.8.0
 [0.7.0]: https://www.npmjs.com/package/pdf-skryba/v/0.7.0
 [0.6.2]: https://www.npmjs.com/package/skryba/v/0.6.2
