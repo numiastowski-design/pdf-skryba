@@ -44,6 +44,16 @@
  * and cuts « Inter-ministerial » at a line's end, where its Word source keeps the hyphen; the witness joins it, and the
  * bench counts one invented word (10 -> 11). The author spells the word both ways; the document's other spelling decides.
  *
+ * WRITTEN LIMIT, NO WORD LIST (option C, decided by the maintainer on 10/11/2026). Measured over 322 real PDFs on
+ * 10/11/2026, with word frequencies as the judge: 17 decisions stay wrong, nearly all compounds — 7 joined wrongly, all
+ * prefixed (« multigigabyte », « metaanalytic », « soustendent », « selfaddressed »), and 8 that keep a hyphen too many
+ * (« Mat-teo », « McKin-ney », « con-nections », « vi-ruses »); 75 of 81 compounds checked against Word come out right.
+ * A list of the language's words would decide most of them; it was weighed (a frequency list under CC BY-SA, or the
+ * spelling dictionaries) and set aside. Two more limits, written: halves that stand alone come from interleaved
+ * columns, a reading-order defect and not a hyphenation one (`sd-7343223`, `sd-0412647`); and nothing is rejoined
+ * across two pages (6 cases in the 322), since a page is a tab. The French contracted relatives (auquel, duquel,
+ * lesquelles…) are a closed family and always join.
+ *
  * 🔴 WHY IT LIVES HERE SINCE 03/11/2026, in `layout/` and no longer inside a cell module: the page flow needed the
  * same decision, and this repository had just been bitten by the opposite habit — `WORD_GAP_EM` is written twice,
  * 0.1 in `extractor/glyph-runs.ts` and 0.15 in `extractor/pdf-lines.ts`, two values for one question. One decision,
